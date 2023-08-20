@@ -62,6 +62,5 @@ onRunCreated()
 
 onRunRestored()
 {
-    // Restored run, TAS will be set when loading a position with TAS enabled
-    self.hardTAS = false;
+    // onRunRestored is called after loading, so the loading will have already set this variable properly
 }

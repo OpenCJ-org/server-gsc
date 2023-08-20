@@ -3,7 +3,6 @@
 main()
 {
     self openCJ\saveposition::onRunCreated();
-    self openCJ\tas::onRunCreated();
     self openCJ\weapons::onRunCreated();
     self openCJ\statistics::onRunCreated();
     self openCJ\healthRegen::onRunCreated();
@@ -15,6 +14,8 @@ main()
     self openCJ\speedMode::onRunCreated();
     self openCJ\noclip::onRunCreated();
     self openCJ\elevate::onRunCreated();
+    self openCJ\anyPct::onRunCreated();
+    self openCJ\tas::onRunCreated();
     self openCJ\playTime::onRunCreated();
     self openCJ\huds\hudRunInfo::onRunCreated();
     self openCJ\huds\hudStatistics::onRunCreated();

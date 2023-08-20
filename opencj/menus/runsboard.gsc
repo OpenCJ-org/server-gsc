@@ -142,7 +142,7 @@ fetchUpdatedData()
             self.currentBoard["cols"][i]["fps"] = rows[i][7];
 
             eleVal = int(rows[i][8]) & level.saveFlags[level.saveFlagName_eleOverrideEver];
-            anyVal = int(rows[i][8]) & level.saveFlags[level.saveFlagName_anyPctEver];
+            anyVal = int(rows[i][8]) & level.saveFlags[level.saveFlagName_anyPct];
             TASVal = int(rows[i][8]) & level.saveFlags[level.saveFlagName_hardTAS];
             self.currentBoard["cols"][i]["ele"] = xOrEmpty(eleVal);
             self.currentBoard["cols"][i]["any"] = xOrEmpty(anyVal);
@@ -195,12 +195,12 @@ getRunStr()
 getFilterStr(ele, any, tas)
 {
     eleVal = int(ele) * level.saveFlags[level.saveFlagName_eleOverrideEver];
-    anyVal = int(any) * level.saveFlags[level.saveFlagName_anyPctEver];
+    anyVal = int(any) * level.saveFlags[level.saveFlagName_anyPct];
     tasVal = int(tas) * level.saveFlags[level.saveFlagName_hardTAS];
 
     flagsBeginStr = " AND (a.flags & ";
     str = flagsBeginStr + level.saveFlags["eleOverrideEver"] + ") <= " + eleVal;
-    str += flagsBeginStr + level.saveFlags["anyPctEver"] + ") <= " + anyVal;
+    str += flagsBeginStr + level.saveFlags["anyPct"] + ") <= " + anyVal;
     str += flagsBeginStr + level.saveFlags["hardTAS"] + ") <= " + tasVal;
 
     return str;

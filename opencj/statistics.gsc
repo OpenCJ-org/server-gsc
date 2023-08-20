@@ -96,8 +96,8 @@ whileAlive()
     hasUsedAnyPct = self.statistics[level.statisticsStrings_usedAnyPct];
     hasUsedHardTAS = self.statistics[level.statisticsStrings_usedTAS];
     self.statistics[level.statisticsStrings_usedEle] = self openCJ\elevate::hasEleOverrideEver();
-    self.statistics[level.statisticsStrings_usedAnyPct] = false; // Not implemented yet
-    self.statistics[level.statisticsStrings_usedTAS] = false; // Not implemented yet
+    self.statistics[level.statisticsStrings_usedAnyPct] = self openCJ\anyPct::hasAnyPct();
+    self.statistics[level.statisticsStrings_usedTAS] = self openCJ\tas::hasHardTAS();
 
     if ((self.statistics[level.statisticsStrings_usedEle] != hasUsedEle) || (self.statistics[level.statisticsStrings_usedAnyPct] != hasUsedAnyPct) || (self.statistics[level.statisticsStrings_usedTAS] != hasUsedHardTAS))
     {
@@ -109,7 +109,7 @@ _updateProgress()
 {
     currentCheckpoint = self openCJ\checkpoints::getCurrentCheckpoint();
     shouldClear = false;
-    if (self openCJ\playerRuns::hasRunStarted() && isDefined(currentCheckpoint))
+    if (!self openCJ\anyPct::hasAnyPct() && self openCJ\playerRuns::hasRunStarted() && isDefined(currentCheckpoint))
     {
         route = openCJ\checkpoints::getRouteNameForCheckpoint(currentCheckpoint);
         if(isDefined(route))

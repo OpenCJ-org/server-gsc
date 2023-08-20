@@ -6,5 +6,6 @@ main()
     self openCJ\elevate::onRunStarted();
     self openCJ\fps::onRunStarted();
     self openCJ\showRecords::onRunStarted();
+    self openCJ\checkpoints::onRunStarted();
     self openCJ\huds\hudRunInfo::onRunStarted();
 }
