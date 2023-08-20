@@ -45,7 +45,6 @@ main(backwardsCount)
     self openCJ\statistics::setExplosiveJumps(save.explosiveJumps);
     self openCJ\statistics::setDoubleExplosives(save.doubleExplosives);
     self openCJ\statistics::onLoadPosition();
-    self thread openCJ\checkpoints::updateCheckpointsForPlayer(save.checkpointID); // This may take a bit of computational time, so let it run in background
     self openCJ\checkpoints::onLoadPosition();
     self openCJ\huds\hudSpeedometer::onLoadPosition();
 
@@ -75,5 +74,6 @@ main(backwardsCount)
     self openCJ\savePosition::printLoadSuccess();
     
     self openCJ\huds\hudFpsHistory::onLoaded();
+    self thread openCJ\checkpoints::updateCheckpointsForPlayer(save.checkpointID); // This may take a bit of computational time, so let it run in background
     return save.saveNum;
 }

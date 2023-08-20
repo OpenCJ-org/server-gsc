@@ -102,6 +102,10 @@ onInit()
 
     level.checkpoints_checkpoints = [];
 
+    // Initialize a list of maps that need to be recheckpointed for any% detection to work properly
+    level.mapsToBeRecheckpointed = [];
+    level.mapsToBeRecheckpointed[level.mapsToBeRecheckpointed.size] = "mp_descent_v3";
+
     if(openCJ\mapid::hasMapID())
     {
         rows = openCJ\mySQL::mysqlSyncQuery("SELECT a.cpID, a.x, a.y, a.z, a.radius, a.onGround, GROUP_CONCAT(b.childCpID), a.ender, a.elevate, a.endShaderColor, c.bigBrotherID FROM checkpoints a LEFT JOIN checkpointConnections b ON a.cpID = b.cpID LEFT JOIN checkpointBrothers c ON a.cpID = c.cpID WHERE a.mapID = " + openCJ\mapid::getMapID() + " GROUP BY a.cpID");
@@ -770,6 +774,23 @@ onSpawnPlayer()
     self.previousOrigin = self.origin;
     self.previousOnground = true;
     self.justLoaded = getTime();
+
+    // Temporary measure to inform the player of any% status in the current map
+    if (!isDefined(self.noAnyPctAvailable))
+    {
+        mapName = getCvar("mapname");
+        for (i = 0; i < level.mapsToBeRecheckpointed.size; i++)
+        {
+            if (level.mapsToBeRecheckpointed[i] == mapName)
+            {
+                self iprintlnbold("Any'/. detection is temporarily disabled for this map");
+                self.noAnyPctAvailable = true;
+                return;
+            }
+        }
+
+        self.noAnyPctAvailable = false;
+    }
 }
 
 filterOutBrothers(checkpoints)
@@ -844,6 +865,19 @@ _areOverlapping(cp1, cp2)
 
 _checkAnyPctTriggered(triggeredCP, childCheckpoints)
 {
+    // Any percent detection not yet implemented for maps that need re-checkpointing.
+    // For example, mp_descent_v3 has an easy checkpoint in the hard route because they overlap
+    // This should be fixed by placing a hard checkpoint at this location too.
+    mapName = getCvar("mapname");
+    for (i = 0; i < level.mapsToBeRecheckpointed.size; i++)
+    {
+        if (level.mapsToBeRecheckpointed[i] == mapName)
+        {
+            // When this map gets re-checkpointed, all existing runs will be set to any%
+            return false;
+        }
+    }
+
     // Two criteria need to be successful to trigger any %:
     // - player needs to trigger a checkpoint that is *not* one of their next possible checkpoints
     // - *and* this triggered checkpoint does not overlap one of these checkpoints either
@@ -918,7 +952,7 @@ whileAlive()
                 // This check requires some computation, so don't call it if player already had triggered any%
                 if (!self openCJ\anyPct::hasAnyPct() && self _checkAnyPctTriggered(cp, playerChildCheckpoints))
                 {
-                    self iprintlnbold("Checkpoint skipped, any% mode enabled");
+                    self iprintlnbold("Checkpoint skipped, any'/. mode enabled");
                     self openCJ\anyPct::setAnyPct(true);
                 }
                 else if (!self openCJ\anyPct::hasAnyPct())
