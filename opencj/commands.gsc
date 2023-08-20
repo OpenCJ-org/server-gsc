@@ -34,6 +34,9 @@ onInit()
     cmd = openCJ\commands_base::registerCommand("ts", "Teleport to a specific player's save", ::_onCmdTeleSave, 1, 1, 0);
     cmd = openCJ\commands_base::registerCommand("tp", "Teleport to a specific player's position", ::_onCmdTelePos, 1, 1, 0);
 
+    cmd = openCJ\commands_base::registerCommand("maplist", "List currently available maps.", ::_onCommandMapList, 0, 0, 0);
+    openCJ\commands_base::addAlias(cmd, "maps");
+
     // Useful admin commands for debugging maps
     cmd = openCJ\commands_base::registerCommand("ent", "Teleport to an entity", ::_onCmdEntTele, 1, 2, 90);
     cmd = openCJ\commands_base::registerCommand("setorigin", "Teleport to a position", ::_onCmdSetOrigin, 3, 3, 90);
@@ -45,6 +48,33 @@ onPlayerDisconnect()
     {
         self.targetRef delete();
     }
+}
+
+_onCommandMapList(args)
+{
+    // level.maps is defined by endmapvote.gsc
+    maxCharsPerLine = 100;
+    mapStr = "";
+    mapListNr = 1;
+    for (i = 0; i < level.maps.size; i++)
+    {
+        map = level.maps[i];
+        if ((mapStr.size + map.size) > maxCharsPerLine)
+        {
+            self sendLocalChatMessage("Maps (" + mapListNr + "): " + mapStr);
+            mapListNr++;
+            mapStr = map;
+        }
+        else
+        {
+            if (i != 0)
+            {
+                mapStr += ", ";
+            }
+            mapStr += map;
+        }
+    }
+    self sendLocalChatMessage("Maps (" + mapListNr + "): " + mapStr);
 }
 
 _onCommandToggleTarget(args)
