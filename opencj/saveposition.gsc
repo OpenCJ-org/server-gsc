@@ -125,6 +125,10 @@ canSaveError()
     {
         return 2;
     }
+    if(isDefined(self.justLoaded))
+    {
+            return 4;
+    }
 
     groundEntity = self getGroundEntity();
 
@@ -148,6 +152,11 @@ printCanSaveError(error)
         case 3:
         {
             self iprintln("^1Cannot save on this object");
+            break;
+        }
+        case 4:
+        {
+            self iprintln("^1Cannot save this fast after loading");
             break;
         }
     }
