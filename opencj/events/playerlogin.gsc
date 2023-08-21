@@ -10,4 +10,5 @@ main()
     self openCJ\vote::onPlayerLogin();
     self openCJ\discord::onPlayerLogin();
     self openCJ\AFK::onPlayerLogin();
+    self openCJ\checkpointCreation::onPlayerLogin();
 }

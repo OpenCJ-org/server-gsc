@@ -1,16 +1,21 @@
 #include openCJ\util;
 
+// TODO: Running out of hudelems or something? Can only show CPC hud when not initializing spectator list HUD
+
 onInit()
 {
+    /*
     underlyingCmd = openCJ\settings::addSettingInt("speclisthud", 0, 10, 4, "Set the maximum numbers of spectators shown in your HUD. 0 = off.", ::_onSpectatorListSettingChanged);
     openCJ\commands_base::addAlias(underlyingCmd, "speclist");
 
     level.specListHudName = "speclist";
     openCJ\huds\infiniteHuds::initInfiniteHud(level.specListHudName);
+    */
 }
 
 _onSpectatorListSettingChanged(newVal)
 {
+    /*
     if (newVal > 0)
     {
         self thread doNextFrame(::_updateSpecList); // Call after setting has been applied
@@ -19,18 +24,22 @@ _onSpectatorListSettingChanged(newVal)
     {
         self _hideSpecList();
     }
+    */
 }
 
 onPlayerConnected()
 {
+    /*
     //                                     name                   x        y     alignX     alignY    hAlign     vAlign
     self openCJ\huds\base::initInfiniteHUD(level.specListHudName, 5,     122,    "left",    "top",    "left",    "top",
     //    foreground    font        hideInMenu   color            glowColor                        glowAlpha  fontScale  archived alpha
         undefined,    "default",    true,        (0.9, 0.9, 1.0), ((20/255), (33/255), (125/255)), 0.1,       1.4,       false,   0);
+        */
 }
 
 onPlayerDisconnect()
 {
+    /*
     if (self.spectatorClient != -1)
     {
         spectatee = getEntByNum(self.spectatorClient);
@@ -40,11 +49,13 @@ onPlayerDisconnect()
             spectatee thread doNextFrame(::_updateSpecList);
         }
     }
+    */
 }
 
 onSpectatorClientChanged(newClient, prevClient)
 {
     // It'll take until the next frame before spectatorClient is updated, so we execute next frame
+    /*
     if (isDefined(prevClient))
     {
         prevClient thread doNextFrame(::_updateSpecList);
@@ -57,30 +68,34 @@ onSpectatorClientChanged(newClient, prevClient)
     {
         self _hideSpecList(); // Not spectating anyone right now
     }
+    */
 }
 
 onSpawnPlayer()
 {
-    self _updateSpecList();
+    //self _updateSpecList();
 }
 
 onSpawnSpectator()
 {
-    self _hideSpecList();
+    //self _hideSpecList();
 }
 
 _hideSpecList()
 {
+    /*
     spectatorsAndSelf = self getSpectatorList(true);
     for (i = 0; i < spectatorsAndSelf.size; i++)
     {
         spectatorsAndSelf[i].hud[level.specListHudName].alpha = 0;
         spectatorsAndSelf[i].hud[level.specListHudName] openCJ\huds\infiniteHuds::setInfiniteHudText("", spectatorsAndSelf[i], false);
     }
+    */
 }
 
 _updateSpecList()
 {
+    /*
     specList = self getSpectatorList(false);
     if (specList.size == 0)
     {
@@ -94,10 +109,12 @@ _updateSpecList()
     {
         specList[i] _updateSpecListHud(specList);
     }
+    */
 }
 
 _updateSpecListHud(specList)
 {
+    /*
     nrSpecsToShow = self openCJ\settings::getSetting("speclisthud");
     if (nrSpecsToShow == 0)
     {
@@ -129,4 +146,5 @@ _updateSpecListHud(specList)
 
     self.hud[level.specListHudName] openCJ\huds\infiniteHuds::setInfiniteHudText(newSpecListText, self, false);
     self.hud[level.specListHudName].alpha = 1;
+    */
 }

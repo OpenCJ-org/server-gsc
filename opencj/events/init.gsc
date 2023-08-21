@@ -58,8 +58,7 @@ main()
     openCJ\halfBeat::onInit();
     openCJ\AFK::onInit();
     openCJ\measurements::onInit();
-
-    openCJ\platformDetect::onInit(); //debug file
+    openCJ\checkpointCreation::onInit();
 
     thread _everyFrame();
 }

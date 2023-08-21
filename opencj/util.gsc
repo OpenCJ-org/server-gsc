@@ -64,7 +64,7 @@ isPlayerReady(requiresRunReady)
     return ready;
 }
 
-getEyePos()
+getEyePos() // TODO: client->ps.viewHeightXXXX
 {
     eyePos = self.origin;
     if (self.sessionteam == "spectator")
@@ -150,16 +150,20 @@ arrayConcat(array, separator)
     return string;
 }
 
-sendLocalChatMessage(msg, isError)
+sendLocalChatMessage(msg, isError, isSuccess)
 {
     prefix = undefined;
     if (isDefined(isError) && isError)
     {
-        prefix = "^1[^7local^1]:^7 ";
+        prefix = "^1[^7local^1]^7: ";
+    }
+    else if (isDefined(isSuccess) && isSuccess)
+    {
+        prefix = "^2[^7local^2]^7: ";
     }
     else
     {
-        prefix = "^3[^7local^3]:^7 ";
+        prefix = "^3[^7local^3]^7: ";
     }
     self sendChatMessage(prefix + msg);
 }

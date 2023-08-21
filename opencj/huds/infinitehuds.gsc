@@ -7,9 +7,17 @@ onInit()
 
 initInfiniteHud(name)
 {
+    num = level.infiniteHudStrings.size;
+    localizedString = findLocalizedString(num);
+    if (!isDefined(localizedString))
+    {
+        // No room left, trigger crash to indicate
+        crashVariable = undefined;
+        crashVariable setText("Failed to make infinite HUD");
+    }
     level.infiniteHudStrings[name] = spawnStruct();
-    level.infiniteHudStrings[name].num = level.infiniteHudStrings.size;
-    level.infiniteHudStrings[name].localizedString = findLocalizedString(level.infiniteHudStrings[name].num);
+    level.infiniteHudStrings[name].num = num;
+    level.infiniteHudStrings[name].localizedString = localizedString;
     level.infiniteHudStrings[name].string = constructMessage(level.infiniteHudStrings[name].localizedString);
     precacheString(level.infiniteHudStrings[name].localizedString);
     level.infiniteHudStrings[name].configstringIndex = G_LocalizedStringIndex(level.infiniteHudStrings[name].string);
@@ -41,10 +49,12 @@ setInfiniteHudText(text, player, reliable)
     {
         reliable = false;
     }
+
     if(!player.isFirstSpawn && (text == self.lastText)) // If player hadn't spawned yet, then the existing value may have been set 'too early'
     {
         return;
     }
+
     self.lastText = text;
     player SV_GameSendServerCommand("d " + self.configstringIndex + " " + text, reliable);
 }

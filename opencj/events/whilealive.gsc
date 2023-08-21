@@ -30,8 +30,7 @@ main()
                 self openCJ\playTime::whileAlive();
                 self openCJ\huds\hudPosition::whileAlive();
                 self openCJ\cheating::whileAlive();
-
-                self openCJ\platformDetect::whileAlive(); //debug file
+                self openCJ\checkpointCreation::whileAlive();
                 self openCJ\events\eventHandler::whileAlive();
             }
         }

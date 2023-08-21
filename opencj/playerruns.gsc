@@ -100,7 +100,10 @@ pauseRun()
     {
         self.playerRuns_runPaused = true;
         self openCJ\events\onRunPaused::main();
-        self iPrintLnBold("Run paused. Load back to resume.");
+        if (!self openCJ\checkpointCreation::isCreatingCheckpoints())
+        {
+            self iPrintLnBold("Run paused. Load back to resume.");
+        }
     }
 }
 

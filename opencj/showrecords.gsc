@@ -229,6 +229,10 @@ _getRecords(checkpoints, persist, timems)
     printf("getRecords query:\n" + query + "\n"); // Debug
 
     rows = self openCJ\mySQL::mysqlAsyncQuery(query);
+    if (!isDefined(rows) || (rows.size == 0))
+    {
+        printf("WARNING: got no records!\n");
+    }
 
     if(!self openCJ\playerRuns::isRunFinished())
     {
@@ -360,7 +364,7 @@ _updateRecords(client, rows, overrideTime, force)
     sortOrder = arr[1];
 
     i = 0;
-    if(isDefined(rows))
+    if(isDefined(rows) && (rows.size > 0))
     {
         for(; i < rows.size; i++)
         {

@@ -878,6 +878,11 @@ _checkAnyPctTriggered(triggeredCP, childCheckpoints)
 
 whileAlive()
 {
+    if (self openCJ\checkpointCreation::isCreatingCheckpoints())
+    {
+        return;
+    }
+
     // No need to process if the run is already finished
     if (self openCJ\playerRuns::isRunFinished())
     {

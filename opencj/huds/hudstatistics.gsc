@@ -2,24 +2,7 @@
 
 onInit()
 {
-    if (getCodVersion() == 2)
-    {
-        underlyingCmd = openCJ\settings::addSettingString("timestring", 1, 20, "Time:", "Set the time string used in the statistics hud. Usage: !timestring [newstring]");
-        underlyingCmd = openCJ\settings::addSettingString("savesstring", 1, 20, "Saves:", "Set the saves string used in the statistics hud. Usage: !savesstring [newstring]");
-        underlyingCmd = openCJ\settings::addSettingString("loadsstring", 1, 20, "Loads:", "Set the loads string used in the statistics hud. Usage: !loadsstring [newstring]");
-        underlyingCmd = openCJ\settings::addSettingString("jumpsstring", 1, 20, "Jumps:", "Set the jumps string used in the statistics hud. Usage: !jumpsstring [newstring]");
-        underlyingCmd = openCJ\settings::addSettingString("fpshaxstring", 1, 20, "FPS[H]:", "Set the hax fps string used in the statistics hud. Usage: !fpshaxstring [newstring]");
-        underlyingCmd = openCJ\settings::addSettingString("fpsmixstring", 1, 20, "FPS[M]:", "Set the mix fps string used in the statistics hud. Usage: !fpsmixstring [newstring]");
-        underlyingCmd = openCJ\settings::addSettingString("fpspurestring", 1, 20, "FPS:", "Set the pure fps string used in the statistics hud. Usage: !fpspurestring [newstring]");
-        underlyingCmd = openCJ\settings::addSettingString("nadejumpsstring", 1, 20, "Nadejumps:", "Set the nadejumps string used in the statistics hud. Usage: !nadejumpsstring [newstring]");
-        underlyingCmd = openCJ\settings::addSettingString("nadethrowsstring", 1, 20, "Nadethrows:", "Set the nadethrows string used in the statistics hud. Usage: !nadethrowsstring [newstring]");
-    }
-    else
-    {
-        underlyingCmd = openCJ\settings::addSettingString("rpgjumpsstring", 1, 20, "RPG Jumps:", "Set the RPGJumps string used in the statistics hud. Usage: !rpgjumpsstring [newstring]");
-        underlyingCmd = openCJ\settings::addSettingString("rpgshotsstring", 1, 20, "RPG Shots:", "Set the RPGShots string used in the statistics hud. Usage: !rpgshotsstring [newstring]");
-        underlyingCmd = openCJ\settings::addSettingString("doublerpgsstring", 1, 20, "Double RPGs:", "Set the double RPGs string used in the statistics hud. Usage: !doublerpgsstring [newstring]");
-    }
+
 }
 
 onPlayerConnected()
@@ -135,54 +118,29 @@ _hideStatisticsHud(force)
     }
 }
 
-_getStringOrDefault(name)
-{
-    str = self openCJ\settings::getSetting(name);
-    if (!isDefined(str))
-    {
-        switch (name)
-        {
-            case "timestring": return "Time:";
-            case "savesstring": return "Saves:";
-            case "loadsstring": return "Loads:";
-            case "jumpsstring": return "Jumps:";
-            case "nadejumpsstring": return "Nadejumps:";
-            case "nadethrowsstring": return "Nadethrows:";
-            case "rpgjumpsstring": return "RPG Jumps:";
-            case "rpgshotsstring": return "RPG Shots:";
-            case "doublerpgsstring": return "Double RPGs:";
-            case "fpshaxstring": return "FPS[H]:";
-            case "fpsmixstring": return "FPS[M]:";
-            case "fpspurestring": return "FPS:";
-        }
-    }
-
-    return str;
-}
-
 _getStatisticsString()
 {
     // Time
-    newstring = _getStringOrDefault("timestring") + " " + formatTimeString(self openCJ\playTime::getTimePlayed(), true) + "\n";
+    newstring = "Time: " + formatTimeString(self openCJ\playTime::getTimePlayed(), true) + "\n";
 
     // Loads
-    newstring += _getStringOrDefault("loadsstring") + " " + self openCJ\statistics::getLoadCount() + "\n";
+    newstring += "Loads: " + self openCJ\statistics::getLoadCount() + "\n";
 
     // CoD specific (nade jumps / rpg)
     if (getCodVersion() == 2)
     {
         // Also only show jumps and saves on CoD2 as this is irrelevant for CoD4
-        newstring += _getStringOrDefault("savesstring") + " " + self openCJ\statistics::getSaveCount() + "\n";
-        newstring += _getStringOrDefault("jumpsstring") + " " + self openCJ\statistics::getJumpCount() + "\n";
-        newstring += _getStringOrDefault("nadejumpsstring") + " " + self openCJ\statistics::getExplosiveJumps() + "\n";
-        newstring += _getStringOrDefault("nadethrowsstring") + " " + self openCJ\statistics::getExplosiveLaunches() + "\n";
+        newstring += "Saves: " + self openCJ\statistics::getSaveCount() + "\n";
+        newstring += "Jumps: " + self openCJ\statistics::getJumpCount() + "\n";
+        newstring += "Nadejumps: " + self openCJ\statistics::getExplosiveJumps() + "\n";
+        newstring += "Nadethrows: " + self openCJ\statistics::getExplosiveLaunches() + "\n";
     }
     else
     {
-        newstring += _getStringOrDefault("rpgjumpsstring") + " " + self openCJ\statistics::getExplosiveJumps() + "\n";
+        newstring += "RPG Jumps: " + self openCJ\statistics::getExplosiveJumps() + "\n";
         // TMI
-        //newstring += _getStringOrDefault("rpgshotsstring") + " " + self openCJ\statistics::getExplosiveLaunches() + "\n";
-        //newstring += _getStringOrDefault("doublerpgsstring") + " " + self openCJ\statistics::getDoubleExplosives() + "\n";
+        //newstring += "RPG Shots: " + self openCJ\statistics::getExplosiveLaunches() + "\n";
+        //newstring += "Double RPGs: " + self openCJ\statistics::getDoubleExplosives() + "\n";
     }
 
     // FPS is already covered by runInfo icons

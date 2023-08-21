@@ -128,26 +128,32 @@ onPlayerKilled(inflictor, attacker, damage, meansOfDeath, weapon, vDir, hitLoc, 
 _showRunStatus(player)
 {
     // Run status
-    if (player.sessionState == "playing")
+    text = undefined;
+    if ((player.sessionState == "playing") && (!player openCJ\checkpointCreation::isCreatingCheckpoints()))
     {
         if (!player openCJ\playerRuns::hasRunID())
         {
-            self.hudRunInfo["status"] setText("^1Not in a run");
-            self.hudRunInfo["status"].alpha = 1;
+            text = "^1Not in a run";
         }
         else if (player openCJ\playerRuns::isRunPaused())
         {
-            self.hudRunInfo["status"] setText("^5Run is paused");
-            self.hudRunInfo["status"].alpha = 1;
+            text = "^5Run is paused";
         }
-        else
-        {
-            self.hudRunInfo["status"].alpha = 0;
-        }
+    }
+
+    if (!isDefined(text))
+    {
+        self.hudRunInfo["status"].alpha = 0;
     }
     else
     {
-        self.hudRunInfo["status"].alpha = 0;
+        if (!isDefined(self.hudRunInfoText) || (self.hudRunInfoText != text))
+        {
+            self.hudRunInfo["status"] setText(text);
+            self.hudRunInfoText = text;
+        }
+
+        self.hudRunInfo["status"].alpha = 1;
     }
 }
 

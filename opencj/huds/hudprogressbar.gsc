@@ -96,7 +96,14 @@ _updateProgressBar(onFinish)
     {
         progress = level.progressBarMaxValue; // At this point it's more important showing the player that their run is marked as cheated
         self.progressBar setShader(level.progressBarShader, level.progressBarMaxValue, level.progressBarHeight);
-        self.progressBar.color = (0.8, 0.3, 0.3); // Cheating -> make it redish
+        if (self openCJ\checkpointCreation::isCreatingCheckpoints())
+        {
+            self.progressBar.color = (0.1, 0.7, 0.7); // Checkpointing -> make it cyan-ish
+        }
+        else
+        {
+            self.progressBar.color = (0.8, 0.3, 0.3); // Cheating -> make it redish
+        }
         self.progressBar.alpha = 0.4; // Red is quite intense, mellow it down a bit
         self _showProgressBar();
     }

@@ -1,3 +1,4 @@
+/*
 #include openCJ\util;
 
 onInit()
@@ -227,3 +228,4 @@ whileAlive()
         self iprintln("off plat");
     }
 }
+*/
