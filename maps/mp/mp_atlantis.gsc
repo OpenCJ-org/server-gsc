@@ -109,7 +109,7 @@ main()
     
     maps\mp\_kill::main();
     maps\mp\_shark::main();
-    maps\mp\_nosave::main();
+    maps\mp\mp_atlantis_nosave::main();
     maps\mp\no_rpg::main();
     maps\mp\_comblock::main();        
 

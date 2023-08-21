@@ -47,22 +47,15 @@
 */
 main()
 {
-    //precacheModel("Elysium_SC5");
-	//precacheModel("playermodel_dnf_duke");
-	//precacheModel("playermodel_aot_rosco_00_light");
-	
 	maps\mp\_load::main();
 	maps\mp\mp_the_extreme_text::main();
 	maps\mp\extremeteleport::main();
 	maps\mp\mp_the_extreme_bounce::main();
 	maps\mp\doorslide::main();
 	maps\mp\mp_the_extreme_key::main();
-	maps\mp\music::main();
 	maps\mp\mp_the_extreme_killtriggers::main();
 	maps\mp\mp_the_extreme_hardfinish::main();
 	maps\mp\telerotate::main();
-	
-	level.knockback = getDvarInt("g_knockback");
 
 	game["allies"] = "sas";
 	game["axis"] = "opfor";
@@ -80,46 +73,4 @@ main()
 	setdvar("jump_slowdownenable","0");
 	setDvar("bg_fallDamageMaxHeight", 9999);
 	setDvar("bg_fallDamageMinHeight", 9998);
-	
-	thread skin1();
-	thread skin2();
-	thread skin3();
-	
-}
-
-skin1()
-{
-    trigger = getent ("skin1","targetname");
-    
-	for(;;)
-    {
-        trigger waittill ("trigger", player);     
-		player iprintlnbold("Sorry, this script is not available");
-		wait 5;
-    }
-}
-
-skin2()
-{
-    trigger = getent ("skin2","targetname");
-    
-	for(;;)
-    {
-        trigger waittill ("trigger", player);     
-		player iprintlnbold("Sorry, this script is not available");
-		wait 5;
-    }
-}
-
-
-skin3()
-{
-    trigger = getent ("skin3","targetname");
-    
-	for(;;)
-    {
-        trigger waittill ("trigger", player);     
-		player iprintlnbold("Sorry, this script is not available");
-		wait 5;
-    }
 }

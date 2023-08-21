@@ -40,19 +40,10 @@ no_rpg(trigger, user)
    {
       if(!user isOnLadder() && !user isMantling() && weaponType(user getCurrentWeapon()) == "projectile")
       {
-         if(user hasWeapon("beretta_mp"))
-            user switchToWeapon("beretta_mp");
-         else if(!user hasWeapon("beretta_mp") && user hasWeapon("deserteaglegold_mp"))
+         if(user hasWeapon("deserteaglegold_mp"))
             user switchToWeapon("deserteaglegold_mp");
-         else if(!user hasWeapon("beretta_mp") && !user hasWeapon("deserteaglegold_mp") && user hasWeapon("colt45_mp"))
-            user switchToWeapon("colt45_mp");
-         else if(!user hasWeapon("beretta_mp") && !user hasWeapon("deserteaglegold_mp") && !user hasWeapon("colt45_mp") && user hasWeapon("usp_mp"))
-            user switchToWeapon("usp_mp");
-         else
-         {
-            user giveWeapon("beretta_mp");
-            user switchToWeapon("beretta_mp");
-         }
+         else if(!user hasWeapon("deserteaglegold_mp") && user hasWeapon("deserteagle_mp"))
+            user switchToWeapon("deserteagle_mp");
 
          wait 1;
       }
