@@ -10,7 +10,6 @@ onInit()
 
 onPlayerConnect()
 {
-    self.playerRuns_spawnLinker = spawn("script_origin", (0, 0, 0));
     self.playerRuns_runPaused = false;
 }
 
@@ -21,10 +20,7 @@ onPlayerLogin()
 
 onStartDemo()
 {
-    if(!self.playerRuns_runStarted)
-    {
-        self unlink();
-    }
+
 }
 
 onRunFinished(cp)
@@ -61,12 +57,7 @@ onSpawnPlayer()
 {
     if (self hasRunID())
     {
-        if(!self hasRunStarted())
-        {
-            self.playerRuns_spawnLinker.origin = self.origin;
-            self linkTo(self.playerRuns_spawnLinker);
-        }
-        else if (!self isRunPaused())
+        if (self hasRunStarted() && !self isRunPaused())
         {
             self openCJ\playTime::startTimer();
         }
@@ -130,8 +121,6 @@ stopRun(shouldReset)
 
     if (shouldReset)
     {
-        self unlink();
-
         // Archive the current run
         runID = self getRunID();
         self thread archiveRun(runID);
@@ -141,8 +130,6 @@ stopRun(shouldReset)
     }
     else if (self hasRunID())
     {
-        self unlink();
-
         // Player is no longer in a run
         _clearRunVars();
 
@@ -322,7 +309,6 @@ startRun()
     {
         self.playerRuns_runStarted = true;
         self.playerRuns_runPaused = false;
-        self unLink();
         self openCJ\events\onRunStarted::main();
         self iprintln("Run started");
     }

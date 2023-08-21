@@ -292,12 +292,12 @@ _onCmdSetOrigin(args)
 
 _onCmdTeleSave(args)
 {
-    self _teleportToPlayer(args, true);
+    self thread _teleportToPlayer(args, true);
 }
 
 _onCmdTelePos(args)
 {
-    self _teleportToPlayer(args, false);
+    self thread _teleportToPlayer(args, false);
 }
 
 _teleportToPlayer(args, teleToSave)
@@ -311,7 +311,12 @@ _teleportToPlayer(args, teleToSave)
         }
         else if(player != self)
         {
-            self openCJ\cheating::setCheating(true);
+            self openCJ\cheating::setCheating(true); // Set cheating flag before spawning just to have no timing gap for saving without cheated flag
+            if (self isSpectator())
+            {
+                self thread doNextFrame(openCJ\events\spawnPlayer::main);
+                self waittill("spawned_player"); // not "spawned" because that occurs before actually having spawned
+            }
             shouldTeleToPos = !teleToSave;
             if (teleToSave)
             {
