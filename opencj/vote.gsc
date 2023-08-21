@@ -128,7 +128,8 @@ onPlayerLogin()
 
 _setVoteCooldown()
 {
-    self.canVoteAt = (getTime() / 1000) + 60; // minutes of vote lockout at start of map and after voting
+    // TODO: when server gets more popular, change back to 60-120
+    self.canVoteAt = (getTime() / 1000) + 5; // minutes of vote lockout at start of map and after voting
 }
 
 menuResponse()
