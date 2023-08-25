@@ -104,13 +104,13 @@ showCheckpointPointers()
         shader_hud = _getShaderHud(shaderColor);
         shader_objective = _getShaderObjective(shaderColor);
 
-        self.checkpointPointers_huds[i] setShader(shader_hud, 8, 8);
+        self.checkpointPointers_huds[i] setShader(shader_hud, 5, 5);
         self.checkpointPointers_huds[i] setWaypoint(true);
         
         self.checkpointPointers_huds[i].x = checkpoints[i].origin[0];
         self.checkpointPointers_huds[i].y = checkpoints[i].origin[1];
         self.checkpointPointers_huds[i].z = checkpoints[i].origin[2] + 10;
-        self.checkpointPointers_huds[i] thread _doJump(self);
+        //self.checkpointPointers_huds[i] thread _doJump(self);
 
         if(i < 16)
         {
@@ -208,7 +208,7 @@ _hideCheckpointPointers()
 _createNewCheckpointPointerHud()
 {
     hud = newClientHudElem(self);
-    hud.alpha = 1;
+    hud.alpha = 0.5;
     hud.foreground = true;
     hud.aligny = "top";
     hud.alignx = "center";

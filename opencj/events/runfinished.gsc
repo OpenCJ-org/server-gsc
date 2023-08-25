@@ -1,6 +1,6 @@
 #include openCJ\util;
 
-main(cp, tOffset) //tOffset = -50 to 0, offset when cp was actually passed
+main(cp, tOffset, route) //tOffset = -50 to 0, offset when cp was actually passed
 {
     if (self openCJ\playerRuns::isRunPaused())
     {
@@ -15,14 +15,25 @@ main(cp, tOffset) //tOffset = -50 to 0, offset when cp was actually passed
         if(self openCJ\playerRuns::hasRunID())
         {
             runID = self openCJ\playerRuns::getRunID();
-            self iprintln("Finished run (" + runID + ")");
+
+            // Set player's real finish time
+            self openCJ\playTime::setTimePlayed(self openCJ\playTime::getTimePlayed() + tOffset);
+            timePlayed = self openCJ\playTime::getTimePlayed();
+
+            //self iprintln("Finished run (" + runID + ")");
+            if (!isDefined(route))
+            {
+                route = "<unknown route>";
+            }
+            timeStr = formatTimeString(timePlayed, true);
+            iprintln(self.name + "^7 finished " + route + " in: ^2" + timeStr);
+
 
             if (self openCJ\checkpoints::checkpointHasID(cp))
             {
-                self openCJ\playTime::setTimePlayed(self openCJ\playTime::getTimePlayed() + tOffset);
-                timePlayed = self openCJ\playTime::getTimePlayed();
                 self thread openCJ\checkpoints::storeCheckpointPassed(runID, cpID, timePlayed);
                 self thread _notifyFinishedMap(runID, cpID, timePlayed);
+                self thread openCJ\discord::onRunFinished(runID, timeStr, route);
             }
         }
     }

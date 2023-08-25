@@ -1,4 +1,11 @@
 // The event numbers in this file must not be changed because they match an enum in opencj_discord.cpp
+//    PLAYER_MESSAGE          = 0,
+//    MAP_STARTED             = 1,
+//    PLAYER_COUNT_CHANGED    = 2,
+//    PLAYER_JOINED           = 3,
+//    PLAYER_LEFT             = 4,
+//    PLAYER_FINISHED         = 5,
+//    PLAYER_RENAMED          = 6,
 
 #include openCJ\util;
 
@@ -64,10 +71,25 @@ onPlayerConnect()
     _onPlayerCountChanged();
 }
 
+onPlayerLogin()
+{
+    discord_onEvent(3, self.name);
+}
+
 onPlayerDisconnect()
 {
     // Called from playerdisconnect :: main()
     _onPlayerCountChanged();
+    if (self openCJ\login::isLoggedIn())
+    {
+        // If not logged in, it wouldn't have printed a 'joined the game' event
+        discord_onEvent(4, self.name);
+    }
+}
+
+onRunFinished(runID, timeStr, route)
+{
+    discord_onEvent(5, self.name, runID, timeStr, getCvar("mapname"), route);
 }
 
 _onPlayerCountChanged()

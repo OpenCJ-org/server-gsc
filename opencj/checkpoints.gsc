@@ -349,7 +349,12 @@ _parseRoutesAndFixUnnamedRoutes()
         }
 
         // No route was found. Generate a name.
-        checkpoint.ender = "unnamed_" + nextRouteNr;
+        name = "normal";
+        if (nextRouteNr > 1)
+        {
+            name += nextRouteNr;
+        }
+        checkpoint.ender = name;
         nextRouteNr++;
 
         // Store the (newly filled in) route name
@@ -933,7 +938,7 @@ whileAlive()
                 if(cp.childs.size == 0)
                 {
                     // If that checkpoint has no child checkpoints, it is an end checkpoint
-                    self openCJ\events\runFinished::main(cp, tOffset);
+                    self openCJ\events\runFinished::main(cp, tOffset, getRouteNameForCheckpoint(cp));
                 }
                 else
                 {

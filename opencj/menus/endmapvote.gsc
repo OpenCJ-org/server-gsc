@@ -104,9 +104,8 @@ changeMap(mapName)
     // Let other scripts know map is changing
     level openCJ\events\eventHandler::onMapChanging();
 
-    // FIXME: Idk wtf is going on, but calling map() will simply result in SV_MapExists returning false because fs_searchpaths are being weird.
-    // Whatever, the following seems to work for now.
-    //map(level.endVote["maps"][winnerIdx]);
+    // CoD4(x) map() gsc call is broken due to fs_searchpath only containing current map path, but not the normal usermaps folder itself
+    // So instead, use nextmap and exitLevel so it skips the check for SV_MapExists
     setCvar("nextmap", "map " + mapName);
     exitLevel(false);
 }
