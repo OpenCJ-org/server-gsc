@@ -22,6 +22,5 @@ onRunCreated()
 
 onRunRestored()
 {
-    // Restored run, any% will be set when loading a position with any% enabled
-    self.anyPct = false;
+    // onRunRestored is called after loading, so the loading will have already set this variable properly
 }

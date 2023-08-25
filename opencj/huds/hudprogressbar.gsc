@@ -117,6 +117,12 @@ _updateProgressBar(onFinish)
             self.progressBar setShader(level.progressBarShader, progress, level.progressBarHeight);
         }
     }
+    else if(self openCJ\anyPct::hasAnyPct())
+    {
+        // Any% means we can't show the progress, so just hide the bar
+        progress = 0;
+        self _hideProgressBar();
+    }
     else // Hasn't finished the current route
     {
         self.progressBar.color = (1, 1, 1);

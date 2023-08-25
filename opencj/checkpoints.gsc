@@ -15,6 +15,13 @@ _checkpointPassed(cp, tOffset) //tOffset = -50 to 0, offset when cp was actually
     {
         if (!self openCJ\playerRuns::isRunPaused())
         {
+            // Update the player's route if it wasn't filled in yet
+            if (!isDefined(self.route))
+            {
+                self.route = getRouteNameForCheckpoint(cp);
+            }
+
+            // Inform other scripts that a checkpoint was passed
             cpPassedTime = timePlayed + tOffset;
             self openCJ\showRecords::onCheckpointPassed(cp, cpPassedTime);
 
@@ -94,6 +101,11 @@ onStartDemo()
     self.checkpoints_checkpoint = level.checkpoints_startCheckpoint;
 }
 
+onRunStarted()
+{
+    self.route = undefined;
+}
+
 onInit()
 {
     level.checkpoints_startCheckpoint = spawnStruct();
@@ -101,10 +113,6 @@ onInit()
     level.checkpoints_startCheckpoint.childs = [];
 
     level.checkpoints_checkpoints = [];
-
-    // Initialize a list of maps that need to be recheckpointed for any% detection to work properly
-    level.mapsToBeRecheckpointed = [];
-    level.mapsToBeRecheckpointed[level.mapsToBeRecheckpointed.size] = "mp_descent_v3";
 
     if(openCJ\mapid::hasMapID())
     {
@@ -625,7 +633,7 @@ getCheckpointID(cp)
     return id;
 }
 
-updateCheckpointsForPlayer(newCheckpointID) // TODO: move a lot of the computation/memory heavy checkpoint things to 
+updateCheckpointsForPlayer(newCheckpointID) // TODO: move a lot of the computation/memory heavy checkpoint things to C
 {
     // Function is called upon load position, so re-calculate which checkpoints have been passed
     self.checkpoints_passed = [];
@@ -713,6 +721,9 @@ _setCurrentCheckpoint(checkpoint)
         self.checkpoints_checkpoint = checkpoint;
     }
 
+    // Update player's route
+    self.route = getRouteNameForCheckpoint(checkpoint);
+
     // Checkpoints may have changed for this player
     if(self.checkpoints_checkpoint != oldcheckpoint)
     {
@@ -766,31 +777,12 @@ onLoadPosition()
 {
     self.previousOrigin = self.origin;
     self.previousOnground = true;
-    self.justLoaded = getTime();
 }
 
 onSpawnPlayer()
 {
     self.previousOrigin = self.origin;
     self.previousOnground = true;
-    self.justLoaded = getTime();
-
-    // Temporary measure to inform the player of any% status in the current map
-    if (!isDefined(self.noAnyPctAvailable))
-    {
-        mapName = getCvar("mapname");
-        for (i = 0; i < level.mapsToBeRecheckpointed.size; i++)
-        {
-            if (level.mapsToBeRecheckpointed[i] == mapName)
-            {
-                self iprintlnbold("Any'/. detection is temporarily disabled for this map");
-                self.noAnyPctAvailable = true;
-                return;
-            }
-        }
-
-        self.noAnyPctAvailable = false;
-    }
 }
 
 filterOutBrothers(checkpoints)
@@ -851,36 +843,10 @@ getSubSVFPsPassedTiming(prevOrg, newOrg, prevOnGround, cp)
     return tOffset;
 }
 
-_areOverlapping(cp1, cp2)
-{
-    radii = cp1.radius + cp2.radius;
-    distanceSqd = distanceSquared(cp1.origin, cp2.origin);
-    if (distanceSqd < (radii * radii))
-    {
-        return true;
-    }
-
-    return false;
-}
-
 _checkAnyPctTriggered(triggeredCP, childCheckpoints)
 {
-    // Any percent detection not yet implemented for maps that need re-checkpointing.
-    // For example, mp_descent_v3 has an easy checkpoint in the hard route because they overlap
-    // This should be fixed by placing a hard checkpoint at this location too.
-    mapName = getCvar("mapname");
-    for (i = 0; i < level.mapsToBeRecheckpointed.size; i++)
-    {
-        if (level.mapsToBeRecheckpointed[i] == mapName)
-        {
-            // When this map gets re-checkpointed, all existing runs will be set to any%
-            return false;
-        }
-    }
-
-    // Two criteria need to be successful to trigger any %:
-    // - player needs to trigger a checkpoint that is *not* one of their next possible checkpoints
-    // - *and* this triggered checkpoint does not overlap one of these checkpoints either
+    // The criterium for triggering any% is that the player passes:
+    // - a *non-finish* checkpoint that *is* part of their route but isn't their next checkpoint
     for (i = 0; i < childCheckpoints.size; i++)
     {
         // One of the next allowed checkpoints?
@@ -888,30 +854,24 @@ _checkAnyPctTriggered(triggeredCP, childCheckpoints)
         {
             return false;
         }
+    }
 
-        // Checkpoint wasn't this child checkpoint, but maybe they overlap?
-        // If they overlap, the player could just be following the route so no any% will be triggered
-        if (_areOverlapping(triggeredCP, childCheckpoints[i]))
+    // At this point it is clear that the triggered checkpoint isn't one of the next checkpoints for the player
+    // If it's still part of their route, it means they skipped a checkpoint
+    if (isDefined(self.route))
+    {
+        route = getRouteNameForCheckpoint(triggeredCP);
+        if (isDefined(route) && (route == self.route))
         {
-            return false;
+            return true;
         }
     }
 
-    return true;
+    return false;
 }
 
 whileAlive()
 {
-    // If just loaded, don't grab the next
-    if(isDefined(self.justLoaded))
-    {
-        if(self.justLoaded < getTime() - 50)
-        {
-            self.justLoaded = undefined;
-        }
-        return;
-    }
-
     // No need to process if the run is already finished
     if (self openCJ\playerRuns::isRunFinished())
     {
@@ -955,14 +915,6 @@ whileAlive()
                     self iprintlnbold("Checkpoint skipped, any'/. mode enabled");
                     self openCJ\anyPct::setAnyPct(true);
                 }
-                else if (!self openCJ\anyPct::hasAnyPct())
-                {
-                    self iprintln("any% not triggered");
-                }
-                else
-                {
-                    self iprintln("skipped any% check");
-                }
 
                 // Set the player's current checkpoint to be the one that was just triggered.
                 // Don't set it to the bigBrother, because the correct location information is needed
@@ -983,15 +935,11 @@ whileAlive()
                     // If that checkpoint has no child checkpoints, it is an end checkpoint
                     self openCJ\events\runFinished::main(cp, tOffset);
                 }
-                else if (!self openCJ\anyPct::hasAnyPct())
+                else
                 {
                     // Checkpoint has child checkpoints, so run isn't finished yet
                     self _checkpointPassed(cp, tOffset);
                     self openCJ\events\checkpointsChanged::main();
-                }
-                else
-                {
-                    self iprintln("debug: passed cp but any% enabled");
                 }
 
                 break;

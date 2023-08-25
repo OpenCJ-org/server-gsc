@@ -77,10 +77,21 @@ onRunFinished(cp)
 
 showCheckpointPointers()
 {
-    if(self.sessionState != "playing")
+    if (self.sessionState != "playing")
+    {
         return;
+    }
 
-    checkpoints = self openCJ\checkpoints::getCurrentChildCheckpoints();
+    if (self openCJ\anyPct::hasAnyPct())
+    {
+        // If player is using any%, then only show all finish checkpoint(s)
+        checkpoints = openCJ\checkpoints::getAllEndCheckpoints();
+    }
+    else
+    {
+        // Otherwise, show their next checkpoint(s)
+        checkpoints = self openCJ\checkpoints::getCurrentChildCheckpoints();
+    }
 
     for(i = 0; i < checkpoints.size; i++)
     {
