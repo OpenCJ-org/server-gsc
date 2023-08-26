@@ -1,5 +1,10 @@
 #include openCJ\util;
 
+onInit()
+{
+    underlyingCmd = openCJ\settings::addSettingBool("poshud", false, "Turn on/off position hud. Usage: !poshud [on/off]", undefined);
+}
+
 onPlayerConnect()
 {
     if (!isDefined(self.hudPos))
@@ -33,7 +38,15 @@ onSpawnSpectator()
 
 whileAlive()
 {
-    self _updatePosHudValues();
+    if (self openCJ\settings::getSetting("poshud"))
+    {
+        self _updatePosHudValues();
+        self _setPosHudAlpha(1);
+    }
+    else
+    {
+        self _setPosHudAlpha(0);
+    }
 }
 
 _updatePosHudValues()

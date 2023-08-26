@@ -310,7 +310,7 @@ _updateRecords(client, rows, overrideTime, force)
         {
             nameString += (i + 1) + ". ";
         }
-        nameString += rows[i][0] + "\n";
+        nameString += rows[i][0] + "^7\n";
         if(ownNum == i && !isDefined(overrideTime))
         {
             timeString += formatTimeString(int(rows[i][1]), true) + "\n";

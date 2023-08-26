@@ -3,7 +3,7 @@
 onInit()
 {
     // TODO: expand command so each HUD can be enabled/disabled
-    underlyingCmd = openCJ\settings::addSettingBool("fpshud", false, "Turn on/off FPS hud. Usage: !fpshud [on/off]", ::_onFPSHudSetting);
+    underlyingCmd = openCJ\settings::addSettingBool("fpshud", true, "Turn on/off FPS hud. Usage: !fpshud [on/off]", ::_onFPSHudSetting);
     openCJ\huds\infiniteHuds::initInfiniteHud("fps");
 }
 
@@ -58,14 +58,14 @@ _onFPSHudSetting(newVal)
 
     if(shouldEnable)
     {
-        self setClientCvar("cg_drawfps", 0);
+        //self setClientCvar("cg_drawfps", 0);
         currentFPSText = "" + self openCJ\fps::getCurrentFPS();
         self.hud[self.fpsHudName] openCJ\huds\infiniteHuds::setInfiniteHudText(currentFPSText, self, false);
         self openCJ\huds\base::enableHUD(self.fpsHudName);
     }
     else
     {
-        self setClientCvar("cg_drawfps", 1);
+        //self setClientCvar("cg_drawfps", 1);
         self openCJ\huds\base::disableHUD(self.fpsHudName);
     }
 }

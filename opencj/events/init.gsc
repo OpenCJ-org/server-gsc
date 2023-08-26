@@ -40,6 +40,7 @@ main()
     openCJ\huds\hudProgressBar::onInit();
     openCJ\huds\hudRunInfo::onInit();
     openCJ\huds\hudSpeedometer::onInit();
+    openCJ\huds\hudPosition::onInit();
     openCJ\fps::onInit();
     openCJ\vote::onInit();
     openCJ\graphics::onInit();
