@@ -82,7 +82,7 @@ onPlayerConnected()
         self openEndMapVote();
     }
 
-    self thread onMenuResponse();
+    self thread _menuResponse();
 }
 
 onPlayerDisconnect()
@@ -257,7 +257,7 @@ _updateVotes(prevVoteIdx, newVoteIdx)
     }
 }
 
-onMenuResponse()
+_menuResponse()
 {
     self endon("disconnect");
 

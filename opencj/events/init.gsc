@@ -49,6 +49,7 @@ main()
     openCJ\menus\leaderBoard::onInit(); // To be safe, this one should always be called later than checkpoints::onInit
     openCJ\menus\runsBoard::onInit(); // ^ this one too.
     openCJ\menus\ingame::onInit();
+    openCJ\menus\quickMessages::onInit();
     openCJ\tas::onInit();
     openCJ\playerRuns::onInit();
 
