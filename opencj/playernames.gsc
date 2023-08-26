@@ -16,7 +16,7 @@ _onFRenameCommand(args)
     }
     if(!isDefined(args[1]))
     {
-        player setForcedname();
+        player setForcedName(); // Remove their forced name
         return;
     }
     newName = args[1];
@@ -29,7 +29,6 @@ _onFRenameCommand(args)
 
 onPlayerConnect()
 {
-    self.oldName = self.name;
     self _createPlayerNameHud();
     self _hidePlayerNameHud();
 }
@@ -46,35 +45,40 @@ onPlayerLogin()
 
 onUserInfoChanged()
 {
-    if(!self openCJ\login::isLoggedIn())
+    if (isDefined(self getForcedName()))
     {
+        // If player has a forced name, they cannot rename while in the server
         return;
     }
-    newName = self getuserinfo("name");
-    if(newName == self.oldName)
-    {
-        return;
-    }
-    if(isDefined(self getForcedName()))
-    {
-        return;
-    }
-    self _rename(newName);
 
+    newName = self getUserInfo("name");
+    self _rename(newName);
 }
 
 _rename(newName)
 {
-    if(newName == self.name)
+    currentName = self.name;
+    cleanedName = self renameClient(newName); // This will clean their name
+    if (!isDefined(cleanedName)) // Sanity check because the function can return undefined
     {
-        return;
+        cleanedName = "UnnamedPlayer";
     }
-    iprintln(self.name + "^7 renamed to " + newName);
-    self renameClient(newName);
-    self setClientCvar("name", newName);
 
-    self.oldName = newName;
-    self thread _storeNewName(newName);
+    if ((currentName == cleanedName) || (isDefined(self.currentName) && (self.currentName == cleanedName)))
+    {
+        return; // Nothing to do
+    }
+
+    // Setting the player's name in their cvar will trigger another UserInfoChanged which in turn calls _rename
+    // So, store this value so the next call will not also be processed
+    self.currentName = cleanedName;
+    self setClientCvar("name", cleanedName);
+
+    // Only update database if player has a playerID
+    if (self openCJ\login::isLoggedIn())
+    {
+        self thread _storeNewName(cleanedName);
+    }
 }
 
 _storeNewName(newName)
@@ -82,7 +86,7 @@ _storeNewName(newName)
     self notify("storeNewName");
     self endon("storeNewName");
     self endon("disconnect");
-    wait 5;
+    wait 5; // Rate limiting
     self openCJ\mySQL::mysqlAsyncQueryNosave("CALL setName(" + self openCJ\login::getPlayerID() + ", '" + openCJ\mySQL::escapeString(newName) + "')");
 }
 
@@ -99,10 +103,12 @@ setForcedName(forcedName)
     }
     if(isDefined(forcedName))
     {
+        // Forcibly rename client
         self _rename(forcedName);
     }
     else
     {
+        // Remove forced name
         self setClientCvar("name", self.name);
     }
     self.forcedName = forcedName;
