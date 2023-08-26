@@ -78,10 +78,13 @@ _handleQuickMessage(response)
             sayText = &"QUICKMESSAGE_ARE_YOU_CRAZY";
         } break;
         case "qm_comeon":
-        default:
         {
             soundAlias = "mp_rsp_comeon";
             sayText = &"QUICKMESSAGE_COME_ON";
+        } break;
+        default:
+        {
+            continue; // Nothing to do (could be response of another menu)
         }
     }
 
