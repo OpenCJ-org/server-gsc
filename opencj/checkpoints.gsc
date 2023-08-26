@@ -659,7 +659,7 @@ updateCheckpointsForPlayer(newCheckpointID) // TODO: move a lot of the computati
 
     // The above call to _setCurrentCheckpoint will have updated the player's current checkpoint, so use that
     cp = self.checkpoints_checkpoint;
-    if (!isDefined(cp))
+    if (!isDefined(cp) || (cp == level.checkpoints_startCheckpoint)) // Start checkpoint doesn't have an ID
     {
         // Player did not have a passed checkpoint
         return;
@@ -671,10 +671,7 @@ updateCheckpointsForPlayer(newCheckpointID) // TODO: move a lot of the computati
     // If any prior checkpoints were skipped, it doesn't matter, because the player's save will have any% marked.
     cpsToBeProcessed = [];
     cpsToBeProcessed[0] = cp;
-    if (isDefined(cp))
-    {
-        self.checkpoints_passed[self.checkpoints_passed.size] = cp;
-    }
+    self.checkpoints_passed[self.checkpoints_passed.size] = cp;
     while (cpsToBeProcessed.size > 0)
     {
         // Start processing at last one so it can easily be removed from the list
@@ -750,11 +747,6 @@ getCurrentChildCheckpoints()
 
 hasPassedCheckpoint(checkpoint)
 {
-    // checkpoints_passed only stores big brothers
-    if (isDefined(checkpoint.bigBrother))
-    {
-        checkpoint = checkpoint.bigBrother;
-    }
     for (i = 0; i < self.checkpoints_passed.size; i++)
     {
         if (self.checkpoints_passed[i].id == checkpoint.id)
