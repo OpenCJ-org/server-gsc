@@ -3,4 +3,5 @@ main()
 {
     self openCJ\huds\hudRunInfo::onRunResumed();
     self openCJ\huds\hudProgressBar::onRunResumed();
+    self openCJ\elevate::onRunResumed();
 }

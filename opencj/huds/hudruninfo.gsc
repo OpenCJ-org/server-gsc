@@ -178,7 +178,7 @@ _showRunIcons(player)
     iconCount = 1;
 
     // Ele
-    if (player openCJ\elevate::hasEleOverrideEver())
+    if (player openCJ\elevate::hasUsedEle())
     {
         self.hudRunInfo["ele"].x = level.firstIconX + (level.spaceBetweenIcons + level.iconWidth) * iconCount;
         self.hudRunInfo["ele"].alpha = 1;

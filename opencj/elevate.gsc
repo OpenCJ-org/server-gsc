@@ -6,133 +6,108 @@ onInit()
     openCJ\commands_base::addAlias(underlyingCmd, "ele");
 }
 
-_onSettingAllowEle(shouldEnable)
+_onSettingAllowEle(allow)
 {
-    wasEverEnabled = self hasEleOverrideEver();
-    wasEnabled = self hasEleOverrideNow();
-
-    if(shouldEnable && !wasEnabled)
+    if(!allow && self hasUsedEle())
     {
-        self setEleOverrideNow(true);
-        self updateServerEleOverride();
+        self sendLocalChatMessage("You already used an elevator this run, load back or !reset your run", true);
     }
-    else if(!shouldEnable && wasEnabled)
+
+    // Don't use _updateAllowEle here, since the value hasn't been applied yet so it will use the previous value
+    self _setAllowElevate(allow);
+}
+
+_setAllowElevate(val)
+{
+    if (!isDefined(self.allowEle) || (val != self.allowEle))
     {
-        if (wasEverEnabled)
+        self.allowEle = val;
+        if (self.allowEle)
         {
-            self sendLocalChatMessage("Your run allows elevators so load back to before they were enabled or !reset your run", true);
+            self allowElevate(true);
+        }
+        else
+        {
+            self allowElevate(false);
         }
     }
 }
 
-onRunCreated()
+_updateAllowEle()
 {
-    self.eleOverrideNow = false;
-    self.eleOverrideEver = false;
-    self.eleBypass = false;
-    self updateServerEleOverride();
+    allowEle = self hasUsedEle() || self openCJ\settings::getSetting("allowele") || self _isEleAllowedThisCheckpoint() ||
+               !self openCJ\playerRuns::hasRunID() || self openCJ\playerRuns::isRunPaused() || self openCJ\playerRuns::isRunFinished() ||
+               self openCJ\cheating::isCheating() || self openCJ\demos::isPlayingDemo();
+
+    self _setAllowElevate(allowEle);
 }
 
-onRunStarted()
+onStartDemo()
 {
-    self setEleOverrideNow(self openCJ\settings::getSetting("allowele"));
-    self.eleBypass = false;
-    self updateServerEleOverride();
+    self _updateAllowEle();
+}
+
+onRunCreated()
+{
+    self setUsedEle(false);
+    self _updateAllowEle();
+}
+
+onRunResumed()
+{
+    self _updateAllowEle();
 }
 
 onCheckpointsChanged()
 {
     // Checkpoint changed, maybe the next one allows an elevator to be used
-    self updateServerEleOverride();
+    self _updateAllowEle();
 }
 
-setEleOverrideEver(value)
+onRunPaused()
 {
-    self.eleBypass = false;
-    self.eleOverrideEver = value;
+    self _updateAllowEle();
 }
 
-setEleOverrideNow(value)
+onRunFinished()
 {
-    // Always disable the ele bypass that may be in use for paused runs
-    self.eleBypass = false;
+    self _updateAllowEle();
+}
 
+setUsedEle(value)
+{
     // If value is already the same, we're done here
-    if(isDefined(self.eleOverrideNow) && (value == self.eleOverrideNow))
+    if (isDefined(self.hasUsedEle) && (value == self.hasUsedEle))
     {
         return;
     }
 
-    self.eleOverrideNow = value;
-
-    if(self.eleOverrideNow)
-    {
-        self.eleOverrideEver = true;
-    }
+    self.hasUsedEle = value;
+    self _updateAllowEle();
 }
 
-hasEleOverrideNow()
+hasUsedEle()
 {
-    if (!isDefined(self.eleOverrideNow))
+    if (!isDefined(self.hasUsedEle))
     {
         return false;
     }
-    return self.eleOverrideNow;
-}
-
-hasEleOverrideEver()
-{
-    if (!isDefined(self.eleOverrideEver))
-    {
-        return false;
-    }
-    return self.eleOverrideEver;
-}
-
-updateServerEleOverride() // Send allowElevate status to server code
-{
-    if(self.eleOverrideNow)
-    {
-        // Eles are enabled for this save
-        self allowElevate(true);
-    }
-    else if(self openCJ\playerRuns::isRunFinished())
-    {
-        // Not in a run anymore, so allow elevators
-        self allowElevate(true);
-    }
-    else if(self _isEleAllowedThisCheckpoint())
-    {
-        // This checkpoint allows elevators to be used to reach it
-        self allowElevate(true);
-    }
-    else
-    {
-        // Elevators are not allowed
-        self allowElevate(false);
-    }
+    return self.hasUsedEle;
 }
 
 onElevate()
 {
-    if (!self openCJ\playerRuns::hasRunID() || self openCJ\playerRuns::isRunPaused() || self openCJ\playerRuns::isRunFinished() || self openCJ\cheating::isCheating())
+    if (!isDefined(self.hasUsedEle) || !self.hasUsedEle)
     {
-        if (!isDefined(self.eleBypass) || !self.eleBypass)
+        if (!self.allowEle)
         {
-            self.eleBypass = true;
-            self allowElevate(true);
+            self iprintlnbold("Elevator detected, but your run doesn't allow them");
         }
-        // No problem if player is not in a run or has their run paused/finished
-        return;
+        else
+        {
+            self.hasUsedEle = true;
+        }
     }
-    if(self.eleOverrideNow || self _isEleAllowedThisCheckpoint() || self openCJ\demos::isPlayingDemo())
-    {
-        // This elevator is allowed
-        return;
-    }
-
-    self iprintlnbold("Elevator detected, but your run doesn't allow them");
-    self iprintlnbold("Load back, or use !ele and save to allow elevators");
 }
 
 _isEleAllowedThisCheckpoint()

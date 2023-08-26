@@ -39,6 +39,18 @@ main(backwardsCount)
         self openCJ\cheating::setCheating(true);
     }
 
+    // Set speed mode
+    self openCJ\speedMode::setSpeedModeEver(openCJ\savePosition::hasSpeedModeEver(save));
+    self openCJ\speedMode::setSpeedMode(openCJ\savePosition::hasSpeedModeNow(save));
+
+    // Set elevator
+    self openCJ\elevate::setUsedEle(openCJ\savePosition::getFlagUsedEle(save));
+
+    // Set hard TAS
+    self openCJ\tas::setHardTAS(openCJ\savePosition::getUsedHardTAS(save));
+    // Set any%
+    self openCJ\anyPct::setAnyPct(openCJ\savePosition::getUsedAnyPct(save));
+
     // Set origin and angles
     self setoriginandangles(save.origin, save.angles);
 
@@ -47,19 +59,6 @@ main(backwardsCount)
     self openCJ\statistics::onLoadPosition();
     self openCJ\checkpoints::onLoadPosition();
     self openCJ\huds\hudSpeedometer::onLoadPosition();
-
-    // Set speed mode
-    self openCJ\speedMode::setSpeedModeEver(openCJ\savePosition::hasSpeedModeEver(save));
-    self openCJ\speedMode::setSpeedMode(openCJ\savePosition::hasSpeedModeNow(save));
-
-    // Set elevator
-    self openCJ\elevate::setEleOverrideEver(openCJ\savePosition::getFlagEleOverrideEver(save));
-    self openCJ\elevate::setEleOverrideNow(openCJ\savePosition::getFlagEleOverrideNow(save));
-
-    // Set hard TAS
-    self openCJ\tas::setHardTAS(openCJ\savePosition::getUsedHardTAS(save));
-    // Set any%
-    self openCJ\anyPct::setAnyPct(openCJ\savePosition::getUsedAnyPct(save));
 
     // Set FPSMode. If save had non-hax non-mix, then the FPS mode should depend on the user's current FPS instead`
     currFPS = self openCJ\fps::getCurrentFPS();

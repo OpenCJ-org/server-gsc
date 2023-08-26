@@ -95,7 +95,7 @@ whileAlive()
     hasUsedEle = self.statistics[level.statisticsStrings_usedEle];
     hasUsedAnyPct = self.statistics[level.statisticsStrings_usedAnyPct];
     hasUsedHardTAS = self.statistics[level.statisticsStrings_usedTAS];
-    self.statistics[level.statisticsStrings_usedEle] = self openCJ\elevate::hasEleOverrideEver();
+    self.statistics[level.statisticsStrings_usedEle] = self openCJ\elevate::hasUsedEle();
     self.statistics[level.statisticsStrings_usedAnyPct] = self openCJ\anyPct::hasAnyPct();
     self.statistics[level.statisticsStrings_usedTAS] = self openCJ\tas::hasHardTAS();
 

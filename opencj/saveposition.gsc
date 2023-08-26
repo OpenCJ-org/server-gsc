@@ -6,8 +6,7 @@ onInit()
     level.saveFlagName_speedModeNow = "speedModeNow";
     level.saveFlagName_speedModeEver = "speedModeEver";
     level.saveFlagName_hasRPG = "rpg";
-    level.saveFlagName_eleOverrideNow = "eleOverrideNow";
-    level.saveFlagName_eleOverrideEver = "eleOverrideEver";
+    level.saveFlagName_usedEle = "usedEle";
     level.saveFlagName_anyPct = "anyPct";
     level.saveFlagName_hardTAS = "hardTAS";
 
@@ -18,21 +17,16 @@ onInit()
     level.saveFlags[level.saveFlagName_speedModeNow] = 2;
     level.saveFlags[level.saveFlagName_speedModeEver] = 4;
     level.saveFlags[level.saveFlagName_hasRPG] = 8;
-    level.saveFlags[level.saveFlagName_eleOverrideNow] = 16;
-    level.saveFlags[level.saveFlagName_eleOverrideEver] = 32;
+    // 16 can be re-used, but it was eleNow
+    level.saveFlags[level.saveFlagName_usedEle] = 32;
     level.saveFlags[level.saveFlagName_anyPct] = 64;
-    // 128 can be re-used safely
+    // 128 can be re-used safely (was unused)
     level.saveFlags[level.saveFlagName_hardTAS] = 256;
 }
 
-getFlagEleOverrideNow(save)
+getFlagUsedEle(save)
 {
-    return (save.flags & level.saveFlags[level.saveFlagName_eleOverrideNow]) != 0;
-}
-
-getFlagEleOverrideEver(save)
-{
-    return (save.flags & level.saveFlags[level.saveFlagName_eleOverrideEver]) != 0;
+    return (save.flags & level.saveFlags[level.saveFlagName_usedEle]) != 0;
 }
 
 getUsedAnyPct(save)
@@ -84,24 +78,18 @@ createFlags()
     {
         flags |= level.saveFlags[level.saveFlagName_hasRPG];
     }
-    if(openCJ\elevate::hasEleOverrideNow())
+    if(self openCJ\elevate::hasUsedEle())
     {
-        flags |= level.saveFlags[level.saveFlagName_eleOverrideNow];
+        flags |= level.saveFlags[level.saveFlagName_usedEle];
     }
-    if(openCJ\elevate::hasEleOverrideEver())
-    {
-        flags |= level.saveFlags[level.saveFlagName_eleOverrideEver];
-    }
-    if(openCJ\anyPct::hasAnyPct())
+    if(self openCJ\anyPct::hasAnyPct())
     {
         flags |= level.saveFlags[level.saveFlagName_anyPct];
     }
-    if(openCJ\tas::hasHardTAS())
+    if(self openCJ\tas::hasHardTAS())
     {
         flags |= level.saveFlags[level.saveFlagName_hardTAS];
     }
-
-    // TODO: implement any %
 
     return flags;
 }
@@ -122,10 +110,6 @@ canSaveError()
     if(!self isOnGround())
     {
         return 2;
-    }
-    if(isDefined(self.justLoaded))
-    {
-            return 4;
     }
 
     groundEntity = self getGroundEntity();
@@ -150,11 +134,6 @@ printCanSaveError(error)
         case 3:
         {
             self iprintln("^1Cannot save on this object");
-            break;
-        }
-        case 4:
-        {
-            self iprintln("^1Cannot save this fast after loading");
             break;
         }
     }

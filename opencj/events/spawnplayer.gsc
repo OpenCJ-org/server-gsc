@@ -73,7 +73,6 @@ setSharedSpawnVars(giveRPG, isSpawn)
     }
     self jumpClearStateExtended();
     self openCJ\speedMode::applySpeedMode();
-    self openCJ\elevate::updateServerEleOverride();
     self openCJ\huds\hudFpsHistory::hideAndClearFPSHistory();
 }
 
