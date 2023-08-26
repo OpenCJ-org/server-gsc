@@ -858,12 +858,29 @@ _checkAnyPctTriggered(triggeredCP, childCheckpoints)
 
     // At this point it is clear that the triggered checkpoint isn't one of the next checkpoints for the player
     // If it's still part of their route, it means they skipped a checkpoint
+    route = getRouteNameForCheckpoint(triggeredCP);
     if (isDefined(self.route))
     {
-        route = getRouteNameForCheckpoint(triggeredCP);
         if (isDefined(route) && (route == self.route))
         {
             return true;
+        }
+    }
+    else
+    {
+        // Player had no route yet. If they are selecting a route now, check if they skipped previous checkpoints
+        if (isDefined(route) && triggeredCP.hasParent)
+        {
+            parents = getCheckpointParents(triggeredCP);
+            for (i = 0; i < parents.size; i++)
+            {
+                parentRoute = getRouteNameForCheckpoint(parents[i]);
+                if (isDefined(parentRoute) && (parentRoute == route))
+                {
+                    // Player had no route, but was supposed to get the previous checkpoint of the same route first
+                    return true;
+                }
+            }
         }
     }
 
