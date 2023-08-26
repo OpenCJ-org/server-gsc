@@ -908,7 +908,7 @@ whileAlive()
         }
 
         // Check if player is within the radius of the checkpoint
-        if (distanceSquared(self.origin, cp.origin) < (cp.radius * cp.radius))
+        if ((self getEyePos()[2] >= cp.origin[2]) && (distanceSquared(self.origin, cp.origin) < (cp.radius * cp.radius)))
         {
             // Checkpoint can be on ground or in air. onGround checkpoints can only be triggered by being on ground
             if (!cp.onGround || self isOnGround())
