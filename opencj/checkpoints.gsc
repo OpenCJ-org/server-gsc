@@ -671,7 +671,10 @@ updateCheckpointsForPlayer(newCheckpointID) // TODO: move a lot of the computati
     // If any prior checkpoints were skipped, it doesn't matter, because the player's save will have any% marked.
     cpsToBeProcessed = [];
     cpsToBeProcessed[0] = cp;
-    self.checkpoints_passed[self.checkpoints_passed.size] = cp;
+    if (isDefined(cp))
+    {
+        self.checkpoints_passed[self.checkpoints_passed.size] = cp;
+    }
     while (cpsToBeProcessed.size > 0)
     {
         // Start processing at last one so it can easily be removed from the list
