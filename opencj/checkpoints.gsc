@@ -913,6 +913,15 @@ whileAlive()
             // Checkpoint can be on ground or in air. onGround checkpoints can only be triggered by being on ground
             if (!cp.onGround || self isOnGround())
             {
+                // Player may have changed their route.
+                route = getRouteNameForCheckpoint(cp);
+                if (cp.childs.size == 0)
+                {
+                    // For any%, this matters only on the final checkpoint.
+                    // This is because any% is triggered upon skipping a checkpoint of your route, or finishing a different route
+                    self.route = route;
+                }
+
                 // OK, player has officially triggered the checkpoint. If this is not one of their next checkpoints, any% may be triggered
                 // This check requires some computation, so don't call it if player already had triggered any%
                 if (!self openCJ\anyPct::hasAnyPct() && self _checkAnyPctTriggered(cp, playerChildCheckpoints))
@@ -938,7 +947,7 @@ whileAlive()
                 if(cp.childs.size == 0)
                 {
                     // If that checkpoint has no child checkpoints, it is an end checkpoint
-                    self openCJ\events\runFinished::main(cp, tOffset, getRouteNameForCheckpoint(cp));
+                    self openCJ\events\runFinished::main(cp, tOffset, route);
                 }
                 else
                 {
