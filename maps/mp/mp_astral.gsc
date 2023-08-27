@@ -512,7 +512,7 @@ zeez()
     {
         trigger waittill("trigger", who);
         
-        if(!who.zeez)
+        if(!isDefined(who.zeez) || !who.zeez)
         {
             who.zeez = true;
             who iprintlnbold("Thanks to ^5ZeeZ^7 for giving me this GAPS!");
@@ -539,7 +539,7 @@ credit2()
     {
         trigger waittill("trigger", who);
         
-        if(!who.credit2)
+        if(!isDefined(who.credit2) || !who.credit2)
         {
             who.credit2 = true;
             who iprintlnbold("Credit to Viruz and ^5ZeeZ^7 for giving a lot advices!");
@@ -555,7 +555,7 @@ credit1()
     {
         trigger waittill("trigger", who);
         
-        if(!who.credit1)
+        if(!isDefined(who.credit1) || !who.credit1)
         {
             who.credit1 = true;
             who iprintlnbold("Thanks to ^5Noob^7Aim(v1 :D) and Moug for helping me with ^1hard^7! ^5:^7D");
@@ -571,7 +571,7 @@ sec_fin_2()
     {
         trigger waittill("trigger", who);
         
-        if(!who.secret_fin2)
+        if(!isDefined(who.secret_fin2) || !who.secret_fin2)
         {
             who.secret_fin2 = true;
             who iprintlnbold("nice, but that's not the roof. :P");
@@ -587,7 +587,7 @@ training_join()
     {
         trigger waittill("trigger", who);
         
-        if(!who.training_orig_)
+        if(!isDefined(who.training_orig_) || !who.training_orig_)
         {
             who.training_orig_ = true;
             who iprintlnbold("Welcome to the training path \n This way is the ^2easiest^7 on this map!\nHave fun! (125 FPS only!)");
@@ -603,7 +603,7 @@ training()
     {
         trigger waittill("trigger", who);
         
-        if(!who.training)
+        if(!isDefined(who.training) || !who.training)
         {
             who.training = true;
             who iprintlnbold("You have finished the training path!\n Now swing your ^1sexy ass^7 into the ^2Easy^7 Way!! :D");
@@ -619,7 +619,7 @@ credit3()
     {
         trigger waittill("trigger", who);
         
-        if(!who.credit3)
+        if(!isDefined(who.credit3) || !who.credit3)
         {
             who.credit3 = true;
             who iprintlnbold("Obviesly thanks to all other testers for your feedback!^1 :D");
@@ -635,7 +635,7 @@ credit4()
     {
         trigger waittill("trigger", who);
         
-        if(!who.credit4)
+        if(!isDefined(who.credit4) || !who.credit4)
         {
             who.credit4 = true;
             who iprintlnbold("ezpz scripts by VC' Blade, thanks!");
@@ -651,7 +651,7 @@ hard_sec()
     {
         trigger waittill("trigger", who);
         
-        if(!who.hard_sec)
+        if(!isDefined(who.hard_sec) || !who.hard_sec)
         {
             who.hard_sec = true;
             who iprintlnbold("gl hf :)");
@@ -667,7 +667,7 @@ credit5()
     {
         trigger waittill("trigger", who);
         
-        if(!who.credit5)
+        if(!isDefined(who.credit5) || !who.credit5)
         {
             who.credit5 = true;
             who iprintlnbold("and also thanks to ^2Alter^7Ego and again ^5Noob^7Aim for making walkthroughs! :D");
@@ -683,7 +683,7 @@ sec_mess()
     {
         trigger waittill("trigger", who);
         
-        if(!who.secret_hard_message)
+        if(!isDefined(who.secret_hard_message) || !who.secret_hard_message)
         {
             who.secret_hard_message = true;
             iprintln(who.name+" is ^1Pro^7!");
@@ -707,7 +707,7 @@ credit6()
     {
         trigger waittill("trigger", who);
         
-        if(!who.credit6)
+        if(!isDefined(who.credit6) || !who.credit6)
         {
             who.credit6 = true;
             iprintln("^5A^7rkani > ^5"+who.name);
@@ -723,7 +723,7 @@ credit7()
     {
         trigger waittill("trigger", who);
         
-        if(!who.credit7)
+        if(!isDefined(who.credit7) || !who.credit7)
         {
             who.credit7 = true;
             iprintln("Thanks for playing mp_^5Astral^7!\nMap by ^5Arkani");
