@@ -134,7 +134,7 @@ hard_fin()
     {
         trigger waittill("trigger", player);
         
-        if(!player.hard_fin)
+        if(!isDefined(player.hard_fin) || !player.hard_fin)
         {
             player.hard_fin = true;
             player.timeend = getTime() - player.timestart;
@@ -152,10 +152,10 @@ hard_roof()
     {
         trigger waittill("trigger", player);
         
-        if(!player.hard_roof)
+        if(!isDefined(player.hard_roof) || !player.hard_roof)
         {
             player.hard_roof = true;
-            if(!player.hard_fin){
+            if(!isDefined(player.hard_fin) || !player.hard_fin){
                 player.timeend = getTime() - player.timestart;
                 player.timeend = calculateTimes(player.timeend);
                 iprintln(player.name+" ^7 has finished ^1Hard ^7Way in " + player.timeend["min"] + ":" +player.timeend["sec"] + "!");
@@ -173,7 +173,7 @@ secret_fin()
     {
         trigger waittill("trigger", player);
         
-        if(!player.secret_fin)
+        if(!isDefined(player.secret_fin) || !player.secret_fin)
         {
             player.secret_fin = true;
             player.timeend = getTime() - player.timestart;
@@ -191,10 +191,10 @@ secret_roof()
     {
         trigger waittill("trigger", player);
         
-        if(!player.secret_roof)
+        if(!isDefined(player.secret_roof) || !player.secret_roof)
         {
             player.secret_roof = true;
-            if(!player.secret_roof){
+            if(!isDefined(player.secret_fin) || !player.secret_fin){
                 player.timeend = getTime() - player.timestart;
                 player.timeend = calculateTimes(player.timeend);
                 iprintln(player.name+" ^7 has finished ^5Secret ^7Way in " + player.timeend["min"] + ":" +player.timeend["sec"] + "!");
@@ -212,7 +212,7 @@ secret_roof2()
     {
         trigger waittill("trigger", player);
         
-        if(!player.secret_roof2)
+        if(!isDefined(player.secret_roof2) || !player.secret_roof2)
         {
             player.secret_roof2 = true;
             iprintln("g fucking g, "+player.name);
@@ -259,7 +259,7 @@ easy_fin()
     {
         trigger waittill("trigger", player);
         
-        if(!player.easy_fin)
+        if(!isDefined(player.easy_fin) || !player.easy_fin)
         {
             player.easy_fin = true;
             player.timeend = getTime() - player.timestart;
@@ -277,10 +277,10 @@ easy_roof()
     {
         trigger waittill("trigger", player);
         
-        if(!player.easy_roof)
+        if(!isDefined(player.easy_roof) || !player.easy_roof)
         {
             player.easy_roof = true;
-            if(!player.easy_fin){
+            if(!isDefined(player.easy_fin) || !player.easy_fin){
                 player.timeend = getTime();
                 player.fintime = calculateTimes(player.time);
                 iprintln(player.name+" ^7 has finished ^2Easy ^7Way in " + player.timeend["min"] + ":" +player.timeend["sec"] + "!");
@@ -325,7 +325,7 @@ inter_fin()
     {
         trigger waittill("trigger", player);
         
-        if(!player.inter_fin)
+        if(!isDefined(player.inter_fin) || !player.inter_fin)
         {
             player.inter_fin = true;
             player.timeend = getTime() - player.timestart;
@@ -343,11 +343,11 @@ inter_roof()
     {
         trigger waittill("trigger", player);
         
-        if(!player.inter_roof)
+        if(!isDefined(player.inter_roof) || !player.inter_roof)
         {
             player.inter_roof = true;
             
-            if(!player.inter_fin){
+            if(!isDefined(player.inter_fin) || !player.inter_fin){
                 player.timeend = getTime() - player.timestart;
                 player.timeend = calculateTimes(player.timeend);
                 iprintln(player.name+" ^7 has finished ^5Inter ^7Way in " + player.timeend["min"] + ":" +player.timeend["sec"] + "!");
