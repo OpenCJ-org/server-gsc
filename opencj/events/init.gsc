@@ -53,6 +53,7 @@ main()
     openCJ\menus\quickMessages::onInit();
     openCJ\tas::onInit();
     openCJ\playerRuns::onInit();
+    openCJ\halfBeat::onInit();
 
     openCJ\platformDetect::onInit(); //debug file
 

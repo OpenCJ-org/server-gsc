@@ -45,6 +45,8 @@ main(backwardsCount)
 
     // Set elevator
     self openCJ\elevate::setUsedEle(openCJ\savePosition::getFlagUsedEle(save));
+    // Set allow halfbeat. Don't want to put it back to non-halfbeat if player didn't save but still allows halfbeat
+    self openCJ\halfBeat::setAllowHalfBeat(openCJ\savePosition::getFlagAllowHalfBeat(save) || self openCJ\settings::getSetting("allowhalfbeat"));
 
     // Set hard TAS
     self openCJ\tas::setHardTAS(openCJ\savePosition::getUsedHardTAS(save));
@@ -58,6 +60,7 @@ main(backwardsCount)
     self openCJ\statistics::setDoubleExplosives(save.doubleExplosives);
     self openCJ\statistics::onLoadPosition();
     self openCJ\checkpoints::onLoadPosition();
+    self openCJ\halfBeat::onLoadPosition();
     self openCJ\huds\hudSpeedometer::onLoadPosition();
 
     // Set FPSMode. If save had non-hax non-mix, then the FPS mode should depend on the user's current FPS instead`

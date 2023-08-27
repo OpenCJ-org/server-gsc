@@ -11,6 +11,7 @@ main()
     self openCJ\anyPct::onRunRestored();
     self openCJ\tas::onRunRestored();
     self openCJ\fps::onRunRestored(); // Set hax/mix settings
+    self openCJ\halfBeat::onRunRestored();
     self openCJ\huds\hudRunInfo::onRunRestored();
     self openCJ\huds\hudProgressBar::onRunRestored();
 }

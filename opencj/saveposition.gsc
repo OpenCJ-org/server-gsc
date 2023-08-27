@@ -8,6 +8,7 @@ onInit()
     level.saveFlagName_hasRPG = "rpg";
     level.saveFlagName_usedEle = "usedEle";
     level.saveFlagName_anyPct = "anyPct";
+    level.saveFlagName_allowHalfBeat = "halfBeat";
     level.saveFlagName_hardTAS = "hardTAS";
 
     level.saveFlags = [];
@@ -20,13 +21,18 @@ onInit()
     // 16 can be re-used, but it was eleNow
     level.saveFlags[level.saveFlagName_usedEle] = 32;
     level.saveFlags[level.saveFlagName_anyPct] = 64;
-    // 128 can be re-used safely (was unused)
+    level.saveFlags[level.saveFlagName_allowHalfBeat] = 128;
     level.saveFlags[level.saveFlagName_hardTAS] = 256;
 }
 
 getFlagUsedEle(save)
 {
     return (save.flags & level.saveFlags[level.saveFlagName_usedEle]) != 0;
+}
+
+getFlagAllowHalfBeat(save)
+{
+    return (save.flags & level.saveFlags[level.saveFlagName_allowHalfBeat]) != 0;
 }
 
 getUsedAnyPct(save)
@@ -85,6 +91,10 @@ createFlags()
     if(self openCJ\anyPct::hasAnyPct())
     {
         flags |= level.saveFlags[level.saveFlagName_anyPct];
+    }
+    if(self openCJ\halfBeat::isHalfBeatAllowed())
+    {
+        flags |= level.saveFlags[level.saveFlagName_allowHalfBeat];
     }
     if(self openCJ\tas::hasHardTAS())
     {

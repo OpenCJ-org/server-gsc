@@ -8,7 +8,7 @@ onInit()
 
 _onSettingAllowEle(allow)
 {
-    if(!allow && self hasUsedEle())
+    if(!allow && self hasUsedEle() && self openCJ\playerRuns::hasRunStarted())
     {
         self sendLocalChatMessage("You already used an elevator this run, load back or !reset your run", true);
     }
