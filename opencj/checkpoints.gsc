@@ -644,14 +644,6 @@ updateCheckpointsForPlayer(newCheckpointID) // TODO: move a lot of the computati
     self.checkpoints_passed = [];
 
     cp = getCheckpointByID(newCheckpointID);
-    if (isDefined(cp))
-    {
-        // Just to be sure this is a big brother checkpoint to prevent issues later on
-        if (isDefined(cp.bigBrother))
-        {
-            cp = cp.bigBrother;
-        }
-    }
 
     // Update the player's current checkpoint first, then we use the result of that to determine..
     // ..which checkpoints have already been passed

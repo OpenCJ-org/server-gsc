@@ -302,6 +302,8 @@ _onCmdTelePos(args)
 
 _teleportToPlayer(args, teleToSave)
 {
+    self endon("disconnect");
+
     if (args.size == 1)
     {
         player = findPlayerByArg(args[0]);
