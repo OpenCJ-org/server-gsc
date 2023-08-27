@@ -49,14 +49,15 @@ storeCheckpointPassed(runID, cpID, timePlayed)
     explosiveLaunches = self openCJ\statistics::getExplosiveLaunches(); // RPG launch / nade throw
     doubleExplosives = self openCJ\statistics::getDoubleExplosives(); // Double RPGs
     FPSMode = self openCJ\statistics::getFPSMode();
-    usedAnyPct = self openCJ\anyPct::hasAnyPct();
     usedEle = self openCJ\elevate::hasUsedEle();
-    usedTAS = self openCJ\tas::hasHardTAS();
+    usedAnyPct = self openCJ\anyPct::hasAnyPct();
+    allowHb = self openCJ\halfBeat::isHalfBeatAllowed();
+    usedHardTAS = self openCJ\tas::hasHardTAS();
 
     // This is a store procedure in SQL database
-    filterStr = "'" + FPSMode + "'" + ", " + usedEle + ", " + usedAnyPct + ", " + usedTAS;
+    filterStr = "'" + FPSMode + "'" + ", " + usedEle + ", " + usedAnyPct + ", " + allowHb + ", " + usedHardTAS;
     explosiveStr = explosiveJumps + ", " + explosiveLaunches + ", " + doubleExplosives;
-    query = "SELECT checkpointPassed(" + runID + ", " + cpID + ", " + timePlayed + ", " + saveCount + ", " + loadCount + ", " + explosiveStr + ", " + filterStr + ", " + self openCJ\playerRuns::getRunInstanceNumber() + ")";
+    query = "SELECT checkpointPassed_hb(" + runID + ", " + cpID + ", " + timePlayed + ", " + saveCount + ", " + loadCount + ", " + explosiveStr + ", " + filterStr + ", " + self openCJ\playerRuns::getRunInstanceNumber() + ")";
     printf("Executing checkpointPassed query:\n" + query + "\n");  // Debug
 
     rows = self openCJ\mySQL::mysqlAsyncQuery(query);

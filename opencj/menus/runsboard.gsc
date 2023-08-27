@@ -89,7 +89,7 @@ fetchUpdatedData()
                 " AND a.finishTimeStamp IS NULL" +
                 " AND a.mapID = " + openCJ\mapID::getMapID() + 
                 self getRunStr() + 
-                getFilterStr(self.currentBoard["filter"]["ele"], self.currentBoard["filter"]["any"], self.currentBoard["filter"]["tas"]) +
+                getFilterStr(self.currentBoard["filter"]["ele"], self.currentBoard["filter"]["any"], self.currentBoard["filter"]["hb"], self.currentBoard["filter"]["tas"]) +
                 " AND a.FPSMode IN " + openCJ\menus\board_base::getFPSModeStr(self.currentBoard["filter"]["fps"]) +
             " ORDER BY " + sortStr +
             " LIMIT " + self.currentBoard["maxEntriesPerPage"] +
@@ -143,9 +143,11 @@ fetchUpdatedData()
 
             eleVal = int(rows[i][8]) & level.saveFlags[level.saveFlagName_usedEle];
             anyVal = int(rows[i][8]) & level.saveFlags[level.saveFlagName_anyPct];
+            hbVal  = int(rows[i][8]) & level.saveFlags[level.saveFlagName_allowHalfbeat];
             TASVal = int(rows[i][8]) & level.saveFlags[level.saveFlagName_hardTAS];
             self.currentBoard["cols"][i]["ele"] = xOrEmpty(eleVal);
             self.currentBoard["cols"][i]["any"] = xOrEmpty(anyVal);
+            self.currentBoard["cols"][i]["hb"] = xOrEmpty(hbVal);
             self.currentBoard["cols"][i]["tas"] = xOrEmpty(TASVal);
         }
         else
@@ -159,6 +161,7 @@ fetchUpdatedData()
             self.currentBoard["cols"][i]["fps"] = "";
             self.currentBoard["cols"][i]["ele"] = false;
             self.currentBoard["cols"][i]["any"] = false;
+            self.currentBoard["cols"][i]["hb"] = false;
             self.currentBoard["cols"][i]["tas"] = false;
         }
     }
@@ -192,15 +195,17 @@ getRunStr()
     return str;
 }
 
-getFilterStr(ele, any, tas)
+getFilterStr(ele, any, halfbeat, tas)
 {
     eleVal = int(ele) * level.saveFlags[level.saveFlagName_usedEle];
     anyVal = int(any) * level.saveFlags[level.saveFlagName_anyPct];
+    halfBeatVal = int(halfbeat) * level.saveFlags[level.saveFlagName_allowHalfBeat];
     tasVal = int(tas) * level.saveFlags[level.saveFlagName_hardTAS];
 
     flagsBeginStr = " AND (a.flags & ";
     str = flagsBeginStr + level.saveFlags[level.saveFlagName_usedEle] + ") <= " + eleVal;
     str += flagsBeginStr + level.saveFlags[level.saveFlagName_anyPct] + ") <= " + anyVal;
+    str += flagsBeginStr + level.saveFlags[level.saveFlagName_allowHalfBeat] + ") <= " + halfBeatVal;
     str += flagsBeginStr + level.saveFlags[level.saveFlagName_hardTAS] + ") <= " + tasVal;
 
     return str;

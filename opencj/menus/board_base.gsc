@@ -29,6 +29,7 @@ initBoard(shortName, fullName, menuName, fetchDataFunc)
     level.boards[shortName]["filterNames"] = [];
     level.boards[shortName]["filterNames"]["ele"] = shortName + "filterele";
     level.boards[shortName]["filterNames"]["any"] = shortName + "filteranypct";
+    level.boards[shortName]["filterNames"]["hb"]  = shortName + "filterhalfbeat";
     level.boards[shortName]["filterNames"]["tas"] = shortName + "filtertas";
     level.boards[shortName]["filterNames"]["fps"] = shortName + "filterfps";
 
@@ -37,6 +38,7 @@ initBoard(shortName, fullName, menuName, fetchDataFunc)
     // Hidden settings that are changed purely via menu
     openCJ\settings::addSettingBool(level.boards[shortName]["filterNames"]["ele"], false, "Set " + fullName + " ele filter", ::_onEleFilterSet);
     openCJ\settings::addSettingBool(level.boards[shortName]["filterNames"]["any"], false, "Set " + fullName + " shortcuts filter", ::_onAnyPctFilterSet);
+    openCJ\settings::addSettingBool(level.boards[shortName]["filterNames"]["hb"], false, "Set " + fullName + " halfbeat filter", ::_onHalfBeatFilterSet);
     openCJ\settings::addSettingBool(level.boards[shortName]["filterNames"]["tas"], false, "Set " + fullName + " TAS filter", ::_onTASFilterSet);
     openCJ\settings::addSettingString(level.boards[shortName]["filterNames"]["fps"], 3, 8, "any", "Set " + fullName + " FPS filter", ::_onFPSFilterChange); // min len 3: 125, mix, hax
 }
@@ -48,6 +50,10 @@ _onEleFilterSet(newVal)
 _onAnyPctFilterSet(newVal)
 {
     self.currentBoard["filter"]["any"] = newVal;
+}
+_onHalfBeatFilterSet(newVal)
+{
+    self.currentBoard["filter"]["hb"] = newVal;
 }
 _onTASFilterSet(newVal)
 {
@@ -130,6 +136,7 @@ onBoardOpen(shortName)
     self.currentBoard["filterNames"] = [];
     self.currentBoard["filterNames"]["ele"] = level.boards[shortName]["filterNames"]["ele"];
     self.currentBoard["filterNames"]["any"] = level.boards[shortName]["filterNames"]["any"];
+    self.currentBoard["filterNames"]["hb"]  = level.boards[shortName]["filterNames"]["hb"];
     self.currentBoard["filterNames"]["tas"] = level.boards[shortName]["filterNames"]["tas"];
     self.currentBoard["filterNames"]["fps"] = level.boards[shortName]["filterNames"]["fps"];
 
@@ -137,6 +144,7 @@ onBoardOpen(shortName)
     self.currentBoard["filter"] = [];
     self.currentBoard["filter"]["ele"] = self openCJ\settings::getSetting(self.currentBoard["filterNames"]["ele"]);
     self.currentBoard["filter"]["any"] = self openCJ\settings::getSetting(self.currentBoard["filterNames"]["any"]);
+    self.currentBoard["filter"]["hb"]  = self openCJ\settings::getSetting(self.currentBoard["filterNames"]["hb"]);
     self.currentBoard["filter"]["tas"] = self openCJ\settings::getSetting(self.currentBoard["filterNames"]["tas"]);
     self.currentBoard["filter"]["fps"] = self openCJ\settings::getSetting(self.currentBoard["filterNames"]["fps"]);
     self.currentBoard["filter"]["route"] = 1; // Select first route by default
@@ -215,7 +223,7 @@ onMenuResponse()
             {
                 self handlePageChange(button);
             }
-            else if ((button == "ele") || (button == "any") || (button == "tas")) // Filter pressed
+            else if ((button == "ele") || (button == "any") || (button == "hb") || (button == "tas")) // Filter pressed
             {
                 self handleFilterChange(button);
             }
@@ -337,52 +345,6 @@ updateSelectedRoute(absRouteNr)
         // Not visible on current page
         self setClientCvar(selectedRouteDvar, "");
     }
-}
-
-isEntryAllowedByFilter(entry)
-{
-    // Is it the right route?
-    routeNr = self.currentBoard["filter"]["route"];
-    if ((routeNr != -1) && (routeNr != entry["route"]))
-    {
-        return false;
-    }
-
-    // Ele filter
-    if (!self.currentBoard["filter"]["ele"] && (entry["ele"] != "^7")) // We use ^7 as empty value in order to still show the empty cell on the board
-    {
-        return false;
-    }
-    
-    // Any % filter (shortcuts)
-    if (!self.currentBoard["filter"]["any"] && (entry["any"] != "^7"))
-    {
-        return false;
-    }
-
-    // TAS filter (Tool Assisted Speedrun)
-    if (!self.currentBoard["filter"]["tas"] && (entry["tas"] != "^7"))
-    {
-        return false;
-    }
-
-    // FPS filter
-    fpsEntry = tolower(entry["fps"]);
-    fpsFilter = tolower(self.currentBoard["filter"]["fps"]);
-    switch (fpsFilter)
-    {
-        case "125": // Only allow 125
-        {
-            return (fpsEntry == "125");
-        }
-        case "mix": // Allow mix (default for CoD4)
-        {
-            return (fpsEntry != "all");
-        }
-    }
-
-    // All seems OK! (FPS filter "all" allows all FPS types)
-    return true;
 }
 
 // ===================================================== Database helper functions =====================================================
@@ -543,7 +505,7 @@ dbFPSToFullName(dbFPSName)
 
 handleFilterChange(button)
 {
-    if ((button == "ele") || (button == "any") || (button == "tas"))
+    if ((button == "ele") || (button == "any") || (button == "hb") || (button == "tas"))
     {
         // Filter: toggle allow ele
         // Filter: toggle allow any % (cuts)
