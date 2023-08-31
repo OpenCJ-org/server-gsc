@@ -50,8 +50,8 @@ onPlayerSpawned()
     while (1)
     {
         self waittill("spawned_player");
-        iprintln("Welcome to ^3mp_sunset_v2, created by ^2Toxic!"); 
-        iprintln("^7Special thanks to:\n^1Sycotic\nSep\ntoXijeE\nSkazy\nTreaxer\nStraub\nFunk^7"); 
+        self iprintln("Welcome to ^3mp_sunset_v2, created by ^2Toxic!"); 
+        self iprintln("^7Special thanks to: ^1Sycotic, Sep, toXijeE, Skazy, Treaxer, Straub, Funk^7"); 
     }
 }
 
@@ -63,7 +63,7 @@ remake_end()
         trigger waittill ("trigger", player);
         if (!isDefined(player.sunFinishedRemake))
         {
-            iprintln("^5"+player.name+"^7 finished ^3Remake^7!");        
+            iprintln("^5"+player.name+"^7 finished ^3Remake^7!");
             player.sunFinishedRemake = true;
         }
     }
@@ -77,7 +77,7 @@ hard_end()
         trigger waittill ("trigger", player);
         if (!isDefined(player.sunFinishedHard))
         {
-            iprintln("^5"+player.name+"^7 finished ^1Hard^7!");        
+            iprintln("^5"+player.name+"^7 finished ^1Hard^7!");
             player.sunFinishedHard = true;
         }
     }
@@ -91,7 +91,7 @@ hardplus_end()
         trigger waittill ("trigger", player);
         if (!isDefined(player.sunFinishedHardPlus))
         {
-            iprintln("^5"+player.name+"^7 finished ^1Hard+^7!");        
+            iprintln("^5"+player.name+"^7 finished ^1Hard+^7!");
             player.sunFinishedHardPlus = true;
         }
     }
@@ -105,7 +105,7 @@ int_end()
         trigger waittill ("trigger", player);
         if (!isDefined(player.sunFinishedInter))
         {
-            iprintln("^5"+player.name+"^7 finished ^4Inter^7!");        
+            iprintln("^5"+player.name+"^7 finished ^4Inter^7!");
             player.sunFinishedInter = true;
         }
     }
@@ -119,7 +119,7 @@ intplus_end()
         trigger waittill ("trigger", player);
         if (!isDefined(player.sunFinishedInterPlus))
         {
-            iprintln("^5"+player.name+"^7 finished ^4Inter+^7!");        
+            iprintln("^5"+player.name+"^7 finished ^4Inter+^7!");
             player.sunFinishedInterPlus = true;
         }
     }
@@ -133,7 +133,7 @@ ez_end()
         trigger waittill ("trigger", player);
         if (!isDefined(player.sunFinishedEasy))
         {
-            iprintln("^5"+player.name+"^7 finished ^2Easy^7!");        
+            iprintln("^5"+player.name+"^7 finished ^2Easy^7!");
             player.sunFinishedEasy = true;
         }
     }
@@ -147,7 +147,7 @@ adv_end()
         trigger waittill ("trigger", player);
         if (!isDefined(player.sunFinishedAdvanced))
         {
-            iprintln("^5"+player.name+"^7 finished ^6Advanced!!");        
+            iprintln("^5"+player.name+"^7 finished ^6Advanced!!");
             player.sunFinishedAdvanced = true;
         }
     }
@@ -161,7 +161,7 @@ adv_roof()
         trigger waittill ("trigger", player);
         if (!isDefined(player.sunLandedAdvancedRoof))
         {
-            iprintln("^5"+player.name+"^7 landed ^6Advanced Roof!!");        
+            iprintln("^5"+player.name+"^7 landed ^6Advanced Roof!!");
             player.sunLandedAdvancedRoof = true;
         }
     }
@@ -175,7 +175,7 @@ beamed_end()
         trigger waittill ("trigger", player);
         if (!isDefined(player.sunFinishedBeamed))
         {
-            iprintln("^5"+player.name+"^7 finished ^6Beamed!!");        
+            iprintln("^5"+player.name+"^7 finished ^6Beamed!!");
             player.sunFinishedBeamed = true;
         }
     }
@@ -189,7 +189,7 @@ beamed_roof()
         trigger waittill ("trigger", player);
         if (!isDefined(player.sunFinishedBeamedRoof))
         {
-            iprintln("^5"+player.name+"^7 landed ^6Beamed Roof!!");        
+            iprintln("^5"+player.name+"^7 landed ^6Beamed Roof!!");
             player.sunFinishedBeamedRoof = true;
         }
     }
@@ -203,7 +203,7 @@ beamedplus_end()
         trigger waittill ("trigger", player);
         if (!isDefined(player.sunFinishedBeamedPlus))
         {
-            iprintln("^5"+player.name+"^7 finished ^6Beamed+");        
+            iprintln("^5"+player.name+"^7 finished ^6Beamed+");
             player.sunFinishedBeamedPlus = true;
         }
     }
@@ -217,7 +217,7 @@ bonuseasy_end()
         trigger waittill ("trigger", player);
         if (!isDefined(player.sunFinishedBonusEasy))
         {
-            iprintln("^5"+player.name+"^7 finished ^2Bonus Easy^7!");        
+            iprintln("^5"+player.name+"^7 finished ^2Bonus Easy^7!");
             player.sunFinishedBonusEasy = true;
         }
     }
@@ -231,7 +231,7 @@ bonuseasy_roof()
         trigger waittill ("trigger", player);
         if (!isDefined(player.sunLandedBonusEasyRoof))
         {
-            iprintln("^5"+player.name+"^7 landed ^2Bonus Easy Roof^7!");        
+            iprintln("^5"+player.name+"^7 landed ^2Bonus Easy Roof^7!");
             player.sunLandedBonusEasyRoof = true;
         }
     }
@@ -245,7 +245,7 @@ bonuseasy_rooftop()
         trigger waittill ("trigger", player);
         if (!isDefined(player.sunLandedBonusEasyRoofTop))
         {
-            iprintln("^5"+player.name+"^7 landed ^2Bonus Easy Roof Top^7!");        
+            iprintln("^5"+player.name+"^7 landed ^2Bonus Easy Roof Top^7!");
             player.sunLandedBonusEasyRoofTop = true;
         }
     }
@@ -259,7 +259,7 @@ bonusinter_end()
         trigger waittill ("trigger", player);
         if (!isDefined(player.sunFinishedBonusInter))
         {
-            iprintln("^5"+player.name+"^7 finished ^4Bonus Inter^7!");        
+            iprintln("^5"+player.name+"^7 finished ^4Bonus Inter^7!");
             player.sunFinishedBonusInter = true;
         }
     }
@@ -273,7 +273,7 @@ bonusinter_roof()
         trigger waittill ("trigger", player);
         if (!isDefined(player.sunLandedBonusInterRoof))
         {
-            iprintln("^5"+player.name+"^7 landed ^4Bonus Inter Roof^7!");        
+            iprintln("^5"+player.name+"^7 landed ^4Bonus Inter Roof^7!");
             player.sunLandedBonusInterRoof = true;
         }
     }
@@ -287,7 +287,7 @@ bonushard_end()
         trigger waittill ("trigger", player);
         if (!isDefined(player.sunFinishedBonusHard))
         {
-            iprintln("^5"+player.name+"^7 finished ^1Bonus Hard^7!");        
+            iprintln("^5"+player.name+"^7 finished ^1Bonus Hard^7!");
             player.sunFinishedBonusHard = true;
         }
     }
@@ -301,7 +301,7 @@ bonushard_roof()
         trigger waittill ("trigger", player);
         if (!isDefined(player.sunLandedBonusHardRoof))
         {
-            iprintln("^5"+player.name+"^7 landed ^1Bonus Hard Roof^7!");        
+            iprintln("^5"+player.name+"^7 landed ^1Bonus Hard Roof^7!");
             player.sunLandedBonusHardRoof = true;
         }
     }
