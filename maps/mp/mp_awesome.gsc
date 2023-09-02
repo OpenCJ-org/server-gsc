@@ -41,7 +41,7 @@ player_bounce(trigger)
 	kb_val = (vel[2]*-9) - 500;
 	dmg_val = 1000;
 	kb_dir = (0, 0, 1);
-	emulateKnockback(dmg_val, kb_dir, kb_val);
+	self openCJ\mapApi::emulateKnockback(dmg_val, kb_dir, kb_val);
 
 	wait 1;
 
@@ -52,32 +52,4 @@ player_bounce(trigger)
 
 	self.bouncing = undefined;
 }
-
-emulateKnockback(dmg, dir, g_knockback_val)
-{
-    //not taking stance into account
-    //adjust dmg if player is always crouching
-    dmg *= 0.3;
-    if(dmg > 60)
-        dmg = 60;
-    knockback = dmg * g_knockback_val / 250;
-    self addVelocity(vectorscale(dir, knockback));
-
-	//for reference, this should also be executed according to cod2rev_server code
-	//pm_time might be nonzero due to jump though
-	// if ( !ent->client->ps.pm_time )
-	// {
-	// 	maxDmg = 2 * minDmg;
-
-	// 	if ( 2 * minDmg <= 49 )
-	// 		maxDmg = 50;
-
-	// 	if ( maxDmg > 200 )
-	// 		maxDmg = 200;
-
-	// 	ent->client->ps.pm_time = maxDmg;
-	// 	ent->client->ps.pm_flags |= 0x400u;
-	// }
-}
-
 	

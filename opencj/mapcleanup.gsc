@@ -6,12 +6,29 @@ onInit()
     {
         _removePickups();
         _removeTurrets();
+        _removeWeapons();
         setCvar("clientSideEffects", 0);
     }
     else
     {
         _removeTurrets();
         //_showClassnames();
+    }
+}
+
+_removeWeapons()
+{
+    ents = getEntArray(); // Gets all entities
+    if (ents.size <= 0)
+    {
+        return;
+    }
+    for (i = ents.size - 1; i >= 0; i--)
+    {
+        if (getSubStr(ents[i].classname, 0, 7) == "weapon_")
+        {
+            ents[i] delete();
+        }
     }
 }
 
