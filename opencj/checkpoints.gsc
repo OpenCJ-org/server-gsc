@@ -57,7 +57,7 @@ storeCheckpointPassed(runID, cpID, timePlayed)
     // This is a store procedure in SQL database
     filterStr = "'" + FPSMode + "'" + ", " + usedEle + ", " + usedAnyPct + ", " + allowHb + ", " + usedHardTAS;
     explosiveStr = explosiveJumps + ", " + explosiveLaunches + ", " + doubleExplosives;
-    query = "SELECT checkpointPassed_hb(" + runID + ", " + cpID + ", " + timePlayed + ", " + saveCount + ", " + loadCount + ", " + explosiveStr + ", " + filterStr + ", " + self openCJ\playerRuns::getRunInstanceNumber() + ")";
+    query = "SELECT checkpointPassed(" + runID + ", " + cpID + ", " + timePlayed + ", " + saveCount + ", " + loadCount + ", " + explosiveStr + ", " + filterStr + ", " + self openCJ\playerRuns::getRunInstanceNumber() + ")";
     printf("Executing checkpointPassed query:\n" + query + "\n");  // Debug
 
     rows = self openCJ\mySQL::mysqlAsyncQuery(query);
