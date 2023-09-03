@@ -11,7 +11,7 @@ initBoard(shortName, fullName, menuName, fetchDataFunc)
     if (!isDefined(level.route))
     {
         level.route = [];
-        level.route["maxEntriesPerPage"] = 8;
+        level.route["maxEntriesPerPage"] = 7;
         // Fill in available routes upon init since it does not differ per player and is constant during the map
         // TODO fill in routes?
     }
@@ -168,7 +168,7 @@ onBoardOpen(shortName)
     }
 
     // Set currently selected FPS filter
-    self setClientCvar(level.boardsDvarPrefix + "fpsselected", dbFPSToFullName(self.currentBoard["filter"]["fps"]));
+    self setClientCvar(level.boardsDvarPrefix + "fpsselected", "^5" + dbFPSToFullName(self.currentBoard["filter"]["fps"]) + "^7");
 
     // Fill in the routes
     self updateRoutes();
@@ -215,7 +215,7 @@ onMenuResponse()
             {
                 self handleSortChange(button);
             }
-            else if (isSubStr(button, "name")) // Runs board has clickable 'name' to restore the run
+            else if (isSubStr(button, "loadrun")) // Runs board has clickable 'name' to restore the run
             {
                 self openCJ\menus\runsboard::handleRestoreRun(button);
             }
@@ -265,42 +265,37 @@ updateBoard()
 
     // And now the actual board data
     keys = getArrayKeys(self.currentBoard["cols"][0]); // Although empty when i >= self.currentBoard["nrEntriesThisPage"], can still be used for getArrayKeys
-    for (i = 0; i < self.currentBoard["maxEntriesPerPage"]; i++)
+    dvars = [];
+    dvars["count"] = self.currentBoard["nrEntriesThisPage"];
+    for (j = 0; j < keys.size; j++)
     {
-        entryNr = i + 1;
-        for (j = 0; j < keys.size; j++)
+        key = keys[j];
+        dvars[key] = "";
+        for (i = 0; i < self.currentBoard["nrEntriesThisPage"]; i++)
         {
-            key = keys[j];
+            val = self.currentBoard["cols"][i][key];
 
-            // Do we have another item to send?
-            dvar = level.boardsDvarPrefix + key + entryNr; // The run dvars start at 1
-
-            // We have n=between 0 and max items. Everything after n needs to be cleared because there may be previous results in the DVAR
-            if (i < self.currentBoard["nrEntriesThisPage"])
+            // Special conversion(s) without updating the original
+            if (key == "time")
             {
-                val = self.currentBoard["cols"][i][key];
-
-                // Special conversion(s) without updating the original
-                if (key == "time")
-                {
-                    val = timeToString(int((val / 1000) + 0.5)); // Round the time
-                }
-                /*
-                else if (key == "date")
-                {
-                    val = convertDate(val);
-                }
-                */
-
-                // Send the updated dvar
-                self setClientCvar(dvar, val);
+                val = timeToString(int((val / 1000) + 0.5)); // Round the time and convert it to a nicely readable string
             }
-            else
+            /*
+            else if (key == "date")
             {
-                // Send cleared dvar to client
-                self setClientCvar(dvar, "");
+                val = convertDate(val);
             }
+            */
+
+            dvars[key] += val + "\n";
         }
+    }
+
+    // Update client dvars with above determined values
+    keys = getArrayKeys(dvars);
+    for (i = 0; i < keys.size; i++)
+    {
+        self setClientCvar(level.boardsDvarPrefix + keys[i], dvars[keys[i]]);
     }
 }
 
@@ -546,7 +541,7 @@ handleFilterChange(button)
             }
 
             self openCJ\settings::setSettingByScript(self.currentBoard["filterNames"]["fps"], self.currentBoard["filter"]["fps"]);
-            self setClientCvar(level.boardsDvarPrefix + "fpsselected", dbFPSToFullName(self.currentBoard["filter"]["fps"]));
+            self setClientCvar(level.boardsDvarPrefix + "fpsselected", "^5" + dbFPSToFullName(self.currentBoard["filter"]["fps"]) + "^7");
         }
     }
 

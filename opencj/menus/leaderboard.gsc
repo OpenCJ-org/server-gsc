@@ -56,9 +56,6 @@ fetchUpdatedData()
             " LIMIT " + self.currentBoard["maxEntriesPerPage"] +
             " OFFSET " + openCJ\menus\board_base::getOffsetFromPage(self.currentBoard["page"]["cur"], self.currentBoard["maxEntriesPerPage"]);
 
-    // Might remain useful for now to print the query
-    printf("Leaderboard query:\n" + query + "\n"); // Debug
-
     // Example output (pretend there are 10 rows instead of 2 though):
     // -----------------------------------------------------------------------------------------------------------------------------|
     // | totalNr | playerName    | timePlayed | explosiveJumps | loadCount | finishTimeStamp     | FPSMode | ele | anyPct | hardTAS |
@@ -68,6 +65,9 @@ fetchUpdatedData()
     // | 13      | Styx|Ridgepig | 657000     | 1              | 69        | 2022-09-04 09:53:58 | all     | 0   | 0      | 0       |
     // |---------|---------------|------------|----------------|-----------|---------------------|---------|-----|--------|---------|
     // | ....
+
+    // Might remain useful for now to print the query
+    printf("Leaderboard query:\n" + query + "\n"); // Debug
 
     rows = self openCJ\mySQL::mysqlAsyncQuery(query);
 
@@ -91,7 +91,7 @@ fetchUpdatedData()
         if (i < self.currentBoard["nrEntriesThisPage"])
         {
             self.currentBoard["cols"][i]["nr"] = (i + firstItemOnPage);
-            self.currentBoard["cols"][i]["name"] = rows[i][1]; // playerName
+            self.currentBoard["cols"][i]["name"] = "^7" + rows[i][1] + "^7"; // playerName
             self.currentBoard["cols"][i]["time"] = int(rows[i][2]);
             self.currentBoard["cols"][i]["rpgs"] = int(rows[i][3]);
             self.currentBoard["cols"][i]["loads"] = int(rows[i][4]);

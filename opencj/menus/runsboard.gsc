@@ -7,10 +7,10 @@ onInit()
 
 handleRestoreRun(str)
 {
-    // str example: name1 (when clicking on the first run)
-    if (str.size > 4)
+    // str example: loadrun1 (when clicking on the first run)
+    if (str.size > 7)
     {
-        nrPressed = int(getSubStr(str, 4));
+        nrPressed = int(getSubStr(str, 7));
         if ((nrPressed < 1) || (nrPressed > level.boards["rn"]["maxEntriesPerPage"])) // Sanity check for out of bounds
         {
             return;
@@ -79,21 +79,17 @@ fetchUpdatedData()
     sortStr = getSortStr(self.currentBoard["sortBy"], self.currentBoard["sort"]);
     query = "SELECT COUNT(*) OVER() AS totalNr, a.runID, rl.runLabel, a.timePlayed, a.explosiveJumps, a.loadCount, a.startTimeStamp, a.FPSMode, a.flags " +
                 "FROM(" + 
-                    "SELECT ROW_NUMBER() OVER (PARTITION BY pr.runID ORDER BY saveNumber DESC) AS rn, pr.playerID, pr.finishcpID, pr.archived, pr.finishTimeStamp, pr.mapID, pr.runID, pr.runLabel, pr.timePlayed, ps.explosiveJumps, pr.loadCount, pr.saveCount, pr.startTimeStamp, ps.FPSMode, ps.flags " + 
-                    "FROM playerSaves ps INNER JOIN playerRuns AS pr ON pr.runID = ps.runID " + 
+                    "SELECT ROW_NUMBER() OVER (PARTITION BY pr.runID ORDER BY saveNumber DESC) AS rn, pr.playerID, pr.mapID, pr.runID, pr.runLabel, pr.timePlayed, ps.explosiveJumps, pr.loadCount, pr.saveCount, pr.startTimeStamp, ps.FPSMode, ps.flags " + 
+                    "FROM playerSaves ps INNER JOIN playerRuns AS pr ON pr.runID = ps.runID WHERE finishTimeStamp IS NULL AND finishcpID IS NULL AND archived = False AND mapID = " + openCJ\mapID::getMapID() + self getRunStr() +
                 ") a LEFT JOIN runLabels rl ON a.runID = rl.runID" + 
                 " WHERE a.rn = 1" +
                 " AND a.playerID = " + playerID + 
-                " AND a.finishcpID IS NULL" +
-                " AND a.archived = False" +
-                " AND a.finishTimeStamp IS NULL" +
-                " AND a.mapID = " + openCJ\mapID::getMapID() + 
-                self getRunStr() + 
                 getFilterStr(self.currentBoard["filter"]["ele"], self.currentBoard["filter"]["any"], self.currentBoard["filter"]["hb"], self.currentBoard["filter"]["tas"]) +
                 " AND a.FPSMode IN " + openCJ\menus\board_base::getFPSModeStr(self.currentBoard["filter"]["fps"]) +
             " ORDER BY " + sortStr +
             " LIMIT " + self.currentBoard["maxEntriesPerPage"] +
             " OFFSET " + openCJ\menus\board_base::getOffsetFromPage(self.currentBoard["page"]["cur"], self.currentBoard["maxEntriesPerPage"]);
+
     // Example output (pretend there are 10 rows instead of 2 though):
     // ----------------------------------------------------------------------------------------------------------------------|
     // | totalNr | runID   | runLabel      | timePlayed | explosiveJumps | loadCount | startTimeStamp      | FPSMode | flags |
@@ -103,7 +99,6 @@ fetchUpdatedData()
     // | 13      | 1446    | norpg run     | 657000     | 1              | 69        | 2022-09-04 09:53:58 | all     | 8     |
     // |---------|---------|---------------|------------|----------------|-----------|---------------------|---------|-------|
     // | ....
-
 
     // Might remain useful for now to print the query
     printf("Runsboard query:\n" + query + "\n"); // Debug
@@ -128,18 +123,18 @@ fetchUpdatedData()
     {
         if (i < self.currentBoard["nrEntriesThisPage"])
         {
-            self.currentBoard["cols"][i]["nr"] = int(rows[i][1]);
+            self.currentBoard["cols"][i]["nr"] = int(rows[i][1]); // runID
             name = rows[i][2];
             if (!isDefined(name) || (name == ""))
             {
-                name = "Unnamed run";
+                name = "(Unnamed run)";
             }
-            self.currentBoard["cols"][i]["name"] = name; // runLabel
+            self.currentBoard["cols"][i]["name"] = "^7" + name + "^7"; // runLabel
             self.currentBoard["cols"][i]["time"] = int(rows[i][3]);
             self.currentBoard["cols"][i]["rpgs"] = int(rows[i][4]);
             self.currentBoard["cols"][i]["loads"] = int(rows[i][5]);
             self.currentBoard["cols"][i]["date"] = rows[i][6]; // startTimeStamp
-            self.currentBoard["cols"][i]["fps"] = rows[i][7];
+            self.currentBoard["cols"][i]["fps"] = openCJ\menus\board_base::dbFPSToFullName(rows[i][7]);
 
             eleVal = int(rows[i][8]) & level.saveFlags[level.saveFlagName_usedEle];
             anyVal = int(rows[i][8]) & level.saveFlags[level.saveFlagName_anyPct];
@@ -189,7 +184,7 @@ getRunStr()
     str = "";
     if(self openCJ\playerRuns::hasRunID())
     {
-        str = " AND a.runID != " + self openCJ\playerRuns::getRunID();
+        str = " AND pr.runID != " + self openCJ\playerRuns::getRunID();
     }
 
     return str;
