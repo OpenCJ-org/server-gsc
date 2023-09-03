@@ -2,6 +2,7 @@
 
 onInit()
 {
+    level.nrRecords = 5; // TODO: per player later on
     level.showRecordsHighlightShader = "white";
     precacheShader(level.showRecordsHighlightShader);
 }
@@ -20,7 +21,7 @@ onPlayerConnect()
     self.showRecordsHighlight.y = 50;
     self.showRecordsHighlight.archived = false;
     self.showRecordsHighlight.sort = -98;
-    self.showRecordsHighlight.color = (0.75, 0.75, 0.75);
+    self.showRecordsHighlight.color = (0.00, 0.80, 0.85);
     self.showRecordsHighlight.hideWhenInMenu = true;
     self.showRecordsHighlight setShader(level.showRecordsHighlightShader, 195, 11);
     self _hideRecords(true);
@@ -196,22 +197,25 @@ _getRecords(checkpoints, persist, timems)
     //  - grabbing the player name by matching playerID between playerRuns and playerInformation
     //  - only selecting one best run per player (that's what the @prev is for, it compares it to the previous entry as it's sorted by playerID)
 
-    // TODO: Declaring user variables in expressions like this is deprecated. Should be replaced with updated query, like the one leaderboard is using.
+// TODO: updating is veryyyyyyyyyy slow??
 
-    query = "SELECT c.playerName, b.timePlayed FROM (" +
-                "SELECT timePlayed, runID, playerID FROM (SELECT  @prev := '') init JOIN (" + 
-                    "SELECT playerID != @prev AS first, @prev := playerID, timePlayed, runID, playerID FROM (" + 
-                        "SELECT cs.timePlayed, pr.runID, pr.playerID " +
-                        "FROM checkpointStatistics cs INNER JOIN playerRuns pr ON pr.runID = cs.runID " + 
-                        "WHERE cs.cpID IN " + checkpointString +
-                        " AND pr.finishcpID IS NOT NULL" + 
-                        " AND cs.runID != " + self openCJ\playerRuns::getRunID() +
-                    ") a " + 
-                    "ORDER BY playerID, timePlayed ASC" +
-                ") x " +
-                "WHERE first ORDER BY timePlayed ASC LIMIT 10" +
-            ") b INNER JOIN playerInformation c ON c.playerID = b.playerID";
-    
+    query = "SELECT COUNT(*) OVER() AS totalNr, b.playerName, a.timePlayed, a.explosiveJumps, a.loadCount FROM (" +
+                "SELECT pr.playerID, cs.timePlayed, cs.explosiveJumps, cs.loadCount, pr.finishTimeStamp, pr.FPSMode, pr.ele, pr.anyPct, pr.hb, pr.hardTas, cs.runID, cs.saveCount, (" + 
+                    "ROW_NUMBER() OVER (PARTITION BY pr.playerID ORDER BY playerID, timePlayed ASC" +
+                ")) AS rn " + 
+                "FROM checkpointStatistics cs INNER JOIN playerRuns pr ON pr.runID = cs.runID " + 
+                "WHERE cs.cpID IN " + checkpointString +
+                " AND pr.finishcpID IS NOT NULL" +
+                " AND pr.finishTimeStamp IS NOT NULL" +
+                " AND pr.ele <= " + self openCJ\elevate::hasUsedEle() +
+                " AND pr.anyPct <= " + self openCJ\anyPct::hasAnyPct() +
+                " AND pr.hb <= " + self openCJ\halfBeat::isHalfBeatAllowed() + 
+                " AND pr.hardTAS <= " + self openCJ\tas::hasHardTAS() +
+                " AND pr.FPSMode IN " + openCJ\menus\board_base::getFPSModeStr(self openCJ\fps::getCurrentFPSMode()) +
+            " ) a INNER JOIN playerInformation b ON a.playerID = b.playerID " +
+            "WHERE a.rn = 1 ORDER BY timePlayed ASC" +
+            " LIMIT " + level.nrRecords;
+
     printf("getRecords query:\n" + query + "\n"); // Debug
 
     rows = self openCJ\mySQL::mysqlAsyncQuery(query);
@@ -232,9 +236,13 @@ _getRecords(checkpoints, persist, timems)
         }
     }
     else if(persist == 2)
+    {
         self.showRecords_rows = rows;
+    }
     else
+    {
         return;
+    }
 
     if(persist)
     {
@@ -259,7 +267,9 @@ _updateRecords(client, rows, overrideTime, force)
 
     nameString = "";
     timeString = "";
+    explosiveJumpsString = "";
 
+    explosiveJumps = client openCJ\statistics::getExplosiveJumps();
     if(!isDefined(overrideTime))
     {
         timePlayed = client openCJ\playTime::getTimePlayed();
@@ -274,7 +284,7 @@ _updateRecords(client, rows, overrideTime, force)
     {
         for(; i < rows.size; i++)
         {
-            if(int(rows[i][1]) > timePlayed)
+            if(int(rows[i][2]) > timePlayed)
             {
                 for(j = rows.size; j > i; j--)
                 {
@@ -291,18 +301,19 @@ _updateRecords(client, rows, overrideTime, force)
     }
 
     ownNum = i;
-    rows[i][0] = client.name;
-    rows[i][1] = timePlayed;
+    rows[i][1] = client.name;
+    rows[i][2] = timePlayed;
+    rows[i][3] = explosiveJumps;
     self.showRecordsHighlight.y = 50 + 12 * ownNum;
-    self.showRecordsHighlight.alpha = 0.75;
+    self.showRecordsHighlight.alpha = 0.30;
 
-    if(rows.size > 10 && ownNum < 10)
+    if((rows.size > level.nrRecords) && (ownNum < level.nrRecords))
     {
-        rows[10] = undefined;
+        rows[level.nrRecords] = undefined;
     }
     for(i = 0; i < rows.size; i++)
     {
-        if(i == ownNum && i == 10)
+        if((i == ownNum) && (i == level.nrRecords))
         {
             nameString += "??. ";
         }
@@ -310,15 +321,8 @@ _updateRecords(client, rows, overrideTime, force)
         {
             nameString += (i + 1) + ". ";
         }
-        nameString += rows[i][0] + "^7\n";
-        if(ownNum == i && !isDefined(overrideTime))
-        {
-            timeString += formatTimeString(int(rows[i][1]), true) + "\n";
-        }
-        else
-        {
-            timeString += formatTimeString(int(rows[i][1]), false) + "\n";
-        }
+        nameString += rows[i][1] + "^7\n";
+        timeString += formatTimeString(int(rows[i][2]), true) + " (" + rows[i][3] + ")" + "\n"; // We abuse timeString by adding explosive jumps to it
     }
     if(self.showRecords_nameString != nameString)
     {

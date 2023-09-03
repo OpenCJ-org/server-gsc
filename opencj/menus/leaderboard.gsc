@@ -39,18 +39,18 @@ fetchUpdatedData()
     // the more difficult part of the query is the ROW_NUMBER() with PARTITION and rowNr = 1, which is used to make sure we only obtain one run per playerID
     sortStr = getSortStr(self.currentBoard["sortBy"], self.currentBoard["sort"]);
     query = "SELECT COUNT(*) OVER() AS totalNr, b.playerName, a.timePlayed, a.explosiveJumps, a.loadCount, a.finishTimeStamp, a.FPSMode, a.ele, a.anyPct, a.hb, a.hardTas FROM (" +
-                "SELECT pr.playerID, cs.timePlayed, cs.explosiveJumps, cs.loadCount, pr.finishTimeStamp, cs.FPSMode, cs.ele, cs.anyPct, cs.hb, cs.hardTas, cs.runID, cs.saveCount, (" + 
+                "SELECT pr.playerID, cs.timePlayed, cs.explosiveJumps, cs.loadCount, pr.finishTimeStamp, pr.FPSMode, pr.ele, pr.anyPct, pr.hb, pr.hardTas, cs.runID, cs.saveCount, (" + 
                     "ROW_NUMBER() OVER (PARTITION BY pr.playerID ORDER BY " + sortStr +
                 ")) AS rn " + 
                 "FROM checkpointStatistics cs INNER JOIN playerRuns pr ON pr.runID = cs.runID " + 
                 "WHERE cs.cpID IN " + finishCPIds +
                 " AND pr.finishcpID IS NOT NULL" +
                 " AND pr.finishTimeStamp IS NOT NULL" +
-                " AND cs.ele <= " + self.currentBoard["filter"]["ele"] +
-                " AND cs.anyPct <= " + self.currentBoard["filter"]["any"] +
-                " AND cs.hb <= " + self.currentBoard["filter"]["hb"] + 
-                " AND cs.hardTAS <= " + self.currentBoard["filter"]["tas"] +
-                " AND cs.FPSMode IN " + openCJ\menus\board_base::getFPSModeStr(self.currentBoard["filter"]["fps"]) +
+                " AND pr.ele <= " + self.currentBoard["filter"]["ele"] +
+                " AND pr.anyPct <= " + self.currentBoard["filter"]["any"] +
+                " AND pr.hb <= " + self.currentBoard["filter"]["hb"] + 
+                " AND pr.hardTAS <= " + self.currentBoard["filter"]["tas"] +
+                " AND pr.FPSMode IN " + openCJ\menus\board_base::getFPSModeStr(self.currentBoard["filter"]["fps"]) +
             " ) a INNER JOIN playerInformation b ON a.playerID = b.playerID " +
             "WHERE a.rn = 1 ORDER BY " + sortStr +
             " LIMIT " + self.currentBoard["maxEntriesPerPage"] +

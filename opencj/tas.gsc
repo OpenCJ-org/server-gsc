@@ -46,6 +46,10 @@ _onCommandHardTAS(args)
 
 hasHardTAS()
 {
+    if (!isDefined(self.hardTAS))
+    {
+        return false;
+    }
     return self.hardTAS;
 }
 

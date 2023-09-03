@@ -46,7 +46,15 @@ onRunFinished(cp)
     }
 
     runID = self getRunID();
-    rows = self openCJ\mySQL::mysqlAsyncQuery("SELECT runFinished(" + runID + ", " + cpID + ", " + self getRunInstanceNumber() + ")");
+    FPSMode = self openCJ\fps::getCurrentFPSMode();
+    usedEle = self openCJ\elevate::hasUsedEle();
+    usedAnyPct = self openCJ\anyPct::hasAnyPct();
+    allowHb = self openCJ\halfBeat::isHalfBeatAllowed();
+    usedHardTAS = self openCJ\tas::hasHardTAS();
+
+    // This is a store procedure in SQL database
+    filterStr = "'" + FPSMode + "'" + ", " + usedEle + ", " + usedAnyPct + ", " + allowHb + ", " + usedHardTAS;
+    rows = self openCJ\mySQL::mysqlAsyncQuery("SELECT runFinished(" + runID + ", " + cpID + ", " + filterStr + ", " + self getRunInstanceNumber() + ")");
     if(!isDefined(rows) || !isDefined(rows[0]) || !isDefined(rows[0][0]))
     {
         self iPrintLnBold("This run was loaded by another instance of your account. Please reset. All progress will not be saved");
