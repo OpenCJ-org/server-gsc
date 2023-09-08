@@ -50,6 +50,13 @@ main(args)
             {
                 self openCJ\chat::onChatMessage(args);
             }
+            else if(args[0] == "inputkey")
+            {
+                if (args.size > 1)
+                {
+                    self openCJ\menus\helper::onInputKey(args[1]);
+                }
+            }
             else if(args[0] == "openrunsboard")
             {
                 self openMenu("opencj_runsboard");
@@ -57,6 +64,10 @@ main(args)
             else if(args[0] == "openleaderboard")
             {
                 self openMenu("opencj_leaderboard");
+            }
+            else if (args[0] == "openmaplist")
+            {
+                self openMenu("opencj_maplist");
             }
             else if((args.size == 2) && (args[0] == "vote"))
             {

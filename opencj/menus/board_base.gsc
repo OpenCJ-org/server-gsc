@@ -195,21 +195,19 @@ onMenuResponse()
     for(;;)
     {
         self waittill("menuresponse", menu, response);
+
+        // Only handle the response if a board-type menu is currently open
+        if ((self.currentMenu != "opencj_leaderboard") && (self.currentMenu != "opencj_runsboard"))
+        {
+            continue;
+        }
+
         button = undefined;
         if (isSubStr(response, "click_"))
         {
             button = getSubStr(response, 6); 
         }
-        
-        if (response == "open_leaderboard") // Leaderboard was opened
-        {
-            self onBoardOpen("lb");
-        }
-        else if (response == "open_runsboard") // Runsboard was opened
-        {
-            self onBoardOpen("rn");
-        }
-        else if (isDefined(button)) // A button on the current board was clicked
+        if (isDefined(button)) // A button on the current board was clicked
         {
             if ((button == "time") || (button == "rpgs") || (button == "loads") || (button == "date")) // Sorting
             {

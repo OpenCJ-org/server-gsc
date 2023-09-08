@@ -6,12 +6,8 @@ onInit()
     level.endVote["prefix"] = "opencj_ui_end_";
     level.endVote["winning"] = undefined;
 
-    // All maps for alpha right now
-    level.maps = [];
-
     // Define random maps for the next map vote
     level.endVote["maps"] = [];
-    level.endVote["mapImages"] = [];
     level.endVote["votes"] = [];
     level.endVote["status"] = 0; // 0 = idle, 1 = voting, 2 = loading next map
     for (i = 0; i < level.endVote["nrMaps"]; i++)
@@ -20,38 +16,45 @@ onInit()
     }
 
     precacheMenu(level.endVote["menu"]);
-
-    thread fetchRandomMaps();
 }
 
-fetchRandomMaps()
+fillRandomMaps() // Called when level.maps is filled
 {
-    // Fetch random maps from database for next vote
-    //query = "SELECT mapname FROM mapids WHERE inRotation = '1' AND mapName != '" + getCvar("mapname") + "' ORDER BY RAND() LIMIT " + level.endVote["nrMaps"];
-    // For now no limit
-    query = "SELECT mapname FROM mapids WHERE inRotation = '1' AND mapName != '" + getCvar("mapname") + "' ORDER BY RAND()";
-    rows = opencj\mysql::mysqlAsyncQuery(query);
-    if (isDefined(rows) && isDefined(rows[0]) && isDefined(rows[0][0]))
+    nrMapsFilled = 0;
+    currentMapName = getCvar("mapname");
+    for (i = 0; i < level.maps.size; i++)
     {
-        maxVal = rows.size;
-        if (rows.size > level.endVote["nrMaps"])
+        if (nrMapsFilled >= level.endVote["nrMaps"])
         {
-            maxVal = level.endVote["nrMaps"];
+            break;
         }
-        for(i = 0; i < rows.size; i++)
+
+        map = level.maps[i];
+        if (map["name"] != currentMapName)
         {
-            level.maps[i] = rows[i][0];
-            if (i < maxVal)
-            {
-                level.endVote["maps"][i] = rows[i][0];
-                level.endVote["mapImages"][i] = "loadscreen_" + level.endVote["maps"][i];
-            }
+            level.endVote["maps"][nrMapsFilled] = map["name"];
+            nrMapsFilled++;
         }
-        level.maps[level.maps.size] = getCvar("mapname");
     }
-    else
+
+    _shuffleEndVoteMaps();
+}
+
+_shuffleEndVoteMaps()
+{
+    size = level.endVote["maps"].size;
+    if (size < 2) // Need at least 2 maps to randomly shuffle
     {
-        printf("ERROR: could not get random maps for end map vote...\n");
+        return;
+    }
+
+    randMax = 2147483647; // INT32_MAX
+    for (i = 0; i < size; i++)
+    {
+        j = int(i + (rand() / (randMax / (size - i) + 1)));
+        tmp = level.endVote["maps"][j];
+        level.endVote["maps"][j] = level.endVote["maps"][i];
+        level.endVote["maps"][i] = tmp;
     }
 }
 
@@ -74,7 +77,7 @@ onPlayerConnected()
         nr = (i + 1); // Dvars for this start at 1
         self setClientCvar(level.endVote["prefix"] + "votes" + nr, level.endVote["votes"][i]);
         self setClientCvar(level.endVote["prefix"] + "mapname" + nr, level.endVote["maps"][i]);
-        self setClientCvar(level.endVote["prefix"] + "mapimage" + nr, level.endVote["mapImages"][i]);
+        self setClientCvar(level.endVote["prefix"] + "mapimage" + nr, "loadscreen_" + level.endVote["maps"][i]);
     }
 
     if (level.endVote["status"] > 0)
