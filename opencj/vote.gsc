@@ -198,7 +198,7 @@ _isMapAvailable(mapName)
     }
     for (i = 0; i < level.maps.size; i++)
     {
-        if (mapName == level.maps[i])
+        if (mapName == level.maps[i]["name"])
         {
             return true;
         }

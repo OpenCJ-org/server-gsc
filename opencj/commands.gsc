@@ -58,12 +58,12 @@ _onCommandMapList(args)
     mapListNr = 1;
     for (i = 0; i < level.maps.size; i++)
     {
-        map = level.maps[i];
-        if ((mapStr.size + map.size) > maxCharsPerLine)
+        mapName = level.maps[i]["name"];
+        if ((mapStr.size + mapName.size) > maxCharsPerLine)
         {
             self sendLocalChatMessage("Maps (" + mapListNr + "): " + mapStr);
             mapListNr++;
-            mapStr = map;
+            mapStr = mapName;
         }
         else
         {
@@ -71,7 +71,7 @@ _onCommandMapList(args)
             {
                 mapStr += ", ";
             }
-            mapStr += map;
+            mapStr += mapName;
         }
     }
     self sendLocalChatMessage("Maps (" + mapListNr + "): " + mapStr);

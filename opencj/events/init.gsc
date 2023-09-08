@@ -7,7 +7,7 @@ main()
     openCJ\mySQL::onInit();
     openCJ\discord::onInit();
     openCJ\settings::onInit();
-
+    openCJ\maps::onInit();
     openCJ\timeLimit::onInit();
     openCJ\mapID::onInit();
     openCJ\checkpoints::onInit();
@@ -51,6 +51,7 @@ main()
     openCJ\menus\runsBoard::onInit(); // ^ this one too.
     openCJ\menus\ingame::onInit();
     openCJ\menus\quickMessages::onInit();
+    openCJ\menus\mapList::onInit(); // Must be after maps::onInit
     openCJ\tas::onInit();
     openCJ\playerRuns::onInit();
     openCJ\halfBeat::onInit();

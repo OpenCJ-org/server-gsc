@@ -5,6 +5,25 @@ execClientCmd(cmd)
     self closeMenu();
 }
 
+setALotOfCvars(array, uniqueHandle)
+{
+    self endon("disconnect");
+
+    // Override any previous thread that's setting cvars for the same purpose
+    self notify("setalot_" + uniqueHandle);
+    self endon("setalot_" + uniqueHandle);
+
+    cvars = getarraykeys(array);
+    for (i = 0; i < cvars.size; i++)
+    {
+        while (self getQueuedReliableMessages() > 20)
+        {
+            wait 0.05;
+        }
+        self setClientCvar(cvars[i], array[cvars[i]]);
+    }
+}
+
 iprintlnSpectators(str)
 {
 	specs = self getSpectatorList(true);
