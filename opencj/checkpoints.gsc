@@ -376,16 +376,14 @@ getRouteNameForCheckpoint(checkpoint)
         return undefined;
     }
 
+    if (isDefined(checkpoint.bigBrother))
+    {
+        checkpoint = checkpoint.bigBrother;
+    }
+
     if (!isDefined(checkpoint.id))
     {
-        if(isDefined(checkpoint.bigBrother))
-        {
-            checkpoint = checkpoint.bigBrother;
-        }
-        else
-        {
-            return undefined;
-        }
+        return undefined;
     }
 
     return _determineEnderName(getEndCheckpoints(checkpoint));
