@@ -5,7 +5,6 @@ onInit()
     precacheMenu("opencj_maplist");
 
     level.mapListDvarPrefix = "opencj_ui_maplist_";
-    level.mapListUniqueHandle = "maplist";
     level.mapListMaxEntriesPerPage = 20; // Hardcoded in menu
 }
 
@@ -15,50 +14,20 @@ onPlayerConnected()
     self.mapList = [];
     self.mapList["selected"] = -1;
 
-    // TODO: paging could be abstracted so it reduces duplicate code between board_base and maplist
     self.mapList["curPage"] = 1;
     self.mapList["maxPage"] = max(1, ceil(level.maps.size / level.mapListMaxEntriesPerPage)); // Isn't a level variable because level.maps.size might not be ready in time for onInit()
+    self.mapList["maxEntries"] = level.maps.size;
 
-    // Start setting the map list cvars because they shouldn't be changing during the game
-    cvars = [];
-    cvars[level.mapListDvarPrefix + "page"] = self.mapList["curPage"];
-    cvars[level.mapListDvarPrefix + "pagemax"] = self.mapList["maxPage"];
-    cvars[level.mapListDvarPrefix + "pagetxt"] = self.mapList["curPage"] + "/" + self.mapList["maxPage"];
-    cvars[level.mapListDvarPrefix + "loadimage"] = "default";
-    cvars[level.mapListDvarPrefix + "selected"] = self.mapList["selected"];
-    cvars[level.mapListDvarPrefix + "date"] = "";
-    cvars[level.mapListDvarPrefix + "author"] = "";
-    cvars[level.mapListDvarPrefix + "desc"] = "";
-
-    for (i = 0; i < level.mapListMaxEntriesPerPage; i++)
-    {
-        dvarName = level.mapListDvarPrefix + "map" + i;
-        if (i < level.maps.size)
-        {
-            cvars[dvarName] = level.maps[i]["name"];
-        }
-        else
-        {
-            cvars[dvarName] = ""; 
-        }
-    }
-
-    // Set the dvars over time, which is fine because player just connected and hasn't opened map list yet
-    self thread _detectCvarsLoaded();
-    self thread setALotOfCvars(cvars, level.mapListUniqueHandle);
+    self thread _updateMapList(false);
 
     // Handle menu responses and search text of the player
     self thread onMenuResponse();
     self thread onSearchText();
 }
 
-_detectCvarsLoaded()
+onOpen() // Map list menu is opened
 {
-    self endon("disconnect");
-
-    self.mapListCvarsLoaded = false;
-    self waittill("setalot_" + level.mapListUniqueHandle);
-    self.mapListCvarsLoaded = true;
+    self thread _updateMapList(true);
 }
 
 onSearchText()
@@ -66,8 +35,9 @@ onSearchText()
     self setClientCvar(level.mapListDvarPrefix + "textfield", "");
     for(;;)
     {
-        self waittill("inputkey_done");
+        self waittill("search_changed");
         self setClientCvar(level.mapListDvarPrefix + "textfield", self.searchText);
+        self _updateMapList(true);
     }
 }
 
@@ -79,13 +49,6 @@ onMenuResponse()
     for(;;)
     {
         self waittill("menuresponse", menu, response);
-
-        // Wait until cvars are loaded before allowing player to click things.
-        // TODO: this could be made smarter
-        if (!self.mapListCvarsLoaded)
-        {
-            continue;
-        }
 
         if (self.currentMenu != "opencj_maplist")
         {
@@ -133,10 +96,14 @@ onMenuResponse()
 
 _handleSelectionChange(newIdx)
 {
-    if (isValidInt(newIdx) && (newIdx < level.maps.size))
+    if (isValidInt(newIdx))
     {
-        self.mapList["selected"] = int(newIdx);
-        self _updateMapList();
+        newIdx = int(newIdx);
+        if (newIdx < self.mapList["maxEntries"])
+        {
+            self.mapList["selected"] = int(newIdx);
+            self _updateMapList(false);
+        }
     }
 }
 
@@ -155,7 +122,7 @@ _handleVote(typeStr)
         }
 
         args[0] = "map";
-        args[1] = self.mapList["selected"];
+        args[1] = self.displayedMaps[self.mapList["selected"]]["name"];
     }
     else
     {
@@ -192,44 +159,137 @@ _handlePageChange(button)
     if (page != self.mapList["curPage"])
     {
         self.mapList["selected"] = -1; // Reset selection if page changed
-        self _setMapsForCurrentPage();
-        self _updateMapList();
+        self _updateMapList(false);
     }
 }
 
-_setMapsForCurrentPage()
+_calcMaxPage(nrEntriesThisPage, maxEntries)
 {
-    offset = (self.mapList["curPage"] - 1) * level.mapListMaxEntriesPerPage;
-    nrMaps = level.maps.size - offset;
-    for (i = 0; i < level.mapListMaxEntriesPerPage; i++)
+    self.mapList["maxPage"] = max(1, ceil(maxEntries / level.mapListMaxEntriesPerPage));
+}
+
+_updateMapList(searchChanged)
+{
+    // Reset current page if anything related to search was done
+    if (isDefined(searchChanged) && searchChanged)
     {
-        dvarName = level.mapListDvarPrefix + "map" + i;
-        if (i < nrMaps)
-        {
-            self setClientDvar(dvarName, level.maps[i + offset]["name"]);
-        }
-        else
-        {
-            self setClientDvar(dvarName, ""); 
-        }
+        self.mapList["selected"] = -1;
+        self.mapList["curPage"] = 1;
     }
-}
 
-_updateMapList()
-{
+    // Determine the offset based on the user's current page
+    offset = (self.mapList["curPage"] - 1) * level.mapListMaxEntriesPerPage;
+
+    // Check if user is searching for a map
+    totalEntries = undefined;
+    if (isDefined(self.searchText) && (self.searchText.size > 0))
+    {
+        // There is a search text, only show maps that match the filter (and for current page)
+        searchText = toLower(self.searchText);
+        self.searchMatchedIndices = [];
+        nrMatchedMaps = 0;
+        skipped = 0;
+        for (i = 0; i < level.maps.size; i++)
+        {
+            if (isSubStr(toLower(level.maps[i]["name"]), searchText))
+            {
+                // Only add results for current page
+                if (skipped >= offset)
+                {
+                    if (self.searchMatchedIndices.size < level.mapListMaxEntriesPerPage)
+                    {
+                        self.searchMatchedIndices[self.searchMatchedIndices.size] = i;
+                    }
+                }
+                else
+                {
+                    skipped++;
+                }
+
+                nrMatchedMaps++;
+            }
+        }
+
+        // Total number of entries is now dependent on total matched search results
+        totalEntries = nrMatchedMaps;
+    }
+    else
+    {
+        totalEntries = level.maps.size;
+    }
+
+    // Calculate number of entries on current page
+    nrEntriesThisPage = min(totalEntries - offset, level.mapListMaxEntriesPerPage);
+
+    // Calculate (new) max. number of pages because it can change based on search
+    self _calcMaxPage(nrEntriesThisPage, totalEntries);
+
     // Update page text dvars
     self setClientCvar(level.mapListDvarPrefix + "pagetxt", self.mapList["curPage"] + "/" + self.mapList["maxPage"]);
     self setClientCvar(level.mapListDvarPrefix + "page", self.mapList["curPage"]);
     self setClientCvar(level.mapListDvarPrefix + "pagemax", self.mapList["maxPage"]);
 
-    // Dvars for the selected map
-    self setClientCvar(level.mapListDvarPrefix + "selected", self.mapList["selected"]);
+    // And update all other maps
+    self.displayedMaps = [];
+    for (i = 0; i < level.mapListMaxEntriesPerPage; i++)
+    {
+        dvarName = level.mapListDvarPrefix + "map" + i;
+        if (i < nrEntriesThisPage)
+        {
+            map = undefined;
+            if (isDefined(self.searchMatchedIndices))
+            {
+                // Maps are dictated by search
+                map = level.maps[self.searchMatchedIndices[i]];
+                self setClientCvar(dvarName, map["name"]);
+            }
+            else
+            {
+                // No search filter for maps
+                map = level.maps[i + offset];
+                self setClientCvar(dvarName, map["name"]);
+            }
+
+            self.displayedMaps[self.displayedMaps.size] = map;
+        }
+        else
+        {
+            self setClientCvar(dvarName, ""); 
+        }
+    }
+    self.searchMatchedIndices = undefined;
+
+    // Update dvars for the selected map
     if (self.mapList["selected"] != -1)
     {
-        map = level.maps[self.mapList["selected"]];
+        selected = offset + self.mapList["selected"];
+        selectedMap = self.displayedMaps[selected];
+        self _updateSelectionDvars(selectedMap);
+    }
+    else
+    {
+        self _updateSelectionDvars(undefined);
+    }
+}
+
+_updateSelectionDvars(map)
+{
+    if (isDefined(map))
+    {
+        self setClientCvar(level.mapListDvarPrefix + "selected", self.mapList["selected"]);
+        self setClientCvar(level.mapListDvarPrefix + "selectedname", map["name"]);
         self setClientCvar(level.mapListDvarPrefix + "date", map["date"]);
         self setClientCvar(level.mapListDvarPrefix + "author", map["author"]);
         self setClientCvar(level.mapListDvarPrefix + "desc", map["desc"]);
         self setClientCvar(level.mapListDvarPrefix + "loadimage", "loadscreen_" + map["name"]);
+    }
+    else
+    {
+        self setClientCvar(level.mapListDvarPrefix + "selected", "");
+        self setClientCvar(level.mapListDvarPrefix + "selectedname", "");
+        self setClientCvar(level.mapListDvarPrefix + "date", "");
+        self setClientCvar(level.mapListDvarPrefix + "author", "");
+        self setClientCvar(level.mapListDvarPrefix + "desc", "");
+        self setClientCvar(level.mapListDvarPrefix + "loadimage", "");
     }
 }

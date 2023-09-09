@@ -52,7 +52,6 @@ main()
     openCJ\menus\ingame::onInit();
     openCJ\menus\quickMessages::onInit();
     openCJ\menus\mapList::onInit(); // Must be after maps::onInit
-    openCJ\menus\helper::onInit();
     openCJ\tas::onInit();
     openCJ\playerRuns::onInit();
     openCJ\halfBeat::onInit();

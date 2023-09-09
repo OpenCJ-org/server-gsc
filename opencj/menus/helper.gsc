@@ -1,11 +1,6 @@
-onInit()
-{
-    level.searchTextDefault = "Type to search..";
-}
-
 onPlayerConnected(name)
 {
-    self.searchText = level.searchTextDefault;
+    self.searchText = "";
     self.currentMenu = "";
 
     self thread onMenuResponse();
@@ -21,25 +16,30 @@ onMenuResponse()
         self waittill("menuresponse", menu, response);
 
         currentMenu = self.currentMenu;
+        menuOpened = false;
         if ((menu == "opencj_leaderboard") && (response == "open_leaderboard")) // Leaderboard was opened
         {
             self.currentMenu = "opencj_leaderboard";
+            menuOpened = true;
             self openCJ\menus\board_base::onBoardOpen("lb");
         }
         else if ((menu == "opencj_runsboard") && (response == "open_runsboard")) // Runsboard was opened
         {
             self.currentMenu = "opencj_runsboard";
+            menuOpened = true;
             self openCJ\menus\board_base::onBoardOpen("rn");
         }
         else if ((menu == "opencj_maplist") && (response == "open_maplist")) // Maplist was opened
         {
+            menuOpened = true;
             self.currentMenu = "opencj_maplist";
+            self openCJ\menus\mapList::onOpen();
         }
 
         // Search text is used by various menus
-        if (currentMenu != self.currentMenu)
+        if (menuOpened)
         {
-            self openCJ\menus\helper::clearSearchText();
+            self _clearSearchText();
         }
     }
 }
@@ -47,6 +47,7 @@ onMenuResponse()
 onInputKey(keyName) // Called by playerCommand 'inputkey'
 {
     keyName = toLower(keyName);
+    prevSearchText = self.searchText;
 
     // Simple cases: _ and 0-9a-zA-Z
     text = undefined;
@@ -65,10 +66,7 @@ onInputKey(keyName) // Called by playerCommand 'inputkey'
         {
             case "backspace":
             {
-                if (self.searchText.size > 1)
-                {
-                    removeChar = true;
-                }
+                removeChar = true;
             } break;
             default:
             {
@@ -79,25 +77,28 @@ onInputKey(keyName) // Called by playerCommand 'inputkey'
 
     if (removeChar)
     {
-        self.searchText = getSubStr(self.searchText, 0, (self.searchText.size - 1));
+        if (self.searchText.size >= 1)
+        {
+            self.searchText = getSubStr(self.searchText, 0, (self.searchText.size - 1));
+        }
     }
-    else if (isDefined(text))
+    else if (self.searchText.size < 50)
     {
         self.searchText += text;
     }
 
-    // If search field is empty, show default explainer
-    if (self.searchText.size == 0)
+    if (self.searchText != prevSearchText)
     {
-        self.searchText = level.searchTextDefault;
+        // Let any menu scripts know that search text was changed
+        self notify("search_changed");
     }
-
-    // Let any menu scripts know that a character was typed
-    self notify("inputkey_done");
 }
 
-clearSearchText()
+_clearSearchText()
 {
-    self.searchText = level.searchTextDefault;
-    self notify("inputkey_done");
+    if (self.searchText.size > 0)
+    {
+        self.searchText = "";
+        self notify("search_changed");
+    }
 }
