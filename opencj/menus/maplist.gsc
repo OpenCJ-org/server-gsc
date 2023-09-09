@@ -217,6 +217,7 @@ _updateMapList(searchChanged)
     {
         totalEntries = level.maps.size;
     }
+    self.mapList["maxEntries"] = totalEntries;
 
     // Calculate number of entries on current page
     nrEntriesThisPage = min(totalEntries - offset, level.mapListMaxEntriesPerPage);
@@ -262,8 +263,7 @@ _updateMapList(searchChanged)
     // Update dvars for the selected map
     if (self.mapList["selected"] != -1)
     {
-        selected = offset + self.mapList["selected"];
-        selectedMap = self.displayedMaps[selected];
+        selectedMap = self.displayedMaps[self.mapList["selected"]];
         self _updateSelectionDvars(selectedMap);
     }
     else
