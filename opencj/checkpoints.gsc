@@ -405,7 +405,11 @@ _determineEnderName(endCheckpoints) // Argument is the end checkpoint(s) for a s
     {
         if(!isDefined(endCheckpoints[i].ender))
         {
-            return undefined; // There is (at least) an unnamed ender in here. So we don't know the name of the route for sure.
+            if (!isDefined(endCheckpoints[i].bigBrother))
+            {
+                return undefined; // There is (at least) an unnamed ender in here. So we don't know the name of the route for sure.
+            }
+            continue; // Checkpoint has a big brother so we don't care if this one doesn't have an ender name
         }
 
         // We already had an enderName from one of the other end checkpoints, and now another one
