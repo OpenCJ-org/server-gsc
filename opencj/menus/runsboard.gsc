@@ -2,7 +2,7 @@
 
 onInit()
 {
-    openCJ\menus\board_base::initBoard("rn", "runsboard", "opencj_runsboard", ::fetchUpdatedData);
+    openCJ\menus\board_base::initBoard("rn", "runsboard", "opencj_runsboard", ::fetchUpdatedData, undefined);
 }
 
 handleRestoreRun(str)

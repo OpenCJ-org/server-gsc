@@ -187,6 +187,10 @@ _getRecords(checkpoints, persist, timems)
     }
     checkpointString += ")";
 
+    lbSort = self openCJ\settings::getSetting("lbsort");
+    arr = strTok(lbSort, ":");
+    sortStr = self openCJ\menus\leaderBoard::getSortStr(_toSupportedSortType(arr[0]), arr[1]);
+
     // TODO after alpha: make configurable so that it's not always based on time but based on player's current run type (defaults to time, but can be low RPG, ...)
 
     // For the checkpoint that was just passed, grab the player name and time played of up to 10 finished runs ordered by timePlayed (fastest first).
@@ -197,11 +201,9 @@ _getRecords(checkpoints, persist, timems)
     //  - grabbing the player name by matching playerID between playerRuns and playerInformation
     //  - only selecting one best run per player (that's what the @prev is for, it compares it to the previous entry as it's sorted by playerID)
 
-// TODO: updating is veryyyyyyyyyy slow??
-
     query = "SELECT COUNT(*) OVER() AS totalNr, b.playerName, a.timePlayed, a.explosiveJumps, a.loadCount FROM (" +
                 "SELECT pr.playerID, cs.timePlayed, cs.explosiveJumps, cs.loadCount, pr.finishTimeStamp, pr.FPSMode, pr.ele, pr.anyPct, pr.hb, pr.hardTas, cs.runID, cs.saveCount, (" + 
-                    "ROW_NUMBER() OVER (PARTITION BY pr.playerID ORDER BY playerID, timePlayed ASC" +
+                    "ROW_NUMBER() OVER (PARTITION BY pr.playerID ORDER BY playerID, " + sortStr +
                 ")) AS rn " + 
                 "FROM checkpointStatistics cs INNER JOIN playerRuns pr ON pr.runID = cs.runID " + 
                 "WHERE cs.cpID IN " + checkpointString +
@@ -213,7 +215,7 @@ _getRecords(checkpoints, persist, timems)
                 " AND pr.hardTAS <= " + self openCJ\tas::hasHardTAS() +
                 " AND pr.FPSMode IN " + openCJ\menus\board_base::getFPSModeStr(self openCJ\fps::getCurrentFPSMode()) +
             " ) a INNER JOIN playerInformation b ON a.playerID = b.playerID " +
-            "WHERE a.rn = 1 ORDER BY timePlayed ASC" +
+            "WHERE a.rn = 1 ORDER BY " + sortStr +
             " LIMIT " + level.nrRecords;
 
     printf("getRecords query:\n" + query + "\n"); // Debug
@@ -254,6 +256,69 @@ _getRecords(checkpoints, persist, timems)
     }
 }
 
+_toSupportedSortType(sortType)
+{
+    if ((sortType != "time") && (sortType != "rpgs") && (sortType != "loads")) // Other types not supported (for now)
+    {
+        sortType = "time"; // Default to time for sorting that isn't easy to compare
+    }
+    return sortType;
+}
+
+_betterThanRecord(sortType, sortOrder, row, timePlayed, explosiveJumps, loads)
+{
+    // row:
+    // [0] = totalNr
+    // [1] = playerName
+    // [2] = timePlayed
+    // [3] = explosiveJumps
+    // [4] = loadCount
+    row[2] = int(row[2]);
+    row[3] = int(row[3]);
+    row[4] = int(row[4]);
+
+    compare = [];
+    compare[0] = undefined;
+    compare[1] = undefined;
+    compare[2] = timePlayed;
+    compare[3] = explosiveJumps;
+    compare[4] = loads;
+
+    idxToCompare = 2; // timePlayed by default
+    switch(sortType)
+    {
+        case "rpgs":
+        {
+            idxToCompare = 3;
+        } break;
+        case "loads":
+        {
+            idxToCompare = 4;
+        } break;
+        default:
+        {
+
+        }
+    }
+
+    if (sortOrder == "asc")
+    {
+        if (compare[idxToCompare] < row[idxToCompare])
+        {
+            return true;
+        }
+    }
+    else // Assume "desc"
+    {
+        if (compare[idxToCompare] >= row[idxToCompare])
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 _updateRecords(client, rows, overrideTime, force)
 {
     if(!force && (!isDefined(overrideTime) && isDefined(client.showRecords_persistTime) && client.showRecords_persistTime > getTime()))
@@ -270,6 +335,7 @@ _updateRecords(client, rows, overrideTime, force)
     explosiveJumpsString = "";
 
     explosiveJumps = client openCJ\statistics::getExplosiveJumps();
+    loads = client openCJ\statistics::getLoadCount();
     if(!isDefined(overrideTime))
     {
         timePlayed = client openCJ\playTime::getTimePlayed();
@@ -279,12 +345,18 @@ _updateRecords(client, rows, overrideTime, force)
         timePlayed = overrideTime;
     }
 
+    // Determine how the player wants their records sorted
+    lbSort = toLower(self openCJ\settings::getSetting("lbsort"));
+    arr = strTok(lbSort, ":");
+    sortType = _toSupportedSortType(arr[0]);
+    sortOrder = arr[1];
+
     i = 0;
     if(isDefined(rows))
     {
         for(; i < rows.size; i++)
         {
-            if(int(rows[i][2]) > timePlayed)
+            if (self _betterThanRecord(sortType, sortOrder, rows[i], timePlayed, explosiveJumps, loads))
             {
                 for(j = rows.size; j > i; j--)
                 {
@@ -304,6 +376,7 @@ _updateRecords(client, rows, overrideTime, force)
     rows[i][1] = client.name;
     rows[i][2] = timePlayed;
     rows[i][3] = explosiveJumps;
+    rows[i][4] = loads;
     self.showRecordsHighlight.y = 50 + 12 * ownNum;
     self.showRecordsHighlight.alpha = 0.30;
 
@@ -322,7 +395,13 @@ _updateRecords(client, rows, overrideTime, force)
             nameString += (i + 1) + ". ";
         }
         nameString += rows[i][1] + "^7\n";
-        timeString += formatTimeString(int(rows[i][2]), true) + " (" + rows[i][3] + ")" + "\n"; // We abuse timeString by adding explosive jumps to it
+        extraInfo = rows[i][3]; // By default, add RPGs as extra info
+        if (sortType == "loads")
+        {
+            // But if player is sorting by loads, then use that as extra info
+            extraInfo = rows[i][4]; // Loads
+        }
+        timeString += formatTimeString(int(rows[i][2]), true) + " (" + extraInfo + ")" + "\n"; // We abuse timeString by adding explosive jumps or loads to it
     }
     if(self.showRecords_nameString != nameString)
     {
