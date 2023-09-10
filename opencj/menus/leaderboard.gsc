@@ -2,7 +2,61 @@
 
 onInit()
 {
-    openCJ\menus\board_base::initBoard("lb", "leaderboard", "opencj_leaderboard", ::fetchUpdatedData);
+    // First, register leaderboard specific setting(s)
+    openCJ\settings::addSettingString("lbsort", 1, 25, "time:asc", "Set persistent sorting for leaderboard", ::_onLBSortSettingChange);
+
+    // Then, do common board initialization
+    openCJ\menus\board_base::initBoard("lb", "leaderboard", "opencj_leaderboard", ::fetchUpdatedData, ::onBoardSortChange);
+}
+
+onBoardSortChange(sortType, sortOrder)
+{
+    sortOrderStr = "asc";
+    if (sortOrder == 2)
+    {
+        sortOrderStr = "desc";
+    }
+
+    fullSortStr = sortType + ":" + sortOrderStr;
+    if ((sortType == "time") || (sortType == "rpgs") || (sortType == "loads")) // These sorts are supported for records HUD
+    {
+        self sendLocalChatMessage("Applying sort " + fullSortStr + " to records HUD", false);
+    }
+    else
+    {
+        self sendLocalChatMessage("Not applying sort " + fullSortStr + " to records HUD", false);
+    }
+
+    self openCJ\settings::setSettingByScript("lbsort", fullSortStr);
+}
+
+_onLBSortSettingChange(newSortStr)
+{
+    newSortStr = toLower(newSortStr);
+    if (newSortStr.size < 3) // x:x
+    {
+        return false;
+    }
+    if (!isSubStr(newSortStr, ":"))
+    {
+        return false;
+    }
+
+    arr = strTok(newSortStr, ":");
+    if (arr.size != 2)
+    {
+        return false;
+    }
+    if ((arr[1] != "asc") && (arr[1] != "desc"))
+    {
+        return false;
+    }
+    if (!openCJ\menus\board_base::isValidSortCol(arr[0]) && (arr[0] != "date")) // "date" gets converted to "startDate" or "finishDate"
+    {
+        return false;
+    }
+
+    return true;
 }
 
 // TODO: fetch and process 'your' best finished run as well
@@ -119,10 +173,20 @@ fetchUpdatedData()
     }
 }
 
-getSortStr(col, order)
+getSortStr(col, order) // Also used by showRecords.gsc for top-right records sorting
 {
     orderTypeStr = "ASC"; // Default sort by ASC
-    if (order == 2)
+
+    // Some scripts provide "ASC", "DESC". Some provide 1, 2
+    if (isString(order))
+    {
+        order = toLower(order);
+        if (order == "desc")
+        {
+            orderTypeStr = "DESC";
+        }
+    }
+    else if (order == 2)
     {
         orderTypeStr = "DESC";
     }
@@ -137,9 +201,9 @@ getSortStr(col, order)
     orderStr = openCJ\menus\board_base::convertSortCol(col, orderTypeStr);
     orderStr += ", " + openCJ\menus\board_base::convertSortCol("time", orderTypeStr); // It's OK to specify the same sort twice in there, at least no SQL error
     orderStr += ", " + openCJ\menus\board_base::convertSortCol("rpgs", orderTypeStr);
-    orderStr += ", " + openCJ\menus\board_base::convertSortCol("loads", orderTypeStr);
-    orderStr += ", " + openCJ\menus\board_base::convertSortCol("saves", orderTypeStr);
-    orderStr += ", " + openCJ\menus\board_base::convertSortCol("finishDate", orderTypeStr);
+    //orderStr += ", " + openCJ\menus\board_base::convertSortCol("loads", orderTypeStr);
+    //orderStr += ", " + openCJ\menus\board_base::convertSortCol("saves", orderTypeStr);
+    //orderStr += ", " + openCJ\menus\board_base::convertSortCol("finishDate", orderTypeStr);
 
     return orderStr;
 }

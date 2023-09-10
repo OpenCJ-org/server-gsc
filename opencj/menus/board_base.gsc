@@ -1,12 +1,13 @@
 #include openCJ\util;
 
-initBoard(shortName, fullName, menuName, fetchDataFunc)
+initBoard(shortName, fullName, menuName, fetchDataFunc, sortChangeFunc)
 {
     // Example:
     // shortName = lb
     // fullName = "leaderboard"
     // menuName = "opencj_leaderboard"
     // fetchDataFunc = ::fetchUpdatedValues
+    // sortChangeFunc = ::onBoardSortChange
 
     if (!isDefined(level.route))
     {
@@ -24,6 +25,7 @@ initBoard(shortName, fullName, menuName, fetchDataFunc)
     // Menu hardcoded values
     level.boards[shortName] = [];
     level.boards[shortName]["updateFunc"] = fetchDataFunc;
+    level.boards[shortName]["sortChangeFunc"] = sortChangeFunc;
     level.boards[shortName]["menu"] = menuName;
     level.boards[shortName]["maxEntriesPerPage"] = 10;
     level.boards[shortName]["filterNames"] = [];
@@ -90,6 +92,8 @@ onBoardOpen(shortName)
 
     // Function to obtain the latest value for this specific board
     self.currentBoard["updateFunc"] = level.boards[shortName]["updateFunc"];
+    // Some boards may specify a callback when sorting is changed
+    self.currentBoard["sortChangeFunc"] = level.boards[shortName]["sortChangeFunc"];
 
     // Number of routes can differ between board. For example, runs board adds "Any route" to click on for runs filtering.
     fakeRoutes = [];
@@ -124,8 +128,26 @@ onBoardOpen(shortName)
     self.currentBoard["nrTotalEntries"] = 0;
 
     // Sorting
-    self.currentBoard["sortBy"] = "time";
-    self.currentBoard["sort"] = 1; // Ascending
+    if (shortName == "lb")
+    {
+        // Leaderboard has persistent sorting: sortType:sortOrder
+        lbSort = toLower(self openCJ\settings::getSetting("lbsort"));
+        arr = strTok(lbSort, ":");
+        self.currentBoard["sortBy"] = arr[0];
+        if (arr[1] == "asc")
+        {
+            self.currentBoard["sort"] = 1; // Ascending
+        }
+        else
+        {
+            self.currentBoard["sort"] = 2; // Descending
+        }
+    }
+    else
+    {
+        self.currentBoard["sortBy"] = "time";
+        self.currentBoard["sort"] = 1; // Ascending
+    }
 
     // Paging
     self.currentBoard["page"] = [];
@@ -369,43 +391,81 @@ getFPSModeStr(fpsFilter)
     return allowedFpsEntries;
 }
 
-convertSortCol(col, orderStr)
+isValidSortCol(col)
 {
-    str = "";
+    col = toLower(col);
     switch(col)
     {
         case "time":
-        {
-            str += "timePlayed"; // checkpointStatistics
-        } break;
         case "rpgs":
-        {
-            str += "explosiveJumps"; // checkpointStatistics
-        } break;
         case "loads":
-        {
-            str += "loadCount"; // checkpointStatistics
-        } break;
         case "saves":
+        case "startdate":
+        case "finishdate":
         {
-            str += "saveCount"; // checkpointStatistics
-        } break;
-        case "startDate":
+            return true;
+        }
+        default:
         {
-            str += "startTimeStamp"; // playerRuns
-        } break;
-        case "finishDate":
-        {
-            str += "finishTimeStamp"; // playerRuns
-        } break;
-        default: // Default to time
-        {
-            printf("WARNING: Failed to get sort query for: " + str + "\n"); // Might have to be removed eventually due to being player input
-            str += "timePlayed";
-        } break;
+            return false;
+        }
+    }
+}
+
+convertSortCol(col, orderStr) // Also used by leaderboard.gsc to do top right records sorting
+{
+    col = toLower(col);
+    orderStr = toLower(orderStr);
+    if (orderStr == "desc")
+    {
+        // Valid value
+    }
+    else
+    {
+        orderStr  = "asc"; // Default to asc
     }
 
-    return str + " " + orderStr;
+    str = "";
+    if (!isValidSortCol(col))
+    {
+        str = "timePlayed"; // Default to timePlayed
+    }
+    else
+    {
+        switch(col)
+        {
+            case "time":
+            {
+                str += "timePlayed";
+            } break;
+            case "rpgs":
+            {
+                str += "explosiveJumps";
+            } break;
+            case "loads":
+            {
+                str += "loadCount";
+            } break;
+            case "saves":
+            {
+                str += "saveCount";
+            } break;
+            case "startdate":
+            {
+                str += "startTimeStamp";
+            } break;
+            case "finishdate":
+            {
+                str += "finishTimeStamp";
+            } break;
+            default:
+            {
+
+            } break;
+        }
+    }
+
+    return str + " " + toUpper(orderStr);
 }
 
 getOffsetFromPage(page, maxEntriesPerPage)
@@ -433,7 +493,12 @@ handleSortChange(button)
             self.currentBoard["sort"] = 1;
         }
     }
-    
+
+    if (isDefined(self.currentBoard["sortChangeFunc"]))
+    {
+        self [[self.currentBoard["sortChangeFunc"]]](self.currentBoard["sortBy"], self.currentBoard["sort"]);
+    }
+
     // Sorting changed, so reset page
     self.currentBoard["page"]["cur"] = 1; // Reset page
 
