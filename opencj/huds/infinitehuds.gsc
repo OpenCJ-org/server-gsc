@@ -41,7 +41,7 @@ setInfiniteHudText(text, player, reliable)
     {
         reliable = false;
     }
-    if(text == self.lastText)
+    if(!player.isFirstSpawn && (text == self.lastText)) // If player hadn't spawned yet, then the existing value may have been set 'too early'
     {
         return;
     }

@@ -64,6 +64,10 @@ _updateTimer()
 {
     // The HUD itself is just a timer counting down the level time, but it has to be synced with the sound effect
     level waittill("second_passed", secondsLeft);
+    if (!isDefined(self))
+    {
+        return;
+    }
 
     if (secondsLeft > 0)
     {

@@ -3,6 +3,7 @@
 main()
 {
     level.playerCount++;
+    self.isFirstSpawn = true;
 
     self openCJ\settings::onPlayerConnect();
     self openCJ\statistics::onPlayerConnect(); // Needs to be before hudStatistics

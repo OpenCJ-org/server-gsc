@@ -48,6 +48,9 @@ main(atLastSavedPosition)
     {
         self openCJ\events\eventHandler::onLoadPositionRequest(0);
     }
+
+    // Keep this as last
+    self.isFirstSpawn = false;
 }
 
 setSharedSpawnVars(giveRPG, isSpawn)
