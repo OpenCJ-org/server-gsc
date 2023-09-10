@@ -27,7 +27,7 @@ onFPSChanged(newFPS)
             specsAndSelf[i].hud[specsAndSelf[i].fpsHudName] openCJ\huds\infiniteHuds::setInfiniteHudText(newFPSText, specsAndSelf[i], false);
         }
     }
-    else if (self.classname == "player") // Gets called early, need to check before setting the text otherwise it won't show by the time you spawn in
+    else if ((self.spectatorClient == -1) && (self.classname == "player")) // Gets called early, need to check before setting the text otherwise it won't show by the time you spawn in
     {
         self.hud[self.fpsHudName] openCJ\huds\infiniteHuds::setInfiniteHudText(newFPSText, self, false);
     }
