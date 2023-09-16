@@ -25,10 +25,10 @@ _initSpawnpoints(className)
 
 getSpectatorSpawnpoint()
 {
-    return level.spawnpoints_spectator[randomint(level.spawnpoints_spectator.size)];
+    return level.spawnpoints_spectator[0]; // randomint(level.spawnpoints_spectator.size)
 }
 
 getPlayerSpawnpoint()
 {
-    return level.spawnpoints_player[randomint(level.spawnpoints_player.size)];
+    return level.spawnpoints_player[0]; // randomint(level.spawnpoints_player.size)
 }
