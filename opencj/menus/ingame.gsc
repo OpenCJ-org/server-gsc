@@ -8,7 +8,7 @@ onInit()
     level.motd_date = "August 26th, 2023";
 }
 
-onPlayerConnect()
+onPlayerConnected()
 {
     prefix = "opencj_ui_ig_motd_";
     self setClientCvar(prefix + "title", level.motd_title);

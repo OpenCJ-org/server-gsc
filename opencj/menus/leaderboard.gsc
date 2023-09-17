@@ -28,6 +28,7 @@ onBoardSortChange(sortType, sortOrder)
     }
 
     self openCJ\settings::setSettingByScript("lbsort", fullSortStr);
+    self openCJ\showRecords::onSortingChanged(); // Re-determine the records based on new sorting
 }
 
 _onLBSortSettingChange(newSortStr)

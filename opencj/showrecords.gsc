@@ -27,9 +27,17 @@ onPlayerConnect()
     self _hideRecords(true);
 }
 
+onSortingChanged()
+{
+    if (!self isSpectator())
+    {
+        self thread _getRecords(self openCJ\checkpoints::getCurrentChildCheckpoints(), 0);
+    }
+}
+
 onCheckpointsChanged()
 {
-    self thread _getRecords(self openCJ\checkpoints::getCurrentChildCheckpoints(), false);
+    self thread _getRecords(self openCJ\checkpoints::getCurrentChildCheckpoints(), 0);
 }
 
 onCheckpointPassed(cp, timems)
@@ -346,7 +354,7 @@ _updateRecords(client, rows, overrideTime, force)
     }
 
     // Determine how the player wants their records sorted
-    lbSort = toLower(self openCJ\settings::getSetting("lbsort"));
+    lbSort = toLower(client openCJ\settings::getSetting("lbsort"));
     arr = strTok(lbSort, ":");
     sortType = _toSupportedSortType(arr[0]);
     sortOrder = arr[1];
@@ -356,7 +364,7 @@ _updateRecords(client, rows, overrideTime, force)
     {
         for(; i < rows.size; i++)
         {
-            if (self _betterThanRecord(sortType, sortOrder, rows[i], timePlayed, explosiveJumps, loads))
+            if (client _betterThanRecord(sortType, sortOrder, rows[i], timePlayed, explosiveJumps, loads))
             {
                 for(j = rows.size; j > i; j--)
                 {

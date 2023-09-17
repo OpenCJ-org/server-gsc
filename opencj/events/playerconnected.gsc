@@ -13,6 +13,7 @@ main()
     self openCJ\halfBeat::onPlayerConnected();
     self openCJ\menus\mapList::onPlayerConnected();
     self openCJ\menus\helper::onPlayerConnected();
+    self openCJ\menus\ingame::onPlayerConnected();
 
     self openCJ\events\spawnSpectator::main();
 }

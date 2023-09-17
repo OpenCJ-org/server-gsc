@@ -32,7 +32,6 @@ main()
     self openCJ\playerCollision::onPlayerConnect();
     self openCJ\playTime::onPlayerConnect();
     self openCJ\events\eventHandler::onConnect();
-    self openCJ\menus\ingame::onPlayerConnect();
     self openCJ\fps::onPlayerConnect();
 
     level thread openCJ\discord::onPlayerConnect();
