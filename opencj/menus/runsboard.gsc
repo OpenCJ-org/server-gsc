@@ -28,7 +28,7 @@ handleRestoreRun(str)
             return;
         }
 
-        query = "SELECT * FROM playerRuns WHERE runID = " + runID + " AND playerID = " + openCJ\login::getPlayerID();
+        query = "SELECT * FROM playerRuns WHERE runID = " + runID + " AND playerID = " + self openCJ\login::getPlayerID();
         rows = self openCJ\mySQL::mysqlAsyncQuery(query);
         if (isDefined(rows) && isDefined(rows[0]) && isDefined(rows[0][0]))
         {

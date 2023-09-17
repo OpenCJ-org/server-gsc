@@ -49,6 +49,7 @@ onPlayerKilled(inflictor, attacker, damage, meansOfDeath, weapon, vDir, hitLoc, 
 
 _startHealthRegen()
 {
+    self endon("disconnect");
     self notify("stopHealthRegen");
     self endon("stopHealthRegen");
 

@@ -28,10 +28,6 @@ _countryQuery()
         self.country = "??";
         self.longCountry = "Unknown";
     }
-    if(self openCJ\login::isLoggedIn())
-    {
-        self _doConnectMessage();
-    }
 }
 
 onPlayerLogin()

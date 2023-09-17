@@ -16,9 +16,7 @@ onPlayerConnect()
         self.hudTimeLimit.archived = false;
 
         // The HUD itself is just a timer counting down the level time
-        self _updateTimer();
-
-        self.hudTimeLimit.alpha = 1;
+        self thread _updateTimer();
     }
 }
 
@@ -28,7 +26,7 @@ whileAlive()
     lowTimeThresholdSeconds = 60.0;
     if (level.remainingTimeSeconds <= 0)
     {
-        self _updateTimer(); // Will hide the timer
+        self thread _updateTimer(); // Will hide the timer
     }
     else
     {
@@ -63,6 +61,9 @@ onRemainingTimeChanged()
 _updateTimer()
 {
     // The HUD itself is just a timer counting down the level time, but it has to be synced with the sound effect
+    self endon("disconnect");
+    self notify("update_timelimithud");
+    self endon("update_timelimithud");
     level waittill("second_passed", secondsLeft);
     if (!isDefined(self))
     {
@@ -86,7 +87,7 @@ _updatePlayerTimers()
     players = getEntArray("player", "classname");
     for (i = 0; i < players.size; i++)
     {
-        players[i] _updateTimer();
+        players[i] thread _updateTimer();
     }
 }
 

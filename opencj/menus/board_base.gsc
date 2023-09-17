@@ -197,7 +197,7 @@ onBoardOpen(shortName)
     self setClientCvar(level.boardsDvarPrefix + "rtpagemax", self.currentBoard["route"]["maxPage"]);
 
     // Fill in the values for default selections and current filters
-    self updateBoard();
+    self thread updateBoard();
 }
 
 onPlayerConnected()
@@ -502,7 +502,7 @@ handleSortChange(button)
     // Sorting changed, so reset page
     self.currentBoard["page"]["cur"] = 1; // Reset page
 
-    self updateBoard();
+    self thread updateBoard();
 }
 
 handlePageChange(button)
@@ -546,7 +546,7 @@ handlePageChange(button)
             }
         }
 
-        self updateBoard();
+        self thread updateBoard();
     }
 }
 
@@ -611,7 +611,7 @@ handleFilterChange(button)
     // Filtering changed, so reset page
     self.currentBoard["page"]["cur"] = 1;
 
-    self updateBoard();
+    self thread updateBoard();
 }
 
 handleRouteSelection(button)
@@ -633,7 +633,7 @@ handleRouteSelection(button)
     self updateSelectedRoute(self.currentBoard["filter"]["route"]);
 
     // Selected route changed, so we need to filter only the runs that are part of that route
-    self updateBoard();
+    self thread updateBoard();
 }
 
 // ===================================================== Helper functions =====================================================
