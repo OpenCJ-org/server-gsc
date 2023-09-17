@@ -1,9 +1,11 @@
 #include openCJ\util;
 
-main()
+main() // Threaded
 {
     level.playerCount++;
     self.isFirstSpawn = true;
+
+    // Note: only add functions here if it makes sense to call them before the player is really connected
 
     self openCJ\settings::onPlayerConnect();
     self openCJ\statistics::onPlayerConnect(); // Needs to be before hudStatistics

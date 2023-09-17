@@ -18,6 +18,7 @@ main(rpg, name, time)
             self iprintlnSpectators("^3RPG was late by " + (time - self.bounceTime) + "ms");
         }
         self.rpgTime = time;
+        self openCJ\AFK::onRPGFired(rpg, name);
         self openCJ\weapons::onRPGFired(rpg, name);
         self openCJ\statistics::onRPGFired(rpg, name);
         self openCJ\events\eventHandler::onRPGFired(rpg, name);

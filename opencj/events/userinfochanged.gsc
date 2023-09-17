@@ -4,5 +4,6 @@ main()
 {
     self openCJ\playerNames::onUserInfoChanged();
     self openCJ\events\fpsChange::onUserInfoChanged();
+    self openCJ\AFK::onUserInfoChanged();
     self clientUserInfoChanged();
 }

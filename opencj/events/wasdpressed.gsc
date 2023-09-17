@@ -6,4 +6,6 @@ main(key)
     {
         self openCJ\playerRuns::startRun();
     }
+
+    self openCJ\AFK::onWASDPressed();
 }

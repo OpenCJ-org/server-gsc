@@ -331,6 +331,9 @@ onChatMessage(args)
     {
         return;
     }
+
+    self openCJ\AFK::onChatMessage(); // If player writes a chat message, clearly they are not AFK (even if they are muted)
+
     //say and say_team have identical behavior
     if(self isMuted())
     {

@@ -55,6 +55,7 @@ main()
     openCJ\tas::onInit();
     openCJ\playerRuns::onInit();
     openCJ\halfBeat::onInit();
+    openCJ\AFK::onInit();
 
     openCJ\platformDetect::onInit(); //debug file
 

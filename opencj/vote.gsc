@@ -169,6 +169,11 @@ onPlayerDisconnect()
     level _updateVoteCount();
 }
 
+onAFKChanged(isNowAFK)
+{
+    level _updateVoteCount();
+}
+
 queueAutoExtendVote()
 {
     if (!isDefined(level.hasAutoExtended) || !level.hasAutoExtended && !level.isAutoExtendQueued)
@@ -379,9 +384,15 @@ _updateVoteCount()
                 {
                     noCount++;
                 }
-            }
 
-            totalEligiblePlayers++;
+                // Player has voted so they were eligible
+                totalEligiblePlayers++;
+            }
+            else if (!players[i] openCJ\AFK::isAFK())
+            {
+                // Player has not voted and is not AFK
+                totalEligiblePlayers++;
+            }
         }
     }
 

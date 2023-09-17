@@ -38,6 +38,7 @@ main(atLastSavedPosition)
     self openCJ\events\eventHandler::onSpawnPlayer();
     self openCJ\statistics::onSpawnPlayer();
     self openCJ\huds\hudStatistics::onSpawnPlayer();
+    self openCJ\playTime::onSpawnPlayer();
 
     self setSharedSpawnVars(false, true);
     self thread openCJ\events\whileAlive::main();
@@ -64,7 +65,6 @@ setSharedSpawnVars(giveRPG, isSpawn)
 
     self openCJ\playerModels::setPlayerModel();
 
-    self openCJ\playtime::setAFK(false);
     self openCJ\checkpointPointers::showCheckpointPointers();
 
     if(getCodVersion() == 2)

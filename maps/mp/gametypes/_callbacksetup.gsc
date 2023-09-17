@@ -11,7 +11,7 @@ CodeCallback_PlayerConnect()
 
 CodeCallback_PlayerDisconnect()
 {
-	self thread openCJ\events\playerDisconnect::main();
+	self thread openCJ\events\playerDisconnect::main(); // Needs to be threaded
 }
 
 CodeCallback_PlayerDamage(inflictor, attacker, damage, flags, meansOfDeath, weapon, vPoint, vDir, hitLoc, psOffsetTime)

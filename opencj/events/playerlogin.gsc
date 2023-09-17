@@ -9,4 +9,5 @@ main()
     self openCJ\playerNames::onPlayerLogin();
     self openCJ\vote::onPlayerLogin();
     self openCJ\discord::onPlayerLogin();
+    self openCJ\AFK::onPlayerLogin();
 }

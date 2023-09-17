@@ -161,7 +161,7 @@ whileAlive()
     {
         eventsCreateQuery += "))";
     }
-    if(self isPlayerReady() && !self openCJ\playTime::isAFK() && !self openCJ\playerRuns::isRunFinished() && !self openCJ\cheating::isCheating() && self openCJ\playerRuns::hasRunStarted())
+    if(self isPlayerReady() && self openCJ\playTime::isActivelyPlaying() && !self openCJ\playerRuns::isRunFinished() && !self openCJ\cheating::isCheating() && self openCJ\playerRuns::hasRunStarted())
     {
         // TODO: re-enable after alpha :-)
         //self _storeFrameToDB(eventsCreateQuery);

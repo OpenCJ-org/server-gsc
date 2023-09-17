@@ -1,18 +1,23 @@
 onPlayerConnect()
 {
-    self.isAFK = true;
+    self.isActivelyPlaying = false;
 }
 
 whileAlive()
 {
-    if(self.AFKOrigin != self.origin)
+    if(self.activelyPlayingOrigin != self.origin)
     {
-        self setAFK(false);
+        self _setActivelyPlaying(true);
     }
-    else if(self.AFKTimer < getTime())
+    else if(self.activelyPlayingTimer < getTime())
     {
-        self setAFK(true);
+        self _setActivelyPlaying(false);
     }
+}
+
+onSpawnPlayer()
+{
+    self _setActivelyPlaying(true);
 }
 
 onRunCreated()
@@ -20,8 +25,7 @@ onRunCreated()
     self.startTime = getTime();
     self.stopTime = getTime();
 
-    // Start AFK to prevent exploits with lag scripts
-    self setAFK(true);
+    self _setActivelyPlaying(true); // Start in actively-playing mode to avoid lag script exploits
 }
 
 onRunFinished(cp)
@@ -29,22 +33,22 @@ onRunFinished(cp)
     self pauseTimer();
 }
 
-isAFK()
+isActivelyPlaying()
 {
-    return self.isAFK;
+    return self.isActivelyPlaying;
 }
 
-setAFK(value)
+_setActivelyPlaying(active)
 {
-    self.isAFK = value;
-    if(value)
+    self.isActivelyPlaying = active;
+    if(!active)
     {
         self pauseTimer();
     }
-    else
+    else // Active
     {
-        self.AFKTimer = getTime() + 5000;
-        self.AFKOrigin = self.origin;
+        self.activelyPlayingTimer = getTime() + 5000;
+        self.activelyPlayingOrigin = self.origin;
         if(self openCJ\playerRuns::hasRunStarted() && !self openCJ\playerRuns::isRunPaused())
         {
             self startTimer();
