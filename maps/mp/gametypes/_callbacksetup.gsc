@@ -6,12 +6,12 @@ CodeCallback_StartGameType()
 
 CodeCallback_PlayerConnect()
 {
-	self openCJ\events\playerConnect::main();
+	self thread openCJ\events\playerConnect::main();
 }
 
 CodeCallback_PlayerDisconnect()
 {
-	self openCJ\events\playerDisconnect::main();
+	self thread openCJ\events\playerDisconnect::main();
 }
 
 CodeCallback_PlayerDamage(inflictor, attacker, damage, flags, meansOfDeath, weapon, vPoint, vDir, hitLoc, psOffsetTime)
@@ -26,7 +26,7 @@ CodeCallback_PlayerKilled(inflictor, attacker, damage, meansOfDeath, weapon, vDi
 
 CodeCallback_PlayerCommand(args)
 {
-	self openCJ\events\playerCommand::main(args);
+	self thread openCJ\events\playerCommand::main(args);
 }
 
 CodeCallback_PlayerLastStand()
