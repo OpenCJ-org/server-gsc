@@ -35,6 +35,7 @@ main(atLastSavedPosition)
     self openCJ\huds\hudFps::onSpawnPlayer();
     self openCJ\huds\hudPosition::onSpawnPlayer();
     self openCJ\huds\hudRunInfo::onSpawnPlayer();
+    self openCJ\huds\hudSpectatorList::onSpawnPlayer();
     self openCJ\events\eventHandler::onSpawnPlayer();
     self openCJ\statistics::onSpawnPlayer();
     self openCJ\huds\hudStatistics::onSpawnPlayer();

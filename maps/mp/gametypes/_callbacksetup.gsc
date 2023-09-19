@@ -83,9 +83,9 @@ CodeCallback_PlayerBounced(serverTime)
 	self openCJ\events\playerBounced::main(serverTime);
 }
 
-CodeCallback_SpectatorClientChanged(newClient)
+CodeCallback_SpectatorClientChanged(newClient, prevClient)
 {
-	self openCJ\events\spectatorClientChanged::main(newClient);
+	self openCJ\events\spectatorClientChanged::main(newClient, prevClient);
 }
 
 CodeCallback_MoveForward()

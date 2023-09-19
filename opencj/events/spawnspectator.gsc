@@ -9,6 +9,11 @@ main()
 
     self openCJ\noclip::disableNoclip();
 
+    if (!self.isFirstSpawn)
+    {
+        obituary(self, self, "", "MOD_SUICIDE");
+    }
+
     self notify("spawned_spectator");
 
     resetTimeout();
@@ -36,7 +41,8 @@ main()
     self openCJ\huds\hudPosition::onSpawnSpectator();
     self openCJ\events\eventHandler::onSpawnSpectator();
     self openCJ\huds\hudRunInfo::onSpawnSpectator();
-    self openCJ\huds\hudSpeedOMeter::onSpawnSpectator();
+    self openCJ\huds\hudSpeedoMeter::onSpawnSpectator();
+    self openCJ\huds\hudSpectatorList::onSpawnSpectator();
 
     self stopFollowingMe();
 

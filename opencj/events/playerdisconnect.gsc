@@ -9,6 +9,7 @@ main() // Threaded
     self openCJ\commands::onPlayerDisconnect();
     self openCJ\menus\endMapVote::onPlayerDisconnect();
     self stopFollowingMe();
+    self openCJ\huds\hudSpectatorList::onPlayerDisconnect();
     self thread openCJ\discord::onPlayerDisconnect();
 
     // Notify that the player is disconnected. After the next frame ends, player's "self" will really be gone

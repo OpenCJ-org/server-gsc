@@ -10,6 +10,7 @@ main()
     self openCJ\menus\board_base::onPlayerConnected();
     self openCJ\menus\quickMessages::onPlayerConnected();
     self openCJ\huds\hudStatistics::onPlayerConnected();
+    self openCJ\huds\hudSpectatorList::onPlayerConnected();
     self openCJ\halfBeat::onPlayerConnected();
     self openCJ\menus\mapList::onPlayerConnected();
     self openCJ\menus\helper::onPlayerConnected();
