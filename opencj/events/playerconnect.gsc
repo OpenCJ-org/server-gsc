@@ -3,6 +3,7 @@
 main() // Threaded
 {
     level.playerCount++;
+    self.isFullyConnected = false;
     self.isFirstSpawn = true;
 
     // Note: only add functions here if it makes sense to call them before the player is really connected

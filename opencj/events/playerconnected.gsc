@@ -2,6 +2,8 @@
 
 main()
 {
+    self.isFullyConnected = true;
+
     self openCJ\login::onPlayerConnected();
     self openCJ\country::onPlayerConnected();
     self openCJ\huds\infiniteHuds::onPlayerConnected();

@@ -2,7 +2,7 @@
 
 onInit()
 {
-    underlyingCmd = openCJ\settings::addSettingBool("speclisthud", false, "Turn on/off spectator list hud.", ::_onSpectatorListSettingChanged);
+    underlyingCmd = openCJ\settings::addSettingInt("speclisthud", 0, 10, 4, "Set the maximum numbers of spectators shown in your HUD. 0 = off.", ::_onSpectatorListSettingChanged);
     openCJ\commands_base::addAlias(underlyingCmd, "speclist");
 
     level.specListHudName = "speclist";
@@ -11,9 +11,9 @@ onInit()
 
 _onSpectatorListSettingChanged(newVal)
 {
-    if (newVal)
+    if (newVal > 0)
     {
-        self _updateSpecList(true);
+        self thread doNextFrame(::_updateSpecList); // Call after setting has been applied
     }
     else
     {
@@ -71,10 +71,10 @@ _hideSpecList()
     self.hud[level.specListHudName] openCJ\huds\infiniteHuds::setInfiniteHudText("", self, false);
 }
 
-_updateSpecList(enabledSetting)
+_updateSpecList()
 {
-    // If setting was enabled, this function is called with the previous value
-    if ((isDefined(enabledSetting) && !enabledSetting) && !self openCJ\settings::getSetting("speclisthud"))
+    nrSpecsToShow = self openCJ\settings::getSetting("speclisthud");
+    if (nrSpecsToShow == 0)
     {
         self _hideSpecList();
         return;
@@ -84,37 +84,32 @@ _updateSpecList(enabledSetting)
     if (specList.size == 0)
     {
         self _hideSpecList();
+        return;
     }
-    else
+
+    //printf("\nDEBUG: " + self.name + " has " + specList.size + " spectators: " + specList[0].name + "\n");
+    newSpecListText = "Spectator";
+    if (specList.size > 1)
     {
-        newSpecListText = "Spectator";
-        maxSpecLines = 4; // Max. this number of spectator lines
-        if (specList.size > 1)
-        {
-            newSpecListText += "s (" + specList.size + ")";
-        }
-        newSpecListText += ":\n";
-
-        for (i = 0; i < specList.size; i++)
-        {
-            if (i >= (maxSpecLines - 1)) // Limit is n spectators, but we'll fill in the 4th one after since we may have to write "(and x more)"
-            {
-                break;
-            }
-
-            newSpecListText += specList[i].name + "\n";
-        }
-
-        if (specList.size > maxSpecLines)
-        {
-            newSpecListText += "(and " + (specList.size - maxSpecLines + 1) + " more)\n"; // + 1 because one of the lines will be "(and x more)"
-        }
-        else if (specList.size == maxSpecLines)
-        {
-            newSpecListText += specList[maxSpecLines - 1].name;
-        }
-
-        self.hud[level.specListHudName] openCJ\huds\infiniteHuds::setInfiniteHudText(newSpecListText, self, false);
-        self.hud[level.specListHudName].alpha = 1;
+        newSpecListText += "s (" + specList.size + ")";
     }
+    newSpecListText += ":\n";
+
+    for (i = 0; i < specList.size; i++)
+    {
+        if (i >= nrSpecsToShow) // Limit is <nrSpecsToShow> spectators, and we'll fill in the last one later since we may have to write "(and x more)" instead
+        {
+            break;
+        }
+
+        newSpecListText += specList[i].name + "\n";
+    }
+
+    if (specList.size > nrSpecsToShow)
+    {
+        newSpecListText += "(and " + (specList.size - nrSpecsToShow) + " more)\n";
+    }
+
+    self.hud[level.specListHudName] openCJ\huds\infiniteHuds::setInfiniteHudText(newSpecListText, self, false);
+    self.hud[level.specListHudName].alpha = 1;
 }

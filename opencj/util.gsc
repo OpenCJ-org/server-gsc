@@ -243,7 +243,7 @@ isInArray(value, array)
     return false;
 }
 
-getSpectatorList(includeSelf)
+getSpectatorList(includeSelf) // This is overwritten by C function.
 {
     players = getEntArray("player", "classname");
     ret = [];

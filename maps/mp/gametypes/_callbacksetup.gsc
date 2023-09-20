@@ -85,7 +85,12 @@ CodeCallback_PlayerBounced(serverTime)
 
 CodeCallback_SpectatorClientChanged(newClient, prevClient)
 {
-	self openCJ\events\spectatorClientChanged::main(newClient, prevClient);
+    if (!self.isFullyConnected) // Don't process this callback before the player is fully connected
+    {
+        return;
+    }
+
+    self openCJ\events\spectatorClientChanged::main(newClient, prevClient);
 }
 
 CodeCallback_MoveForward()
