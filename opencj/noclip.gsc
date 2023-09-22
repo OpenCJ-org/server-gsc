@@ -54,11 +54,8 @@ _configureNoclip(args)
     wasEverEnabled = self hasNoclip();
     wasEnabled = self hasNoclip();
     shouldEnable = false;
-    if((args.size == 0) || !isValidInt(args[0]))
-    {
-        shouldEnable = !wasEnabled;
-    }
-    else
+    speed = undefined;
+    if (args.size > 0)
     {
         speed = int(args[0]);
         if(speed > 120)
@@ -69,7 +66,13 @@ _configureNoclip(args)
         {
             speed = 10;
         }
-
+    }
+    if((args.size == 0) || !isValidInt(args[0]) || (isDefined(speed) && (speed == self.noclip_speed)))
+    {
+        shouldEnable = !wasEnabled;
+    }
+    else if (isDefined(speed))
+    {
         self.noclip_speed = speed;
         shouldEnable = true;
     }
