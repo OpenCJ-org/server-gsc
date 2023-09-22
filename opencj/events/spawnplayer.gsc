@@ -14,7 +14,11 @@ main(atLastSavedPosition)
     resetTimeout();
     self.sessionTeam = "allies";
     self.sessionState = "playing";
-    self.spectatorClient = -1;
+    if (self.spectatorClient != -1)
+    {
+        self openCJ\events\spectatorClientChanged::main(getEntByNum(self.spectatorClient), undefined);
+        self.spectatorClient = -1;
+    }
     self.archiveTime = 0;
     self.psOffsetTime = 0;
     self.pers["team"] = "allies";

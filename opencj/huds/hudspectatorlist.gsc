@@ -53,6 +53,10 @@ onSpectatorClientChanged(newClient, prevClient)
     {
         newClient thread doNextFrame(::_updateSpecList);
     }
+    else
+    {
+        self _hideSpecList(); // Not spectating anyone right now
+    }
 }
 
 onSpawnPlayer()
@@ -67,11 +71,32 @@ onSpawnSpectator()
 
 _hideSpecList()
 {
-    self.hud[level.specListHudName].alpha = 0;
-    self.hud[level.specListHudName] openCJ\huds\infiniteHuds::setInfiniteHudText("", self, false);
+    spectatorsAndSelf = self getSpectatorList(true);
+    for (i = 0; i < spectatorsAndSelf.size; i++)
+    {
+        spectatorsAndSelf[i].hud[level.specListHudName].alpha = 0;
+        spectatorsAndSelf[i].hud[level.specListHudName] openCJ\huds\infiniteHuds::setInfiniteHudText("", spectatorsAndSelf[i], false);
+    }
 }
 
 _updateSpecList()
+{
+    specList = self getSpectatorList(false);
+    if (specList.size == 0)
+    {
+        self _hideSpecList();
+        return;
+    }
+
+    // Update the spectator list HUD for the player and the spectators
+    self _updateSpecListHud(specList);
+    for (i = 0; i < specList.size; i++)
+    {
+        specList[i] _updateSpecListHud(specList);
+    }
+}
+
+_updateSpecListHud(specList)
 {
     nrSpecsToShow = self openCJ\settings::getSetting("speclisthud");
     if (nrSpecsToShow == 0)
@@ -80,14 +105,6 @@ _updateSpecList()
         return;
     }
 
-    specList = self getSpectatorList(false);
-    if (specList.size == 0)
-    {
-        self _hideSpecList();
-        return;
-    }
-
-    //printf("\nDEBUG: " + self.name + " has " + specList.size + " spectators: " + specList[0].name + "\n");
     newSpecListText = "Spectator";
     if (specList.size > 1)
     {
@@ -97,9 +114,9 @@ _updateSpecList()
 
     for (i = 0; i < specList.size; i++)
     {
-        if (i >= nrSpecsToShow) // Limit is <nrSpecsToShow> spectators, and we'll fill in the last one later since we may have to write "(and x more)" instead
+        if (i >= nrSpecsToShow)
         {
-            break;
+            break; // Limit is <nrSpecsToShow> spectators, and we'll fill in the last one later since we may have to write "(and x more)" instead
         }
 
         newSpecListText += specList[i].name + "\n";
