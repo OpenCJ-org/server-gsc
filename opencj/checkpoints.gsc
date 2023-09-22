@@ -927,6 +927,10 @@ whileAlive()
                 // This check requires some computation, so don't call it if player already had triggered any%
                 if (!self openCJ\anyPct::hasAnyPct() && self _checkAnyPctTriggered(cp, playerChildCheckpoints))
                 {
+                    // Temporary code for easily identifying bad checkpoints until maps are recheckpointed
+                    printf("DEBUG ANYPCT: Player " + self.name + " triggered any pct on cpID: " + cp.id + "\n");
+
+                    // Inform the player that they triggered any%, as it may be accidental
                     self iprintlnbold("Checkpoint skipped, any'/. mode enabled");
                     self openCJ\anyPct::setAnyPct(true);
                 }

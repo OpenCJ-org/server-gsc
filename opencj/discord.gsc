@@ -67,7 +67,7 @@ onMapStart(mapName)
 
 onPlayerConnect()
 {
-    // Called from playerconnected :: main()
+    // Called from playerconnect :: main()
     _onPlayerCountChanged();
 }
 
