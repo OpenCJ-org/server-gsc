@@ -206,7 +206,7 @@ onSetting(name, args, changedByScript)
         {
             if(!isValidInt(arg))
             {
-                self sendLocalChatMessage("Argument " + arg + "7 is not a valid integer", true);
+                self sendLocalChatMessage("Argument " + arg + "^7 is not a valid integer", true);
                 return;
             }
 
