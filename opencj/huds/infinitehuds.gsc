@@ -10,9 +10,9 @@ initInfiniteHud(name)
     level.infiniteHudStrings[name] = spawnStruct();
     level.infiniteHudStrings[name].num = level.infiniteHudStrings.size;
     level.infiniteHudStrings[name].localizedString = findLocalizedString(level.infiniteHudStrings[name].num);
-    level.infiniteHudStrings[name].string = findString(level.infiniteHudStrings[name].num);
+    level.infiniteHudStrings[name].string = constructMessage(level.infiniteHudStrings[name].localizedString);
     precacheString(level.infiniteHudStrings[name].localizedString);
-    level.infiniteHudStrings[name].configstringIndex = G_FindConfigstringIndex(level.infiniteHudStrings[name].string, 1310, 256);
+    level.infiniteHudStrings[name].configstringIndex = G_LocalizedStringIndex(level.infiniteHudStrings[name].string);
 }
 
 onPlayerConnected()
@@ -47,15 +47,6 @@ setInfiniteHudText(text, player, reliable)
     }
     self.lastText = text;
     player SV_GameSendServerCommand("d " + self.configstringIndex + " " + text, reliable);
-}
-
-findString(num)
-{
-    if (!isDefined(findLocalizedString(num)))
-    {
-        return undefined;
-    }
-    return "openCJPlaceHolderString" + num;
 }
 
 findLocalizedString(num)

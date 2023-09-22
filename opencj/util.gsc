@@ -531,3 +531,8 @@ strToPreciseFloat(str)
     }
     return float(str); // No decimals?
 }
+
+G_LocalizedStringIndex(string)
+{
+    return G_FindConfigstringIndex(string, 1310, 256); // TODO: last 256 isn't actually a param in C code...
+}

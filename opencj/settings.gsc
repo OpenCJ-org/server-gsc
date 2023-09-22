@@ -190,12 +190,12 @@ onSetting(name, args, changedByScript)
         {
             if(arg.size < setting.minLen)
             {
-                self sendLocalChatMessage("Length of argument " + arg + " is below minimum " + setting.minLen, true);
+                self sendLocalChatMessage("Length of argument " + arg + "^7 is below minimum " + setting.minLen, true);
                 return;
             }
             if(arg.size > setting.maxLen)
             {
-                self sendLocalChatMessage("Length of argument " + arg + " is above maximum " + setting.minLen, true);
+                self sendLocalChatMessage("Length of argument " + arg + "^7 is above maximum " + setting.minLen, true);
                 return;
             }
 
@@ -206,19 +206,19 @@ onSetting(name, args, changedByScript)
         {
             if(!isValidInt(arg))
             {
-                self sendLocalChatMessage("Argument " + arg + " is not a valid integer", true);
+                self sendLocalChatMessage("Argument " + arg + "7 is not a valid integer", true);
                 return;
             }
 
             arg = int(arg);
             if(arg < setting.minVal)
             {
-                self sendLocalChatMessage("Argument " + arg + " is below minimum " + setting.minVal, true);
+                self sendLocalChatMessage("Argument " + arg + "^7 is below minimum " + setting.minVal, true);
                 return;
             }
             if(arg > setting.maxVal)
             {
-                self sendLocalChatMessage("Argument " + arg + " is above maximum " + setting.maxVal, true);
+                self sendLocalChatMessage("Argument " + arg + "^7 is above maximum " + setting.maxVal, true);
                 return;
             }
 
@@ -231,7 +231,7 @@ onSetting(name, args, changedByScript)
             {
                 if(!isValidBool(arg))
                 {
-                    self sendLocalChatMessage("Argument " + arg + " is not a valid bool", true);
+                    self sendLocalChatMessage("Argument " + arg + "^7 is not a valid bool", true);
                     return;
                 }
 
@@ -247,19 +247,19 @@ onSetting(name, args, changedByScript)
         {
             if(!isValidFloat(arg))
             {
-                self sendLocalChatMessage("Argument " + arg + " is not a valid float", true);
+                self sendLocalChatMessage("Argument " + arg + "^7 is not a valid float", true);
                 return;
             }
 
             arg = float(arg);
             if(arg < setting.minVal)
             {
-                self sendLocalChatMessage("Argument " + arg + " is below minimum " + setting.minVal, true);
+                self sendLocalChatMessage("Argument " + arg + "^7 is below minimum " + setting.minVal, true);
                 return;
             }
             if(arg > setting.maxVal)
             {
-                self sendLocalChatMessage("Argument " + arg + " is above maximum " + setting.maxVal, true);
+                self sendLocalChatMessage("Argument " + arg + "^7 is above maximum " + setting.maxVal, true);
                 return;
             }
 
@@ -268,7 +268,7 @@ onSetting(name, args, changedByScript)
         } break;
         default:
         {
-            self sendLocalChatMessage("ERROR! Setting: " + name + " has invalid type: " + setting.type, true);
+            self sendLocalChatMessage("ERROR! Setting: " + name + "^7 has invalid type: " + setting.type, true);
             return;
         }
     }
