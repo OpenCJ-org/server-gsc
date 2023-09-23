@@ -28,7 +28,13 @@ onInit()
 giveWeapons(giveRPG, isSpawn)
 {
     if(isSpawn)
+    {
         self _giveWeapons(giveRPG);
+    }
+    else if (giveRPG)
+    {
+        self switchToWeaponSeamless(level.weapons_rpgs["default"]);
+    }
     self _deleteGrenades();
 }
 
