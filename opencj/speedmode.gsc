@@ -65,7 +65,7 @@ speedMode(args)
         }
         else
         {
-            self sendLocalChatMessage("Argument " + value + " is not a bool or integer", true);
+            self sendLocalChatMessage("Argument " + value + "^7 is not a bool or integer", true);
             return;
         }
     }

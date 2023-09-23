@@ -21,7 +21,7 @@ _onCommandIgnore(args)
     player = findPlayerByArg(args[0]);
     if(!isDefined(player))
     {
-        self sendLocalChatMessage("Player " + args[0] + " not found", true);
+        self sendLocalChatMessage("Player " + args[0] + "^7 not found", true);
         return;
     }
     
@@ -45,7 +45,7 @@ _onCommandPermIgnore(args)
     player = findPlayerByArg(args[0]);
     if(!isDefined(player))
     {
-        self sendLocalChatMessage("Player " + args[0] + " not found", true);
+        self sendLocalChatMessage("Player " + args[0] + "^7 not found", true);
         return;
     }
     
@@ -69,7 +69,7 @@ _onCommandUnIgnore(args)
     player = findPlayerByArg(args[0]);
     if(!isDefined(player))
     {
-        self sendLocalChatMessage("Player " + args[0] + " not found", true);
+        self sendLocalChatMessage("Player " + args[0] + "^7 not found", true);
         return;
     }
     
@@ -93,7 +93,7 @@ _onCommandmute(args)
     player = findPlayerByArg(args[0]);
     if(!isDefined(player) || player isIgnoring(self))
     {
-        self sendLocalChatMessage("Player " + args[0] + " not found", true);
+        self sendLocalChatMessage("Player " + args[0] + "^7 not found", true);
         return;
     }
     
@@ -140,7 +140,7 @@ _onCommandUnmute(args)
     player = findPlayerByArg(args[0]);
     if(!isDefined(player) || player isIgnoring(self))
     {
-        self sendLocalChatMessage("Player " + args[0] + " not found", true);
+        self sendLocalChatMessage("Player " + args[0] + "^7 not found", true);
         return;
     }
     
@@ -409,7 +409,7 @@ _onCommandPM(args)
     player = findPlayerByArg(args[0]);
     if(!isDefined(player) || !player openCJ\login::isLoggedIn() || !player openCJ\settings::areSettingsLoaded() || player isIgnoring(self))
     {
-        self sendLocalChatMessage("Player " + args[0] + " not found or they are ignoring you", true);
+        self sendLocalChatMessage("Player " + args[0] + "^7 not found or they are ignoring you", true);
         return;
     }
     if(self isMuted())

@@ -25,7 +25,7 @@ _onCommandHardTAS(args)
     {
         if(!isValidBool(args[0]))
         {
-            self sendLocalChatMessage("Argument " + args[0] + " is not a bool", true);
+            self sendLocalChatMessage("Argument " + args[0] + "^7 is not a bool", true);
             return;
         }
         shouldEnable = strToBool(args[0]);
