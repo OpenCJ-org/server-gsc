@@ -18,6 +18,12 @@ onPlayerConnect()
     self.allowHax = false;
 }
 
+onSpawnPlayer()
+{
+    // It may be that the player switched to haxFPS while in spectator mode
+    self setFPSMode(self getNewFPSModeStrByFPS(self getCurrentFPSMode(), self getCurrentFPS()));
+}
+
 _onSettingAllowHax(newVal)
 {
     if (newVal)
@@ -106,7 +112,10 @@ onFPSChange(newFPS) // Not called with undefined FPS
     self.FPS = newFPS;
 
     // Update the FPS mode. This may be accepted or prevented based on user settings.
-    self setFPSMode(self getNewFPSModeStrByFPS(self getCurrentFPSMode(), newFPS));
+    if (!self isSpectator()) // If player is spectating, don't bother them with this, handle it when they spawn.
+    {
+        self setFPSMode(self getNewFPSModeStrByFPS(self getCurrentFPSMode(), newFPS));
+    }
 }
 
 forceFPSMode(newFPSMode) // For example called when restoring a previous load or when FPS is not present in UserInfo

@@ -44,6 +44,7 @@ main(atLastSavedPosition)
     self openCJ\statistics::onSpawnPlayer();
     self openCJ\huds\hudStatistics::onSpawnPlayer();
     self openCJ\playTime::onSpawnPlayer();
+    self openCJ\fps::onSpawnPlayer();
 
     self setSharedSpawnVars(false, true);
     self thread openCJ\events\whileAlive::main();
