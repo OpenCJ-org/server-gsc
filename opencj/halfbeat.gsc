@@ -22,6 +22,8 @@ onPlayerConnected()
 {
     self.allowHalfBeat = false;
     self.hbMessagePrinted = false;
+    self.prevForwardOrBackButtonPressed = false;
+    self.prevStrafeButtonPressed = false;
     thread _detectHalfBeat();
 }
 
@@ -66,33 +68,28 @@ _detectHalfBeat()
         }
 
         velocity = self getVelocity();
+        strafeButtonPressed = self leftButtonPressed() || self rightButtonPressed();
+        fwdOrBackButtonPressed = self forwardButtonPressed() || self backButtonPressed();
         if (!self isSpectator() && self isPlayerReady(true) && !self openCJ\playerRuns::isRunPaused() && !self openCJ\playerRuns::isRunFinished() && !self isOnGround())
         {
             // User doesn't allow halfbeat, so start monitoring for it
-            leftButtonPressed = self leftButtonPressed();
-            rightButtonPressed = self rightButtonPressed();
-            forwardButtonPressed = self forwardButtonPressed();
-            if (!forwardButtonPressed && (leftButtonPressed || rightButtonPressed))
+            if (!fwdOrBackButtonPressed && !self.prevForwardOrBackButtonPressed && strafeButtonPressed)
             {
-                minSpeedThreshold = 300; // Don't apply reduction factor when lower than this x or y velocity
-                minSpeedGainThreshold = 20; // Don't apply reduction factor when gaining speed less than this number.
+                minSpeedThreshold = 250; // Don't apply reduction factor when lower than this x or y velocity
+                minSpeedGainThreshold = 10; // Don't apply reduction factor when gaining speed less than this number.
                 // ^ this is to ensure a normal hold A tech is not or barely affected, while a halfbeat hold A tech is punished.
                 if (isDefined(self.hbPrevVel) && ((abs(velocity[0]) >= minSpeedThreshold) || (abs(velocity[1]) >= minSpeedThreshold)))
                 {
-                    reductionFactor = 0.20;
+                    reductionFactor = 0.10;
                     speedGainX = abs(velocity[0]) - abs(self.hbPrevVel[0]);
                     speedGainY = abs(velocity[1]) - abs(self.hbPrevVel[1]);
                     newVelX = velocity[0];
                     newVelY = velocity[1];
 
                     shouldChangeVel = false;
-                    if (speedGainX > minSpeedGainThreshold)
+                    if ((speedGainX > minSpeedGainThreshold) || (speedGainY > minSpeedGainThreshold))
                     {
                         newVelX *= (1 - reductionFactor);
-                        shouldChangeVel = true;
-                    }
-                    if (speedGainY > minSpeedGainThreshold)
-                    {
                         newVelY *= (1 - reductionFactor);
                         shouldChangeVel = true;
                     }
@@ -111,6 +108,8 @@ _detectHalfBeat()
             }
         }
         self.hbPrevVel = velocity;
+        self.prevForwardOrBackButtonPressed = fwdOrBackButtonPressed;
+        self.prevStrafeButtonPressed = strafeButtonPressed;
         wait .1;
     }
 }
