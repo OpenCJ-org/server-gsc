@@ -20,6 +20,11 @@ addProtectedMovingPlatform(name)
     }
 }
 
+onPlayerConnected()
+{
+    self.cheating = false;
+}
+
 onRunCreated()
 {
     self.cheating = false;

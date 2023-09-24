@@ -46,6 +46,11 @@ _onCmdNoclip(args)
 
 _configureNoclip(args)
 {
+    if (self.sessionState != "playing")
+    {
+        return;
+    }
+
     if(self openCJ\demos::isPlayingDemo())
     {
         self sendLocalChatMessage("Cannot enable noclip/ufo during demo playback", true);

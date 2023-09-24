@@ -119,7 +119,7 @@ _updateSpecListHud(specList)
             break; // Limit is <nrSpecsToShow> spectators, and we'll fill in the last one later since we may have to write "(and x more)" instead
         }
 
-        newSpecListText += specList[i].name + "\n";
+        newSpecListText += specList[i].name + "^7\n";
     }
 
     if (specList.size > nrSpecsToShow)

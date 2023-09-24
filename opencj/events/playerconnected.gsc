@@ -14,6 +14,7 @@ main()
     self openCJ\huds\hudStatistics::onPlayerConnected();
     self openCJ\huds\hudSpectatorList::onPlayerConnected();
     self openCJ\halfBeat::onPlayerConnected();
+    self openCJ\cheating::onPlayerConnected();
     self openCJ\menus\mapList::onPlayerConnected();
     self openCJ\menus\helper::onPlayerConnected();
     self openCJ\menus\ingame::onPlayerConnected();
