@@ -45,7 +45,7 @@ angle2short(vec)
 
 isPlayerReady(requiresRunReady)
 {
-    ready = (self openCJ\login::isLoggedIn() && self openCJ\settings::areSettingsLoaded());
+    ready = (self openCJ\login::isLoggedIn() && self openCJ\settings::areSettingsLoaded() && ((self.sessionState == "playing") || (self.sessionState == "spectator")));
 
     if (isDefined(requiresRunReady) && requiresRunReady)
     {

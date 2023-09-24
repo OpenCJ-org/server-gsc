@@ -255,6 +255,11 @@ _restoreLastRun(runID)
 
 _onCmdEntTele(args)
 {
+    if (self.sessionState != "playing")
+    {
+        return;
+    }
+
     if (isDefined(args) && (args.size >= 1))
     {
         entArray = getEntArray(args[0], "targetname");
@@ -287,7 +292,10 @@ _onCmdEntTele(args)
 
 _onCmdSetOrigin(args)
 {
-    self setOrigin((int(args[0]), int(args[1]), int(args[2])));
+    if (self.sessionState == "playing")
+    {
+        self setOrigin((int(args[0]), int(args[1]), int(args[2])));
+    }
 }
 
 _onCmdTeleSave(args)
@@ -303,6 +311,11 @@ _onCmdTelePos(args)
 _teleportToPlayer(args, teleToSave)
 {
     self endon("disconnect");
+
+    if (self.sessionState != "playing")
+    {
+        return;
+    }
 
     if (args.size == 1)
     {

@@ -239,6 +239,11 @@ archiveRun(runID)
 
 restoreRun(runID) // Call this function as a thread
 {
+    if ((self.sessionState != "playing") && (self.sessionState != "spectator"))
+    {
+        return;
+    }
+
     if (!self openCJ\mapID::hasMapID())
     {
         self sendLocalChatMessage("Sorry, the current map is not in the database", true);
