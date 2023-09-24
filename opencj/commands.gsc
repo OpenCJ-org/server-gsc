@@ -312,7 +312,7 @@ _teleportToPlayer(args, teleToSave)
 {
     self endon("disconnect");
 
-    if (self.sessionState != "playing")
+    if ((self.sessionState != "playing") && (self.sessionState != "spectator"))
     {
         return;
     }
