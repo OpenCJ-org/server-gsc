@@ -29,6 +29,10 @@ onRunRestored()
 
 speedMode(args)
 {
+    if (self.sessionState != "playing")
+    {
+        return;
+    }
     if(self openCJ\demos::isPlayingDemo())
     {
         return;
@@ -114,11 +118,19 @@ setSpeedMode(value)
 
 getSpeedModeNow()
 {
+    if (!isDefined(self.speedModeNow))
+    {
+        return false;
+    }
     return self.speedModeNow;
 }
 
 getSpeedModeEver()
 {
+    if (!isDefined(self.speedModeEver))
+    {
+        return false;
+    }
     return self.speedModeEver;
 }
 
