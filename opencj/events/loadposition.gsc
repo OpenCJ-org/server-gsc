@@ -30,11 +30,12 @@ main(backwardsCount)
     }
 
     // Cheating
-    if(self openCJ\cheating::isCheating() && !openCJ\savePosition::isCheating(save))
+    wasCheating = self openCJ\cheating::isCheating();
+    if(wasCheating && !openCJ\savePosition::isCheating(save))
     {
         self openCJ\cheating::setCheating(false);
     }
-    else if(!self openCJ\cheating::isCheating() && openCJ\savePosition::isCheating(save))
+    else if(!wasCheating && openCJ\savePosition::isCheating(save))
     {
         self openCJ\cheating::setCheating(true);
     }

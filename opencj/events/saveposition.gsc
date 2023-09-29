@@ -11,6 +11,7 @@ main() // Not threaded as it returns a result
     self openCJ\savePosition::resetBackwardsCount();
     self openCJ\savePosition::printSaveSuccess();
 
+    self openCJ\measurements::onSavePosition();
     self thread openCJ\huds\hudSpeedometer::onSavePosition();
 
     return saveNum;

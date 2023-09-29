@@ -1,6 +1,6 @@
 #include openCJ\util;
 
-main(rpg, name, time)
+main(rpg, name, angle, time)
 {
     rpg hide();
     rpg showToPlayer(self);
@@ -12,12 +12,10 @@ main(rpg, name, time)
 
     if(self openCJ\weapons::isRPG(name))
     {
-        if(isDefined(self.bounceTime) && self.bounceTime > time - 500)
-        {
-            //late rpg
-            self iprintlnSpectators("^3RPG was late by " + (time - self.bounceTime) + "ms");
-        }
         self.rpgTime = time;
+        self.rpgAngle = angle;
+        self openCJ\measurements::RPGMeasurement(true, time);
+
         self openCJ\AFK::onRPGFired(rpg, name);
         self openCJ\weapons::onRPGFired(rpg, name);
         self openCJ\statistics::onRPGFired(rpg, name);

@@ -26,11 +26,20 @@ setALotOfCvars(array, uniqueHandle)
 
 iprintlnSpectators(str)
 {
-	specs = self getSpectatorList(true);
-	for(i = 0; i < specs.size; i++)
-	{
-		specs[i] iprintln(str);
-	}
+    specs = self getSpectatorList(true);
+    for(i = 0; i < specs.size; i++)
+    {
+        specs[i] iprintln(str);
+    }
+}
+
+iprintlnBoldSpectators(str)
+{
+    specs = self getSpectatorList(true);
+    for(i = 0; i < specs.size; i++)
+    {
+        specs[i] iprintlnbold(str);
+    }
 }
 
 short2angle(vec)
@@ -57,12 +66,25 @@ isPlayerReady(requiresRunReady)
 
 getEyePos()
 {
-    if(self getstance() == "stand")
-        return self.origin + (0, 0, 40);
-    else if(self getstance() == "duck")
-        return self.origin + (0, 0, 20);
+    eyePos = self.origin;
+    if (self.sessionteam == "spectator")
+    {
+        eyePos = eyePos - (0, 0, 20);
+    }
+    else if (self getStance() == "crouch")
+    {
+        eyePos = eyePos + (0, 0, 40);
+    }
+    else if (self getStance() == "prone")
+    {
+        eyePos = eyePos + (0, 0, 11);
+    }
     else
-        return self.origin + (0, 0, 5);
+    {
+        eyePos = eyePos + (0, 0, 60);
+    }
+    
+    return eyePos;
 }
 
 getPlayerByPlayerID(playerID) //gets a player that's logged in AND has a certain playerID. If player is not on server, returns undefined.
@@ -468,6 +490,15 @@ xOrEmpty(val) // Useful for menus that want to show an empty cell instead of hid
 dbStr(str)
 {
     return "'" + str + "'";
+}
+
+floatToFixedDecimalString(flt, maxNrDecimals)
+{
+    vec3 = [];
+    vec3[0] = flt;
+    vec3[1] = 0;
+    vec3[2] = 0;
+    return "" + fixDecimals(vec3, maxNrDecimals, true)[0];
 }
 
 removeIntegerPart(vec3) // Remove part before the dot

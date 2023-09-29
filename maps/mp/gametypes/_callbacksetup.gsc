@@ -33,9 +33,14 @@ CodeCallback_PlayerLastStand()
 {
 }
 
-CodeCallback_RPGFired(rpg, name, time)
+CodeCallback_WeaponFired(weapon, name, time)
 {
-	self openCJ\events\rpgFired::main(rpg, name, time);
+    self openCJ\events\weaponFired::main(weapon, name, time);
+}
+
+CodeCallback_RPGFired(rpg, name, angle, time)
+{
+	self openCJ\events\rpgFired::main(rpg, name, angle, time);
 }
 
 CodeCallback_FireGrenade(nade, name)
