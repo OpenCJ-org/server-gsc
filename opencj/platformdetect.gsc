@@ -1,231 +1,112 @@
-/*
 #include openCJ\util;
 
-onInit()
-{
-    openCJ\commands_base::registerCommand("detectplat", "Tries to detect the platform you're on", ::_onPlatDetect, 0, 0, 60);
-    openCj\commands_base::registerCommand("org", "Shows or", ::_org, 0, 0, 0);
-}
+// What this does: detect FLAT rectangular (angled or not) platform that the player is standing on
+// Why: very quick checkpoints for rectangular platforms
+// How: Using physicsTraces
+// Good to know: a physicsTrace from inside a solid doesn't immediately return, instead it will only return when changing to a different type, that's the only reason why this all works
+//
+// Pseudocode:
+// For each direction (90 degrees) from where the player is currently looking at:
+//    1. Physics trace in this direction from under the player's feet (so inside the platform)
+//    2. If it hit something, use that as end point. If it didn't hit anything, use the distance specified to the physicsTrace to determine endpoint
+//    3. From that point do a physicsTrace back to the platform, this will hit the platform and informs us of the origin of a side of the rectangle
+// Now you can calculate the corners for the rectangular platform
 
-_org(args)
+getRectangularPlatformOrgs()
 {
-    self iprintln("origin: " + self.origin);
-}
-
-_onPlatDetect(args)
-{
-    if(!self isOnGround())
+    if (!self isOnGround())
     {
-        self iprintln("need to be on ground to use this");
-        return;
+        self iprintln("^1You can only detect rectangular platforms while on ground");
+        return undefined;
     }
-    bt_down = bullettrace(self.origin, self.origin - (0, 0, 10), false, undefined);
-    if(bt_down["fraction"] < 1)
+
+    // First determine the starting point, which is below the player (inside the platform)
+    startTrace = physicsTrace(self.origin, self.origin - (0, 0, 10)); // n units below the feet of the player
+    if (!isDefined(startTrace))
     {
-        //bt hit
-        if(bt_down["normal"] == (0, 0, 1))
-        {
-            bt_fw_out_low = bullettrace(bt_down["position"] - (0, 0, 1), bt_down["position"] - (0, 0, 1) + vectorScale(anglesToForward((0, self getPlayerAngles()[1], 0)), 10000), false, undefined); //forward out low
-            bt_fw_back_low = bullettrace(bt_fw_out_low["position"] + vectorScale(anglesToForward((0, self getPlayerAngles()[1], 0)), 1), bt_down["position"] - (0, 0, 1), false, undefined); //forward back low
-            bt_fw_out_high = bullettrace(bt_down["position"] + (0, 0, 1), bt_down["position"] + (0, 0, 1) + vectorScale(anglesToForward((0, self getPlayerAngles()[1], 0)), 10000), false, undefined); //forward out high
-            use_bt_fw = undefined;
-            if(bt_fw_back_low["fraction"] < 1 && bt_fw_out_high["fraction"] < 1)
-            {
-                iprintln("both");
-                //both traces hit, decide.
-                if(distanceSquared(bt_down["position"], bt_fw_back_low["position"]) < distanceSquared(bt_down["position"], bt_fw_out_high["position"]))
-                {
-                    //bt_fw_back_low["normal"] = vectorScale(bt_fw_back_low["normal"], -1);
-                    use_bt_fw = bt_fw_back_low;
-                    iprintln("using low, pos: " + use_bt_fw["position"]);
-                }
-                else
-                {
-                    iprintln("using high");
-                    bt_fw_out_high["normal"] = vectorScale(bt_fw_out_high["normal"], -1);
-                    use_bt_fw = bt_fw_out_high;
-                }
-            }
-            else if(bt_fw_back_low["fraction"] < 1)
-            {
-                iprintln("using low");
-                //bt_fw_back_low["normal"] = vectorScale(bt_fw_back_low["normal"], -1);
-                use_bt_fw = bt_fw_back_low;
-            }
-            else if(bt_fw_out_high["fraction"] < 1)
-            {
-                iprintln("using high");
-                bt_fw_out_high["normal"] = vectorScale(bt_fw_out_high["normal"], -1);
-                use_bt_fw = bt_fw_out_high;
-            }
-            if(isDefined(use_bt_fw))
-            {
-                use_bt_fw["normal"] = vectorNormalize((use_bt_fw["normal"][0], use_bt_fw["normal"][1], 0));
-                forward = use_bt_fw["normal"];
-                fw_vec = use_bt_fw["position"] - bt_down["position"]; //could adjust for the + 1 or -1 on z-axis earlier
-                //fw_dist = vectordot(fw_vec, forward);
-                bt_b_out_low = bullettrace(bt_down["position"] - (0, 0, 1), bt_down["position"] - (0, 0, 1) + vectorScale(forward, -10000), false, undefined);
-                bt_b_back_low = bullettrace(bt_b_out_low["position"], bt_down["position"] - (0, 0, 1), false, undefined);
-                bt_b_out_high = bullettrace(bt_down["position"] + (0, 0, 1), bt_down["position"] + (0, 0, 1) + vectorScale(forward, -10000), false, undefined);
-                use_bt_b = undefined;
-                if(bt_b_back_low["fraction"] < 1 && bt_b_out_high["fraction"] < 1)
-                {
-                    //both back traces hit, decide.
-                    if(distanceSquared(bt_down["position"], bt_b_back_low["position"]) < distanceSquared(bt_down["position"], bt_b_out_high["position"]))
-                    {
-                        //bt_b_back_low["normal"] = vectorScale(bt_b_back_low["normal"], -1);
-                        
-                        use_bt_b = bt_b_back_low;
-                        iprintln("using low, pos: " + use_bt_b["position"]);
-                    }
-                    else
-                    {
-                        bt_b_out_high["normal"] = vectorScale(bt_b_out_high["normal"], -1);
-                        use_bt_b = bt_b_out_high;
-                    }
-                }
-                else if(bt_b_back_low["fraction"] < 1)
-                {
-                    //bt_b_back_low["normal"] = vectorScale(bt_b_back_low["normal"], -1);
-                    use_bt_b = bt_b_back_low;
-                }
-                else if(bt_b_out_high["fraction"] < 1)
-                {
-                    bt_b_out_high["normal"] = vectorScale(bt_b_out_high["normal"], -1);
-                    use_bt_b = bt_b_out_high;
-                }
-                if(isDefined(use_bt_b))
-                {
-                    use_bt_b["normal"] = vectorNormalize((use_bt_b["normal"][0], use_bt_b["normal"][1], 0));
-                    right = (forward[1], forward[0], 0);
-                    bt_r_out_low = bullettrace(bt_down["position"] - (0, 0, 1), bt_down["position"] - (0, 0, 1) + vectorScale(right, 10000), false, undefined);
-                    bt_r_back_low = bullettrace(bt_r_out_low["position"] - (0, 0, 1), bt_down["position"] - (0, 0, 1), false, undefined);
-                    bt_r_out_high = bullettrace(bt_down["position"] + (0, 0, 1), bt_down["position"] + (0, 0, 1) + vectorScale(right, 10000), false, undefined);
+        self iprintln("^1Auto-detect platform failed: no solid brush under you");
+        return undefined;
+    }
+    startOrg = startTrace - (0, 0, 1); // Because has to be *inside* the platform
 
+    // Maximum length of the platform, used to specify the limit of the physics traces
+    maxPlatformLength = 1000;
 
-                    use_bt_r = undefined;
-                    if(bt_r_back_low["fraction"] < 1 && bt_r_out_high["fraction"] < 1)
-                    {
-                        //both back traces hit, decide.
-                        if(distanceSquared(bt_down["position"], bt_r_back_low["position"]) < distanceSquared(bt_down["position"], bt_r_out_high["position"]))
-                        {
-                            //bt_r_back_low["normal"] = vectorScale(bt_r_back_low["normal"], -1);
-                            
-                            use_bt_r = bt_r_back_low;
-                            iprintln("using low, pos: " + use_bt_r["position"]);
-                        }
-                        else
-                        {
-                            bt_r_out_high["normal"] = vectorScale(bt_r_out_high["normal"], -1);
-                            use_bt_r = bt_r_out_high;
-                        }
-                    }
-                    else if(bt_r_back_low["fraction"] < 1)
-                    {
-                        //bt_r_back_low["normal"] = vectorScale(bt_r_back_low["normal"], -1);
-                        use_bt_r = bt_r_back_low;
-                    }
-                    else if(bt_r_out_high["fraction"] < 1)
-                    {
-                        bt_r_out_high["normal"] = vectorScale(bt_r_out_high["normal"], -1);
-                        use_bt_r = bt_r_out_high;
-                    }
-                    if(isDefined(use_bt_r))
-                    {
-                        use_bt_r["normal"] = vectorNormalize((use_bt_r["normal"][0], use_bt_r["normal"][1], 0));
-                        bt_l_out_low = bullettrace(bt_down["position"] - (0, 0, 1), bt_down["position"] - (0, 0, 1) + vectorScale(right, -10000), false, undefined);
-                        bt_l_back_low = bullettrace(bt_l_out_low["position"] - (0, 0, 1), bt_down["position"] - (0, 0, 1), false, undefined);
-                        bt_l_out_high = bullettrace(bt_down["position"] + (0, 0, 1), bt_down["position"] + (0, 0, 1) + vectorScale(right, -10000), false, undefined);
-                        use_bt_l = undefined;
-                        if(bt_l_back_low["fraction"] < 1 && bt_l_out_high["fraction"] < 1)
-                        {
-                            //both back traces hit, decide.
-                            if(distanceSquared(bt_down["position"], bt_l_back_low["position"]) < distanceSquared(bt_down["position"], bt_l_out_high["position"]))
-                            {
-                                //bt_l_back_low["normal"] = vectorScale(bt_l_back_low["normal"], -1);
-                                
-                                use_bt_l = bt_l_back_low;
-                                iprintln("using low, pos: " + use_bt_l["position"]);
-                            }
-                            else
-                            {
-                                bt_l_out_high["normal"] = vectorScale(bt_l_out_high["normal"], -1);
-                                use_bt_l = bt_l_out_high;
-                            }
-                        }
-                        else if(bt_l_back_low["fraction"] < 1)
-                        {
-                            //bt_l_back_low["normal"] = vectorScale(bt_l_back_low["normal"], -1);
-                            use_bt_l = bt_l_back_low;
-                        }
-                        else if(bt_l_out_high["fraction"] < 1)
-                        {
-                            bt_l_out_high["normal"] = vectorScale(bt_l_out_high["normal"], -1);
-                            use_bt_l = bt_l_out_high;
-                        }
-                        if(isDefined(use_bt_l))
-                        {
-                            use_bt_l["normal"] = vectorNormalize((use_bt_l["normal"][0], use_bt_l["normal"][1], 0));
-                            self.plat = spawnStruct();
-                            //self.plat.position = vectorScale(use_bt_fw["position"], 0.5) + vectorScale(use_bt_b["position"], 0.5);
-                            self.plat.fw = forward;
-                            self.plat.fw_dist = abs(vectorDot(use_bt_fw["position"] - use_bt_b["position"], forward));
-                            self.plat.rg = right;
-                            self.plat.rg_dist = abs(vectorDot(use_bt_r["position"] - use_bt_l["position"], right));
-                            fw = vectorDot(forward, use_bt_fw["position"]);
-                            b = vectorDot(forward, use_bt_b["position"]);
-                            r = vectorDot(right, use_bt_r["position"]);
-                            l = vectorDot(right, use_bt_l["position"]);
-                            fwb = (fw + b) / 2;
-                            lr = (l + r) / 2;
-                            self.plat.position = vectorScale(forward, fwb) + vectorScale(right, lr) + (0, 0, bt_down["position"][2] - 1);
-                            self.plat.height = bt_down["position"][2] + 10;
-                            return;
-                        }
-                    }
-                }
-                else
-                {
-                    self iprintln("dunno 2");
-                }
-            }
-            else
-            {
-                self iprintln("dunno 1");
-            }
+    // Forward
+    forwardAngles = (0, int(self getPlayerAngles()[1]), 0);
+    forwardVector = anglesToForward(forwardAngles);
+    forwardScaledVector = vectorScale(forwardVector, maxPlatformLength);
+    forwardNormalizedVector = vectorScale(forwardVector, 1); // TODO: is this normalized or unity?
+
+    // Right
+    rightVector = anglesToRight(forwardAngles);
+    rightScaledVector = vectorScale(rightVector, maxPlatformLength);
+    rightNormalizedVector = vectorScale(rightVector, 1);
+
+    // Backwards
+    backwardAngles = (0, int(forwardAngles[1] + 180) % 360, 0);
+    backwardVector = anglesToForward(backwardAngles);
+    backwardScaledVector = vectorScale(backwardVector, maxPlatformLength);
+    backwardNormalizedVector = vectorScale(backwardVector, 1);
+
+    // Left
+    leftAngles = (0, int(forwardAngles[1] + 90) % 360, 0);
+    leftVector = anglesToForward(leftAngles);
+    leftScaledVector = vectorScale(leftVector, maxPlatformLength);
+    leftNormalizedVector = vectorScale(leftVector, 1);
+
+    // These will be looped through to determine a point on each side of the rectangular platform
+    scaledDirections = [];
+    normalizedDirections = [];
+    dirStrings = [];
+    scaledDirections[0] = forwardScaledVector;
+    normalizedDirections[0] = forwardNormalizedVector;
+    dirStrings[0] = "forward";
+    scaledDirections[1] = rightScaledVector;
+    normalizedDirections[1] = rightNormalizedVector;
+    dirStrings[1] = "right";
+    scaledDirections[2] = backwardScaledVector;
+    normalizedDirections[2] = backwardNormalizedVector;
+    dirStrings[2] = "backward";
+    scaledDirections[3] = leftScaledVector;
+    normalizedDirections[3] = leftNormalizedVector;
+    dirStrings[3] = "left";
+
+    points = []; // To store results
+    for (i = 0; i < scaledDirections.size; i++) // Rectangles have 4 sides
+    {
+        // Start a trace from the point in the platform under the player to the max distance ahead
+        trace = physicsTrace(startOrg, startOrg + scaledDirections[i]);
+        if (!isDefined(trace))
+        { 
+            self iprintln("^1Auto-detect platform failed: " + dirStrings[i] + " failed (way there)");
+            return undefined;
         }
-        else
-        {
-            self iprintln("plat is not level");
-            return;
-        }
-    }
-}
 
-whileAlive()
-{
-    if(isDefined(self.plat) && self isOnGround())
-    {
-        if(self.origin[2] > self.plat.position[2] && self.origin[2] < self.plat.position[2] + self.plat.height)
+        // Now trace back, so we hit the platform
+        trace = physicsTrace(trace + normalizedDirections[i], startOrg);
+        if (!isDefined(trace))
         {
-            vec = self.origin - self.plat.position;
-            fw_count = vectordot(vec, self.plat.fw);
-            rg_count = vectorDot(vec, self.plat.rg);
-            if(abs(fw_count) < self.plat.fw_dist && abs(rg_count) < self.plat.rg_dist)
-            {
-                if(!isDefined(self.onPlat))
-                {
-                    self.onPlat = true;
-                    self iprintln("on plat");
-                }
-                return;
-            }
+            self iprintln("^1Auto-detect platform failed: " + dirStrings[i] + " (way back)");
+            return undefined;
         }
+
+        points[i] = trace;
     }
-    if(isDefined(self.onPlat))
-    {
-        self.onPlat = undefined;
-        self iprintln("off plat");
-    }
+
+    // The 4 points are stored. Calculate the corners of the rectangle now, so those can be used as coordinates for checkpoint
+    lenFront = (points[0] - startOrg); // [0] is forward
+    lenBehind = (points[2] - startOrg); // [2] is backward
+    lenRight = (points[1] - startOrg); // [1] is right
+    lenLeft = (points[3] - startOrg); // [3] is left
+
+    // Now we can calculate the 4 origins/vertices that make up this rectangular platform:
+    orgs = [];
+    orgs[0] = startOrg + lenFront + lenLeft;
+    orgs[1] = startOrg + lenFront + lenRight;
+    orgs[2] = startOrg + lenBehind + lenRight;
+    orgs[3] = startOrg + lenBehind + lenLeft;
+
+    self iprintln("^2Auto-detected rectangular platform: " + orgs[0] + ", " + orgs[1] + ", " + orgs[2] + ", " + orgs[3]);
+    return orgs;
 }
-*/

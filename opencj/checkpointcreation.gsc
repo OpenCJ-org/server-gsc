@@ -90,6 +90,22 @@ _onCommandCheckpoint(args)
         {
             self _addHeight(args);
         }
+        else if (args[0] == "detect")
+        {
+            orgs = self openCJ\platformDetect::getRectangularPlatformOrgs();
+            if (isDefined(orgs))
+            {
+                // Remove existing orgs added by player
+                self _clearOrgs();
+
+                // Add newly detected orgs
+                for (i = 0; i < orgs.size; i++)
+                {
+                    self _addOrg(orgs[i]);
+                }
+                self _updateCpcHud();
+            }
+        }
         /*
         else if ((args[0] == "remove") || (args[0] == "delete") || (args[0] == "del"))
         {
@@ -250,7 +266,7 @@ _resetCheckpoint()
 {
     self.cpcPrevCheckpoint = self.cpcCheckpoint;
 
-    self _clearIndicators();
+    self _clearOrgs();
     self.cpcCheckpoint = undefined;
 }
 
@@ -615,7 +631,7 @@ _setupNewCheckpoint()
 _setCurrentCheckpoint(orgs, isInAir, height, parent, isFinish, ele, anyFPS, doubleRPG)
 {
     self.cpcPrevCheckpoint = self.cpcCheckpoint; // "Backup" for reverting last command
-    self _clearIndicators();
+    self _clearOrgs();
 
     self.cpcCheckpoint = spawnStruct();
     self.cpcCheckpoint.isInAir = isInAir;
@@ -821,7 +837,7 @@ _moveOrg(args)
 }
 
 
-_clearIndicators()
+_clearOrgs()
 {
     if (!isDefined(self.cpcCheckpoint) || !isDefined(self.cpcCheckpoint.orgs))
     {
