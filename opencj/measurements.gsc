@@ -31,7 +31,7 @@ RPGMeasurement(calledByRPGFired, eventTime)
 
     // Determine RPG angle string
     angleStr = undefined;
-    if (self openCJ\settings::getSetting("rpgangle"))
+    if (self openCJ\settings::getSetting("rpgangle") && isDefined(self.rpgAngle))
     {
         if (self.rpgAngle == 85)
         {
