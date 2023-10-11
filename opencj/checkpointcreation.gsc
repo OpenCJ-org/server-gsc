@@ -86,9 +86,9 @@ _onCommandCheckpoint(args)
         {
             self _resetCheckpoint(args);
         }
-        else if (args[0] == "addheight")
+        else if (args[0] == "groundent")
         {
-            self _addHeight(args);
+            self _setEntity(self getGroundEntity());
         }
         else if (args[0] == "detect")
         {
@@ -177,64 +177,6 @@ isCreatingCheckpoints()
     return self.cpcIsCreating;
 }
 
-_addHeight(args)
-{
-    if (args.size < 2)
-    {
-        self sendLocalChatMessage("Missing argument: height value", true, false);
-        return;
-    }
-
-    if (!isValidInt(args[1]))
-    {
-        self sendLocalChatMessage("Invalid argument, expected height value", true, false);
-        return;
-    }
-
-    val = int(args[1]);
-    if (val == 0)
-    {
-        // What..
-        return;
-    }
-
-    if (!isDefined(self.cpcCheckpoint.orgs) || (self.cpcCheckpoint.orgs.size == 0))
-    {
-        self sendLocalChatMessage("There are no origins to increase in height");
-        return;
-    }
-
-    minTotalHeight = 1;
-    maxTotalHeight = 500;
-    newHeight = self.cpcCheckpoint.height + val;
-    if (newHeight < minTotalHeight)
-    {
-        newHeight = minTotalHeight;
-    }
-    else if (newHeight > maxTotalHeight)
-    {
-        newHeight = maxTotalHeight;
-    }
-
-    // Height remained unchanged due to limit?
-    if (newHeight == self.cpcCheckpoint.height)
-    {
-        if (val < 0) // Height decrease
-        {
-            self sendLocalChatMessage("Height is already at minimum value (" + minTotalHeight + ")", true, false);
-        }
-        else if (val > 0) // Height increase
-        {
-            self sendLocalChatMessage("Height is already at maximum value (" + maxTotalHeight + ")", true, false);
-        }
-        return;
-    }
-
-    self.cpcCheckpoint.height = newHeight;
-    self _refreshIndicators();
-    //self sendLocalChatMessage("Height modified by: " + val, false, false);
-}
-
 _pickOrg()
 {
     if (!self.cpcIsCreating)
@@ -245,6 +187,12 @@ _pickOrg()
     if (isDefined(self.cpcCheckpoint.orgs) && (self.cpcCheckpoint.orgs.size >= 8))
     {
         self sendLocalChatMessage("You've selected the maximum number of corners", true, false);
+        return;
+    }
+
+    if (isDefined(self.cpcCheckpoint.orgs) && isDefined(self.cpcCheckpoint.entity) && (self.cpcCheckpoint.orgs.size >= 1))
+    {
+        self sendLocalChatMessage("Entity-bound checkpoints only accept one offset", true, false);
         return;
     }
 
@@ -310,27 +258,25 @@ _handleValuelessProperty(arg)
     {
         self.cpcCheckpoint.isFinish = !self.cpcCheckpoint.isFinish; // Checkpoint is a finish checkpoint
     }
+    else if (arg == "clearparents")
+    {
+        self _clearParents();
+    }
     else
     {
         self sendLocalChatMessage("Unknown argument: " + arg + ", or expected a value", true, false);
         return false;
     }
 
+    self _updateCpcHud();
     return true;
 }
 
 _handleValueProperty(arg, val) // Property with a value
 {
-    if (arg == "height")
+    if (arg == "addparent")
     {
-        if (!self _setHeight(val))
-        {
-            return false; // Function will have sent an error message
-        }
-    }
-    else if ((arg == "setparent") || (arg == "parent"))
-    {
-        if (!self _setParent(val))
+        if (!self _addParent(val))
         {
             return false; // Function will have sent an error message
         }
@@ -341,10 +287,11 @@ _handleValueProperty(arg, val) // Property with a value
         return false;
     }
 
+    self _updateCpcHud();
     return true;
 }
 
-_setParent(val)
+_addParent(val)
 {
     if (!isValidInt(val) || (int(val) < 0))
     {
@@ -352,27 +299,23 @@ _setParent(val)
         return false;
     }
 
-    self.cpcCheckpoint.parent = int(val);
+    if (!isDefined(self.cpcCheckpoint.parents))
+    {
+        self.cpcCheckpoint.parents = [];
+    }
+    self.cpcCheckpoint.parents[self.cpcCheckpoint.parents.size] = int(val);
+
     return true;
 }
 
-_setHeight(val)
+_clearParents()
 {
-    if (!isValidInt(val))
-    {
-        self sendLocalChatMessage("That's not a valid integer", true, false);
-        return false;
-    }
+    self.cpcCheckpoint.parents = undefined;
+}
 
-    intVal = int(val);
-    minHeight = 1;
-    maxHeight = 500;
-    if ((val < minHeight) || (val >= maxHeight))
-    {
-        self sendLocalChatMessage("Please enter a value between " + minHeight + " and " + maxHeight, true, false);
-        return false;
-    }
-    self.cpcCheckpoint.height = intVal;
+_setEntity(ent)
+{
+    self.cpcCheckpoint.entity = ent; // If undefined, then this clears it.
     return true;
 }
 
@@ -514,14 +457,32 @@ _selectCheckpointByIndex(idx) // Select a checkpoint from the server C side arra
     
     orgs = self cpCreation_getOrgs();
     isInAir = self cpCreation_getIsInAir();
-    height = self cpCreation_getHeight();
-    parent = self cpCreation_getParent();
+    entTargetName = self cpCreation_getEntityName();
+    ent = undefined;
+    if (isDefined(entTargetName))
+    {
+        entIndex = self cpCreation_getEntityIndex();
+        entArray = getEntArray(entTargetName, "targetname");
+        if (isDefined(entArray) && (entArray.size > 0))
+        {
+            if (entArray.size > entIndex)
+            {
+                ent = entArray[entIndex];
+            }
+            else
+            {
+                printf("WARNING: cpc entityIndex (" + entIndex + ") is out of entity range for entArray: " + entTargetName + "\n");
+                ent = entArray[0];
+            }
+        }
+    }
+    parents = self cpCreation_getParents();
     isFinish = self cpCreation_getIsFinish();
     allowEle = self cpCreation_getAllowEle();
     allowAnyFPS = self cpCreation_getAllowAnyFPS();
     allowDoubleRPG = self cpCreation_getAllowDoubleRPG();
 
-    self _setCurrentCheckpoint(orgs, isInAir, height, parent, isFinish, allowEle, allowAnyFPS, allowDoubleRPG);
+    self _setCurrentCheckpoint(orgs, isInAir, ent, parents, isFinish, allowEle, allowAnyFPS, allowDoubleRPG);
 }
 
 _clearAllCheckpoints()
@@ -623,20 +584,24 @@ _setupNewCheckpoint()
 {
     // onGround by default, and do not allow anything special (such as ele, anyFPS, doubleRPG)
     // This sets parent to last created checkpoint by default
-    defaultHeight = 100;
-    self _setCurrentCheckpoint(undefined, false, defaultHeight, self.cpcLastIdx, false, false, false, false);
+    parents = undefined;
+    if (isDefined(self.cpcLastIdx))
+    {
+        parents = [];
+        parents[0] = self.cpcLastIdx;
+    }
+    self _setCurrentCheckpoint(undefined, false, undefined, parents, false, false, false, false);
 }
 
 // These functions make it immediately obvious if one of the functions in this file doesn't properly fill in all values
-_setCurrentCheckpoint(orgs, isInAir, height, parent, isFinish, ele, anyFPS, doubleRPG)
+_setCurrentCheckpoint(orgs, isInAir, ent, parents, isFinish, ele, anyFPS, doubleRPG)
 {
     self.cpcPrevCheckpoint = self.cpcCheckpoint; // "Backup" for reverting last command
     self _clearOrgs();
 
     self.cpcCheckpoint = spawnStruct();
     self.cpcCheckpoint.isInAir = isInAir;
-    self.cpcCheckpoint.height = height; // Before orgs, because _addOrg uses height too
-    self.cpcCheckpoint.parent = parent;
+    self.cpcCheckpoint.parents = parents;
     self.cpcCheckpoint.isFinish = isFinish;
     self.cpcCheckpoint.allowEle = ele;
     self.cpcCheckpoint.allowAnyFPS = anyFPS;
@@ -666,11 +631,21 @@ _confirmCheckpoint() // Called when user wants to confirm the current checkpoint
         {
             self cpCreation_addOrg(self.cpcCheckpoint.orgs[i]);
         }
-        self cpCreation_setIsInAir(self.cpcCheckpoint.isInAir);
-        self cpCreation_setHeight(self.cpcCheckpoint.height);
-        if (isDefined(self.cpcCheckpoint.parent))
+        // Checkpoint could have an entity
+        if (isDefined(self.cpcCheckpoint.entity))
         {
-            self cpCreation_setParent(self.cpcCheckpoint.parent);
+            entTargetName = self.cpcCheckpoint.entity.targetName;
+            numOfEnt = findNumOfEnt(self.cpcCheckpoint.entity);
+            self cpCreation_setEntity(entTargetName, numOfEnt);
+        }
+
+        self cpCreation_setIsInAir(self.cpcCheckpoint.isInAir);
+        if (isDefined(self.cpcCheckpoint.parents))
+        {
+            for (i = 0; i < self.cpcCheckpoint.parents.size; i++)
+            {
+                self cpCreation_addParent(self.cpcCheckpoint.parents[i]);
+            }
         }
         self cpCreation_setIsFinish(self.cpcCheckpoint.isFinish);
         self cpCreation_setAllowEle(self.cpcCheckpoint.allowEle);
@@ -696,7 +671,7 @@ _confirmCheckpoint() // Called when user wants to confirm the current checkpoint
 
 _validateCheckpoint() // Helper function to determine if the checkpoint can be confirmed as per the user's request
 {
-    // TODO: can we support concave + convex? If not, validate that checkpoint is concave
+    // TODO: validate that checkpoint is convex
 
     // Validate that checkpoint is fully filled in (at least 3 origins)
     minOrgs = 3;
@@ -714,26 +689,51 @@ _validateCheckpoint() // Helper function to determine if the checkpoint can be c
     return true;
 }
 
-_addOrg(origin)
+_getLowestAndHighestPoint()
 {
-    lowestPoint = undefined;
     if (!isDefined(self.cpcCheckpoint.orgs))
     {
-        self.cpcCheckpoint.orgs = [];
-        lowestPoint = origin[2];
+        return undefined;
+    }
+
+    lowestPoint = self.cpcCheckpoint.orgs[0][2]; // Z
+    highestPoint = self.cpcCheckpoint.orgs[0][2];
+    for (i = 1; i < self.cpcCheckpoint.orgs.size; i++)
+    {
+        if (self.cpcCheckpoint.orgs[i][2] < lowestPoint)
+        {
+            lowestPoint = self.cpcCheckpoint.orgs[i][2];
+        }
+
+        if (self.cpcCheckpoint.orgs[i][2] > highestPoint)
+        {
+            highestPoint = self.cpcCheckpoint.orgs[i][2];
+        }
+    }
+
+    points = [];
+    points[0] = lowestPoint;
+    points[1] = highestPoint;
+    return points;
+}
+
+_addOrg(origin)
+{
+    lowestAndHighest = self _getLowestAndHighestPoint();
+    lowestPoint = undefined;
+    highestPoint = undefined;
+    if (isDefined(lowestAndHighest))
+    {
+        lowestPoint = lowestAndHighest[0];
+        highestPoint = lowestAndHighest[1];
     }
     else
     {
-        lowestPoint = self.cpcCheckpoint.orgs[0][2]; // Z
-        for (i = 1; i < self.cpcCheckpoint.orgs.size; i++)
-        {
-            if (self.cpcCheckpoint.orgs[i][2] < lowestPoint)
-            {
-                lowestPoint = self.cpcCheckpoint.orgs[i][2];
-            }
-        }
+        self.cpcCheckpoint.orgs = [];
+        lowestPoint = origin[2];
+        highestPoint = origin[2];
     }
-    origin = (origin[0], origin[1], lowestPoint);
+
     self.cpcCheckpoint.orgs[self.cpcCheckpoint.orgs.size] = origin;
 
     if (!isDefined(self.cpcCheckpoint.bottomIndicators))
@@ -741,12 +741,17 @@ _addOrg(origin)
         self.cpcCheckpoint.bottomIndicators = [];
         self.cpcCheckpoint.topIndicators = [];
     }
+
     idx = self.cpcCheckpoint.bottomIndicators.size;
-    self.cpcCheckpoint.bottomIndicators[idx] = spawn("script_model", origin);
+    lowestOrigin = (origin[0], origin[1], lowestPoint);
+    highestOrigin = (origin[0], origin[1], highestPoint);
+    self.cpcCheckpoint.bottomIndicators[idx] = spawn("script_model", lowestOrigin);
     self.cpcCheckpoint.bottomIndicators[idx] hide();
     self.cpcCheckpoint.bottomIndicators[idx] showToPlayer(self);
     self.cpcCheckpoint.bottomIndicators[idx] setModel(level.cpcIndicatorModel);
-    self.cpcCheckpoint.topIndicators[idx] = spawn("script_model", (origin[0], origin[1], origin[2] + self.cpcCheckpoint.height));
+
+    // The following code may spawn the bottom and top indicators inside each other if the checkpoint currently has no height - we don't really care
+    self.cpcCheckpoint.topIndicators[idx] = spawn("script_model", highestOrigin);
     self.cpcCheckpoint.topIndicators[idx] hide();
     self.cpcCheckpoint.topIndicators[idx] showToPlayer(self);
     self.cpcCheckpoint.topIndicators[idx] setModel(level.cpcIndicatorModel);
@@ -858,11 +863,17 @@ _refreshIndicators()
         return;
     }
 
-    for (i = 0; i < self.cpcCheckpoint.orgs.size; i++)
+    lowestAndHighestPoint = self _getLowestAndHighestPoint();
+    lowestPoint = undefined;
+    highestPoint = undefined;
+    if (isDefined(lowestAndHighestPoint))
     {
-        bOrg = self.cpcCheckpoint.orgs[i];
-        self.cpcCheckpoint.bottomIndicators[i] setEntOrigin((bOrg[0], bOrg[1], bOrg[2]));
-        self.cpcCheckpoint.topIndicators[i] setEntOrigin((bOrg[0], bOrg[1], bOrg[2] + self.cpcCheckpoint.height));
+        for (i = 0; i < self.cpcCheckpoint.orgs.size; i++)
+        {
+            bOrg = self.cpcCheckpoint.orgs[i];
+            self.cpcCheckpoint.bottomIndicators[i] setEntOrigin((bOrg[0], bOrg[1], lowestPoint));
+            self.cpcCheckpoint.topIndicators[i] setEntOrigin((bOrg[0], bOrg[1], highestPoint));
+        }
     }
 }
 
@@ -881,10 +892,17 @@ _updateCpcHud()
     hudText = "Creating checkpoint (" + self.cpcRoute + "):\n";
 
     // Parent
-    hudText += "- parentIdx: ";
-    if (isDefined(self.cpcCheckpoint.parent))
+    hudText += "- iParents: ";
+    if (isDefined(self.cpcCheckpoint.parents))
     {
-        hudText += self.cpcCheckpoint.parent;
+        for (i = 0; i < self.cpcCheckpoint.parents.size; i++)
+        {
+            hudText += self.cpcCheckpoint.parents[i];
+            if (i != (self.cpcCheckpoint.parents.size - 1))
+            {
+                hudText += ", ";
+            }
+        }
     }
     else
     {
@@ -905,7 +923,7 @@ _updateCpcHud()
     hudText += "\n";
 
     // Origins
-    hudText += "- origins:   ";
+    hudText += "- #origins: ";
     if (isDefined(self.cpcCheckpoint.orgs))
     {
         hudText += self.cpcCheckpoint.orgs.size;
@@ -916,8 +934,22 @@ _updateCpcHud()
     }
     hudText += "\n";
 
-    // Height
-    hudText += "- height:    " + self.cpcCheckpoint.height + "\n";
+    // Entity
+    hudText += "- entity:    ";
+    if (isDefined(self.cpcCheckpoint.entity))
+    {
+        entNum = findNumOfEnt(self.cpcCheckpoint.entity);
+        if (!isDefined(entNum))
+        {
+            entNum = "?"; // Better indicate if it's unknown
+        }
+        hudText += self.cpcCheckpoint.entity.targetName + "[" + entNum + "]";
+    }
+    else
+    {
+        hudText += "n/a";
+    }
+    hudText += "\n";
 
     // inAir
     hudText += "- inAir:      ";

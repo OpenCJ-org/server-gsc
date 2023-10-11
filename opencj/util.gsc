@@ -571,3 +571,16 @@ G_LocalizedStringIndex(string)
 {
     return G_FindConfigstringIndex(string, 1310, 256); // TODO: last 256 isn't actually a param in C code...
 }
+
+findNumOfEnt(ent)
+{
+    ents = getEntArray(ent.targetName, "targetname");
+    for(i = 0; i < ents.size; i++)
+    {
+        if(ents[i] == ent)
+        {
+            return i;
+        }
+    }
+    return undefined;
+}

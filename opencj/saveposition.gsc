@@ -204,19 +204,6 @@ printCanLoadError(error)
     }
 }
 
-_findNumOfEnt(ent)
-{
-    ents = getEntArray(ent.targetName, "targetname");
-    for(i = 0; i < ents.size; i++)
-    {
-        if(ents[i] == ent)
-        {
-            return i;
-        }
-    }
-    return undefined;
-}
-
 setSavedPosition()
 {
     groundEntity = self getGroundEntity();
@@ -232,7 +219,7 @@ setSavedPosition()
         angles = angles - (0, groundEntity.angles[1], 0);
         entNum = groundEntity getEntityNumber();
         entTargetName = groundEntity.targetName;
-        numOfEnt = _findNumOfEnt(groundEntity);
+        numOfEnt = findNumOfEnt(groundEntity);
     }
     else
     {
