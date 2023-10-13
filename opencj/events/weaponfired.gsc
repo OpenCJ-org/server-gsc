@@ -1,4 +1,4 @@
-main(weapon, name, time)
+main(name, time)
 {
     self thread openCJ\measurements::onWeaponFired();
 }
