@@ -75,7 +75,7 @@ _detectHalfBeat()
             // User doesn't allow halfbeat, so start monitoring for it
             if (!fwdOrBackButtonPressed && !self.prevForwardOrBackButtonPressed && strafeButtonPressed)
             {
-                minSpeedThreshold = 250; // Don't apply reduction factor when lower than this x or y velocity
+                minSpeedThreshold = 275; // Don't apply reduction factor when lower than this x or y velocity
                 minSpeedGainThreshold = 10; // Don't apply reduction factor when gaining speed less than this number.
                 // ^ this is to ensure a normal hold A tech is not or barely affected, while a halfbeat hold A tech is punished.
                 if (isDefined(self.hbPrevVel) && ((abs(velocity[0]) >= minSpeedThreshold) || (abs(velocity[1]) >= minSpeedThreshold)))
