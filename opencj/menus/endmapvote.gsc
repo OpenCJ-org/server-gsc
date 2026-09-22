@@ -76,8 +76,15 @@ onPlayerConnected()
     {
         nr = (i + 1); // Dvars for this start at 1
         self setClientCvar(level.endVote["prefix"] + "votes" + nr, level.endVote["votes"][i]);
-        self setClientCvar(level.endVote["prefix"] + "mapname" + nr, level.endVote["maps"][i]);
-        self setClientCvar(level.endVote["prefix"] + "mapimage" + nr, "loadscreen_" + level.endVote["maps"][i]);
+        mapName = "";
+        mapImage = "";
+        if (isDefined(level.endVote["maps"][i]))
+        {
+            mapName = level.endVote["maps"][i];
+            mapImage = "loadscreen_" + mapName;
+        }
+        self setClientCvar(level.endVote["prefix"] + "mapname" + nr, mapName);
+        self setClientCvar(level.endVote["prefix"] + "mapimage" + nr, mapImage);
     }
 
     if (level.endVote["status"] > 0)
@@ -115,6 +122,12 @@ changeMap(mapName)
 
 onTimeLimitReached() // Called multiple times due to map vote
 {
+    if (level.endVote["maps"].size == 0)
+    {
+        changeMap(getCvar("mapname"));
+        return;
+    }
+
     level.endVote["status"]++;
 
     if (level.endVote["status"] == 1) // Start voting
@@ -133,7 +146,7 @@ onTimeLimitReached() // Called multiple times due to map vote
         winnerIdx = level.endVote["winning"];
         if (!isDefined(winnerIdx))
         {
-            winnerIdx = randomIntRange(0, level.endVote["nrMaps"]);
+            winnerIdx = randomIntRange(0, level.endVote["maps"].size);
         }
 
         changeMap(level.endVote["maps"][winnerIdx]);
@@ -181,7 +194,7 @@ removeVote(mapIdx) // When a player disconnected
 onVoteChanged(val)
 {
     // Only when end map vote is active and the vote is valid
-    if ((val < 1) || (val > level.endVote["nrMaps"]) || (level.endVote["status"] <= 0))
+    if ((val < 1) || (val > level.endVote["maps"].size) || (level.endVote["status"] <= 0))
     {
         return;
     }

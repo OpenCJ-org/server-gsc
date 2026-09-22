@@ -84,47 +84,51 @@ fetchUpdatedData()
 
     finishCPIds = getEndCheckpointIdsForRoute(routeName);
 
-    // Based on player's current filter (ele, any %, tas, fps) and sorting (time, rpg, loads, date), asc/desc criteria:
-    // - grab up to 10 rows (leaderboard pages show 10)
-    // the information we need is stored across multiple tables as follows:
-    // - checkPointStatistics has explosiveJumps, loadCount, timePlayed, and all filters (any%, ele, tas, fps)
-    // - playerRuns has runID that we can use to match a playerID which in turn gives us the playername
-    // - playerRuns has finishTimestamp which we can use as date
-    // - playerInformation has playerName
-    // the more difficult part of the query is the ROW_NUMBER() with PARTITION and rowNr = 1, which is used to make sure we only obtain one run per playerID
-    sortStr = getSortStr(self.currentBoard["sortBy"], self.currentBoard["sort"]);
-    query = "SELECT COUNT(*) OVER() AS totalNr, b.playerName, a.timePlayed, a.explosiveJumps, a.loadCount, a.finishTimeStamp, a.FPSMode, a.ele, a.anyPct, a.hb, a.hardTas FROM (" +
-                "SELECT pr.playerID, cs.timePlayed, cs.explosiveJumps, cs.loadCount, pr.finishTimeStamp, pr.FPSMode, pr.ele, pr.anyPct, pr.hb, pr.hardTas, cs.runID, cs.saveCount, (" + 
-                    "ROW_NUMBER() OVER (PARTITION BY pr.playerID ORDER BY " + sortStr +
-                ")) AS rn " + 
-                "FROM checkpointStatistics cs INNER JOIN playerRuns pr ON pr.runID = cs.runID " + 
-                "WHERE cs.cpID IN " + finishCPIds +
-                " AND pr.finishcpID IS NOT NULL" +
-                " AND pr.finishTimeStamp IS NOT NULL" +
-                " AND pr.ele <= " + self.currentBoard["filter"]["ele"] +
-                " AND pr.anyPct <= " + self.currentBoard["filter"]["any"] +
-                " AND pr.hb <= " + self.currentBoard["filter"]["hb"] + 
-                " AND pr.hardTAS <= " + self.currentBoard["filter"]["tas"] +
-                " AND pr.FPSMode IN " + openCJ\menus\board_base::getFPSModeStr(self.currentBoard["filter"]["fps"]) +
-            " ) a INNER JOIN playerInformation b ON a.playerID = b.playerID " +
-            "WHERE a.rn = 1 ORDER BY " + sortStr +
-            " LIMIT " + self.currentBoard["maxEntriesPerPage"] +
-            " OFFSET " + openCJ\menus\board_base::getOffsetFromPage(self.currentBoard["page"]["cur"], self.currentBoard["maxEntriesPerPage"]);
+    rows = [];
+    if (isDefined(finishCPIds))
+    {
+        // Based on player's current filter (ele, any %, tas, fps) and sorting (time, rpg, loads, date), asc/desc criteria:
+        // - grab up to 10 rows (leaderboard pages show 10)
+        // the information we need is stored across multiple tables as follows:
+        // - checkPointStatistics has explosiveJumps, loadCount, timePlayed, and all filters (any%, ele, tas, fps)
+        // - playerRuns has runID that we can use to match a playerID which in turn gives us the playername
+        // - playerRuns has finishTimestamp which we can use as date
+        // - playerInformation has playerName
+        // the more difficult part of the query is the ROW_NUMBER() with PARTITION and rowNr = 1, which is used to make sure we only obtain one run per playerID
+        sortStr = getSortStr(self.currentBoard["sortBy"], self.currentBoard["sort"]);
+        query = "SELECT COUNT(*) OVER() AS totalNr, b.playerName, a.timePlayed, a.explosiveJumps, a.loadCount, a.finishTimeStamp, a.FPSMode, a.ele, a.anyPct, a.hb, a.hardTas FROM (" +
+                    "SELECT pr.playerID, cs.timePlayed, cs.explosiveJumps, cs.loadCount, pr.finishTimeStamp, pr.FPSMode, pr.ele, pr.anyPct, pr.hb, pr.hardTas, cs.runID, cs.saveCount, (" +
+                        "ROW_NUMBER() OVER (PARTITION BY pr.playerID ORDER BY " + sortStr +
+                    ")) AS rn " +
+                    "FROM checkpointStatistics cs INNER JOIN playerRuns pr ON pr.runID = cs.runID " +
+                    "WHERE cs.cpID IN " + finishCPIds +
+                    " AND pr.finishcpID IS NOT NULL" +
+                    " AND pr.finishTimeStamp IS NOT NULL" +
+                    " AND pr.ele <= " + self.currentBoard["filter"]["ele"] +
+                    " AND pr.anyPct <= " + self.currentBoard["filter"]["any"] +
+                    " AND pr.hb <= " + self.currentBoard["filter"]["hb"] +
+                    " AND pr.hardTAS <= " + self.currentBoard["filter"]["tas"] +
+                    " AND pr.FPSMode IN " + openCJ\menus\board_base::getFPSModeStr(self.currentBoard["filter"]["fps"]) +
+                " ) a INNER JOIN playerInformation b ON a.playerID = b.playerID " +
+                "WHERE a.rn = 1 ORDER BY " + sortStr +
+                " LIMIT " + self.currentBoard["maxEntriesPerPage"] +
+                " OFFSET " + openCJ\menus\board_base::getOffsetFromPage(self.currentBoard["page"]["cur"], self.currentBoard["maxEntriesPerPage"]);
 
-    // Example output (pretend there are 10 rows instead of 2 though):
-    // -----------------------------------------------------------------------------------------------------------------------------|
-    // | totalNr | playerName    | timePlayed | explosiveJumps | loadCount | finishTimeStamp     | FPSMode | ele | anyPct | hardTAS |
-    // |----------------------------------------------------------------------------------------------------------------------------|
-    // | 13      | 3xP' Rextrus  | 416800     | 0              | 38        | 2022-09-04 08:22:12 | all     | 0   | 0      | 0       |
-    // |---------|---------------|------------|----------------|-----------|---------------------|---------|-----|--------|---------|
-    // | 13      | Styx|Ridgepig | 657000     | 1              | 69        | 2022-09-04 09:53:58 | all     | 0   | 0      | 0       |
-    // |---------|---------------|------------|----------------|-----------|---------------------|---------|-----|--------|---------|
-    // | ....
+        // Example output (pretend there are 10 rows instead of 2 though):
+        // -----------------------------------------------------------------------------------------------------------------------------|
+        // | totalNr | playerName    | timePlayed | explosiveJumps | loadCount | finishTimeStamp     | FPSMode | ele | anyPct | hardTAS |
+        // |----------------------------------------------------------------------------------------------------------------------------|
+        // | 13      | 3xP' Rextrus  | 416800     | 0              | 38        | 2022-09-04 08:22:12 | all     | 0   | 0      | 0       |
+        // |---------|---------------|------------|----------------|-----------|---------------------|---------|-----|--------|---------|
+        // | 13      | Styx|Ridgepig | 657000     | 1              | 69        | 2022-09-04 09:53:58 | all     | 0   | 0      | 0       |
+        // |---------|---------------|------------|----------------|-----------|---------------------|---------|-----|--------|---------|
+        // | ....
 
-    // Might remain useful for now to print the query
-    printf("Leaderboard query:\n" + query + "\n"); // Debug
+        // Might remain useful for now to print the query
+        printf("Leaderboard query:\n" + query + "\n"); // Debug
 
-    rows = self openCJ\mySQL::mysqlAsyncQuery(query);
+        rows = self openCJ\mySQL::mysqlAsyncQuery(query);
+    }
 
     self.currentBoard["cols"] = []; // Hope this clears the previously used memory
 

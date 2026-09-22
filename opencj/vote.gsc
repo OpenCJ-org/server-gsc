@@ -122,14 +122,14 @@ onPlayerLogin()
         self _setMapVoteImage();
     }
 
-    self _setVoteCooldown();
+    // TODO: when server gets more popular, change back to 60-120
+    self _setVoteCooldown(5);
     self thread menuResponse();
 }
 
-_setVoteCooldown()
+_setVoteCooldown(seconds)
 {
-    // TODO: when server gets more popular, change back to 60-120
-    self.canVoteAt = (getTime() / 1000) + 5; // minutes of vote lockout at start of map and after voting
+    self.canVoteAt = (getTime() / 1000) + seconds;
 }
 
 menuResponse()
@@ -264,7 +264,7 @@ _setupVote(mapName, text, playerEnt)
 
     if (isDefined(playerEnt))
     {
-        playerEnt _setVoteCooldown();
+        playerEnt _setVoteCooldown(2 * 60);
     }
 
     level.vote = spawnStruct();
