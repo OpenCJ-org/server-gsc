@@ -23,29 +23,43 @@ onStartDemo()
 
 }
 
-onRunFinished(cp)
+onRunFinished(cp, filterStr)
 {
     if(self isRunFinished())
     {
-        return;
+        return false;
     }
     if(!self hasRunID())
     {
-        return;
+        return false;
     }
     if(self openCJ\cheating::isCheating())
     {
-        return;
+        return false;
     }
 
-    self.playerRuns_runFinished = true;
+
     cpID = openCJ\checkpoints::getCheckpointID(cp);
     if (!isDefined(cpID))
     {
-        return;
+        return false;
     }
 
     runID = self getRunID();
+    if (!isDefined(filterStr))
+        filterStr = self finishSettings();
+    rows = self openCJ\mySQL::mysqlAsyncQuery("SELECT runFinished(" + runID + ", " + cpID + ", " + filterStr + ", " + self getRunInstanceNumber() + ")");
+    if(!isDefined(rows) || !isDefined(rows[0]) || !isDefined(rows[0][0]))
+    {
+        self iPrintLnBold("Could not save finish. Please reset; no leaderboard result was recorded");
+        return false;
+    }
+    self.playerRuns_runFinished = true;
+    return true;
+}
+
+finishSettings()
+{
     FPSMode = self openCJ\fps::getCurrentFPSMode();
     usedEle = self openCJ\elevate::hasUsedEle();
     usedAnyPct = self openCJ\anyPct::hasAnyPct();
@@ -53,12 +67,7 @@ onRunFinished(cp)
     usedHardTAS = self openCJ\tas::hasHardTAS();
 
     // This is a store procedure in SQL database
-    filterStr = "'" + FPSMode + "'" + ", " + usedEle + ", " + usedAnyPct + ", " + allowHb + ", " + usedHardTAS;
-    rows = self openCJ\mySQL::mysqlAsyncQuery("SELECT runFinished(" + runID + ", " + cpID + ", " + filterStr + ", " + self getRunInstanceNumber() + ")");
-    if(!isDefined(rows) || !isDefined(rows[0]) || !isDefined(rows[0][0]))
-    {
-        self iPrintLnBold("This run was loaded by another instance of your account. Please reset. All progress will not be saved");
-    }
+    return "'" + FPSMode + "'" + ", " + usedEle + ", " + usedAnyPct + ", " + allowHb + ", " + usedHardTAS;
 }
 
 onSpawnPlayer()
@@ -119,7 +128,7 @@ resumeRun()
 stopRun(shouldReset)
 {
     // Resetting a run will stop the current run, create a new run and respawn the player
-    // When stopping a run normally (such as saving it), 
+    // When stopping a run normally (such as saving it),
 
     if(self openCJ\demos::isPlayingDemo())
     {
@@ -224,7 +233,7 @@ archiveRun(runID)
         {
             playerIDSqlStr += "AND playerID = " + self openCJ\login::getPlayerID() + " ";
         }
-        query = "UPDATE playerRuns SET archived = True" + 
+        query = "UPDATE playerRuns SET archived = True" +
                 " WHERE runID = " + runID +
                 playerIDSqlStr;
         printf("DEBUG: executing archiveRun query:\n" + query + "\n");
@@ -309,6 +318,7 @@ restoreRun(runID) // Call this function as a thread
 _clearRunVars()
 {
     // Clear run variables
+    self.playerRuns_runFinishing = false;
     self.playerRuns_runStarted = false;
     self.playerRuns_runPaused = false;
     self.playerRuns_runFinished = false;
@@ -318,6 +328,8 @@ _clearRunVars()
 
 startRun()
 {
+    if (self openCJ\checkpointCreation::isEditing())
+        return;
     if(self isPlayerReady(false) && self hasRunID() && (self.sessionState == "playing") && !self hasRunStarted())
     {
         self.playerRuns_runStarted = true;

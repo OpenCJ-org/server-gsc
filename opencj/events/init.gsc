@@ -60,6 +60,7 @@ main()
     openCJ\measurements::onInit();
 
     openCJ\platformDetect::onInit(); //debug file
+    openCJ\checkpointCreation::onInit();
 
     thread _everyFrame();
 }

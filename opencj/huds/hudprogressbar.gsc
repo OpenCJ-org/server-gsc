@@ -16,9 +16,9 @@ onInit()
     precacheShader(level.progressBarShader);
 }
 
-onCheckpointsChanged()
+onCheckpointsChanged(checkpointPassed)
 {
-    self _updateProgressBar(false);
+    self _updateProgressBar(false, checkpointPassed);
 }
 
 onStartDemo()
@@ -90,8 +90,19 @@ _createProgressBar()
     self.prevProgress = 0;
 }
 
-_updateProgressBar(onFinish)
+_updateProgressBar(onFinish, checkpointPassed)
 {
+    // A state change must replace any remaining checkpoint flash.
+    self notify("progressBarUpdated");
+    self.progressBar fadeOverTime(0.05);
+    if (self openCJ\checkpointCreation::isEditing())
+    {
+        self.progressBar setShader(level.progressBarShader, level.progressBarMaxValue, level.progressBarHeight);
+        self.progressBar.color = (0, 0.8, 1);
+        self.progressBar.alpha = 0.4;
+        self.prevProgress = level.progressBarMaxValue;
+        return;
+    }
     if(!self openCJ\playerRuns::hasRunID() || self openCJ\playerRuns::isRunPaused() || self openCJ\cheating::isCheating())
     {
         progress = level.progressBarMaxValue; // At this point it's more important showing the player that their run is marked as cheated
@@ -158,6 +169,8 @@ _updateProgressBar(onFinish)
                     }
                     self _showProgressBar();
                     self.progressBar scaleOverTime(level.progressBarScaleDuration, progress, level.progressBarHeight);
+                    if (isDefined(checkpointPassed) && checkpointPassed && progress > self.prevProgress)
+                        self thread _flashCheckpoint();
                 }
             }
         }
@@ -170,8 +183,19 @@ _updateProgressBar(onFinish)
     self.prevProgress = progress;
 }
 
+_flashCheckpoint()
+{
+    self endon("disconnect");
+    self endon("progressBarUpdated");
+    self.progressBar.color = (0.2, 1, 0.2);
+    wait 0.25;
+    self.progressBar fadeOverTime(0.4);
+    self.progressBar.color = (1, 1, 1);
+}
+
 _hideProgressBar()
 {
+    self notify("progressBarUpdated");
     self.progressBar.alpha = 0;
 }
 

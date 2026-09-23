@@ -36,6 +36,11 @@ onSavePositionRequest()
 
 onLoadPositionRequest(backwardsAmount)
 {
+    if (self openCJ\checkpointCreation::isEditing())
+    {
+        self.eventQueue["load"] = backwardsAmount;
+        return;
+    }
     self.eventQueue["load"] = self openCJ\savePosition::incrementBackwardsCount(backwardsAmount);
 }
 
@@ -151,7 +156,7 @@ whileAlive()
         {
             eventsCreateQuery += "NULL";
         }
-        
+
     }
     if(!anyEvents)
     {
@@ -273,7 +278,7 @@ _storeFrameToDB(eventsCreateQuery)
                     + eventsCreateQuery + ", "
                     + frameTime
                     + endQuery;
-    
+
     // Let's append these frames to the query
     self openCJ\mySQL::mySQLAsyncLongQueryAppend(self.recordLongQueryID, query);
     self.recordLongQueryRemainingChars -= query.size;
@@ -303,5 +308,5 @@ _executeStoreQuery(queryID)
             break;
         }
     }
-    
+
 }

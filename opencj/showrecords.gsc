@@ -210,16 +210,17 @@ _getRecords(checkpoints, persist, timems)
     //  - only selecting one best run per player (that's what the @prev is for, it compares it to the previous entry as it's sorted by playerID)
 
     query = "SELECT COUNT(*) OVER() AS totalNr, b.playerName, a.timePlayed, a.explosiveJumps, a.loadCount FROM (" +
-                "SELECT pr.playerID, cs.timePlayed, cs.explosiveJumps, cs.loadCount, pr.finishTimeStamp, pr.FPSMode, pr.ele, pr.anyPct, pr.hb, pr.hardTas, cs.runID, cs.saveCount, (" + 
+                "SELECT pr.playerID, cs.timePlayed, cs.explosiveJumps, cs.loadCount, pr.finishTimeStamp, pr.FPSMode, pr.ele, pr.anyPct, pr.hb, pr.hardTas, cs.runID, cs.saveCount, (" +
                     "ROW_NUMBER() OVER (PARTITION BY pr.playerID ORDER BY playerID, " + sortStr +
-                ")) AS rn " + 
-                "FROM checkpointStatistics cs INNER JOIN playerRuns pr ON pr.runID = cs.runID " + 
+                ")) AS rn " +
+                "FROM checkpointStatistics cs INNER JOIN playerRuns pr ON pr.runID = cs.runID " +
                 "WHERE cs.cpID IN " + checkpointString +
                 " AND pr.finishcpID IS NOT NULL" +
                 " AND pr.finishTimeStamp IS NOT NULL" +
+                " AND pr.runID != " + self openCJ\playerRuns::getRunID() +
                 " AND pr.ele <= " + self openCJ\elevate::hasUsedEle() +
                 " AND pr.anyPct <= " + self openCJ\anyPct::hasAnyPct() +
-                " AND pr.hb <= " + self openCJ\halfBeat::isHalfBeatAllowed() + 
+                " AND pr.hb <= " + self openCJ\halfBeat::isHalfBeatAllowed() +
                 " AND pr.hardTAS <= " + self openCJ\tas::hasHardTAS() +
                 " AND pr.FPSMode IN " + openCJ\menus\board_base::getFPSModeStr(self openCJ\fps::getCurrentFPSMode()) +
             " ) a INNER JOIN playerInformation b ON a.playerID = b.playerID " +
@@ -329,6 +330,9 @@ _betterThanRecord(sortType, sortOrder, row, timePlayed, explosiveJumps, loads)
 
 _updateRecords(client, rows, overrideTime, force)
 {
+    // An asynchronous records query may finish after the editor opens.
+    if (client openCJ\checkpointCreation::isEditing())
+        return;
     if(!force && (!isDefined(overrideTime) && isDefined(client.showRecords_persistTime) && client.showRecords_persistTime > getTime()))
     {
         return;

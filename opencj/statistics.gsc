@@ -164,7 +164,7 @@ _updateProgress()
 
 increaseAndGetSaveCount()
 {
-    if(self openCJ\playerRuns::isRunFinished())
+    if(self openCJ\checkpointCreation::isEditing() || self openCJ\playerRuns::isRunFinished())
     {
         return -1;
     }
@@ -191,7 +191,7 @@ onCheckpointsChanged()
 
 onLoadPosition()
 {
-    if(self openCJ\playerRuns::isRunFinished())
+    if(self openCJ\checkpointCreation::isEditing() || self openCJ\playerRuns::isRunFinished())
     {
         return;
     }
@@ -202,7 +202,7 @@ onLoadPosition()
 
 onPlayerDamage(inflictor, attacker, damage, flags, meansOfDeath, weapon, vPoint, vDir, hitLoc, psOffsetTime)
 {
-    if(self openCJ\playerRuns::isRunFinished())
+    if(self openCJ\checkpointCreation::isEditing() || self openCJ\playerRuns::isRunFinished())
     {
         return;
     }
@@ -216,7 +216,7 @@ onPlayerDamage(inflictor, attacker, damage, flags, meansOfDeath, weapon, vPoint,
 
 onGrenadeThrow(nade, name)
 {
-    if(self openCJ\playerRuns::isRunFinished())
+    if(self openCJ\checkpointCreation::isEditing() || self openCJ\playerRuns::isRunFinished())
     {
         return;
     }
@@ -227,7 +227,7 @@ onGrenadeThrow(nade, name)
 
 onJump()
 {
-    if(self openCJ\playerRuns::isRunFinished())
+    if(self openCJ\checkpointCreation::isEditing() || self openCJ\playerRuns::isRunFinished())
     {
         return;
     }
@@ -239,7 +239,7 @@ onJump()
 
 onRPGFired(rpg, name)
 {
-    if(self openCJ\playerRuns::isRunFinished())
+    if(self openCJ\checkpointCreation::isEditing() || self openCJ\playerRuns::isRunFinished())
     {
         return;
     }
@@ -254,8 +254,11 @@ onRPGFired(rpg, name)
             (self.statistics[level.statisticsStrings_lastExplosiveFiredTime] >= self.statistics[level.statisticsStrings_lastJumpTime]))
         {
             self.statistics[level.statisticsStrings_doubleExplosives]++;
-            self iprintlnbold("^1Double rpg detected");
-            self openCJ\cheating::setCheating(true);
+            if (!self openCJ\checkpoints::nextAllowsDoubleRPG())
+            {
+                self iprintlnbold("^1Double rpg detected");
+                self openCJ\cheating::setCheating(true);
+            }
         }
 
         // We aren't on ground, so this counts as an RPG jump
@@ -328,7 +331,7 @@ getSaveCount()
 
 setExplosiveJumps(amount) // RPG jumps, nade jumps
 {
-    if(self openCJ\playerRuns::isRunFinished())
+    if(self openCJ\checkpointCreation::isEditing() || self openCJ\playerRuns::isRunFinished())
     {
         return;
     }
@@ -355,7 +358,7 @@ getExplosiveLaunches()
 
 setDoubleExplosives(amount) // Double RPGs
 {
-    if(self openCJ\playerRuns::isRunFinished())
+    if(self openCJ\checkpointCreation::isEditing() || self openCJ\playerRuns::isRunFinished())
     {
         return;
     }

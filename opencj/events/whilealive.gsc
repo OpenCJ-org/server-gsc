@@ -14,6 +14,11 @@ main()
             {
                 self openCJ\demos::whilePlayingDemo();
             }
+            else if (self openCJ\checkpointCreation::isEditing())
+            {
+                self openCJ\checkpointCreation::processTravelRequests();
+                self openCJ\noclip::whileAlive();
+            }
             else
             {
                 self thread openCJ\checkpoints::whileAlive(); // Has to do a significant loop, so thread this one

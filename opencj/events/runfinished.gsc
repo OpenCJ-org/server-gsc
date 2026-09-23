@@ -1,52 +1,46 @@
 #include openCJ\util;
 
-main(cp, tOffset, route) //tOffset = -50 to 0, offset when cp was actually passed
+main(cp, tOffset, route)
 {
+    self endon("disconnect");
+    self endon("spawned");
     if (self openCJ\playerRuns::isRunPaused())
     {
         self iprintln("^5Finished while paused");
         self openCJ\checkpointPointers::onRunFinished(cp);
         return;
     }
+    if (!self openCJ\playerRuns::hasRunID() || self openCJ\cheating::isCheating())
+        return;
+    cpID = openCJ\checkpoints::getCheckpointID(cp);
+    if (!isDefined(cpID))
+        return;
 
-    cpID = openCJ\checkpoints::getCheckPointID(cp);
-    if (isDefined(cpID))
-    {
-        if(self openCJ\playerRuns::hasRunID())
-        {
-            runID = self openCJ\playerRuns::getRunID();
-
-            // Set player's real finish time
-            self openCJ\playTime::setTimePlayed(self openCJ\playTime::getTimePlayed() + tOffset);
-            timePlayed = self openCJ\playTime::getTimePlayed();
-
-            //self iprintln("Finished run (" + runID + ")");
-            if (!isDefined(route))
-            {
-                route = "<unknown route>";
-            }
-            timeStr = formatTimeString(timePlayed, true);
-            iprintln(self.name + "^7 finished " + route + " in: ^2" + timeStr);
-
-
-            if (self openCJ\checkpoints::checkpointHasID(cp))
-            {
-                self thread openCJ\checkpoints::storeCheckpointPassed(runID, cpID, timePlayed);
-                self thread _notifyFinishedMap(runID, cpID, timePlayed);
-                self thread openCJ\discord::onRunFinished(runID, timeStr, route);
-            }
-        }
-    }
-    self thread openCJ\playerRuns::onRunFinished(cp);
+    self.playerRuns_runFinishing = true;
+    runID = self openCJ\playerRuns::getRunID();
+    filters = self openCJ\playerRuns::finishSettings();
+    self openCJ\playTime::setTimePlayed(self openCJ\playTime::getTimePlayed() + tOffset);
+    timePlayed = self openCJ\playTime::getTimePlayed();
+    self openCJ\playTime::onRunFinished(cp);
+    // Finish statistics must exist before the run becomes leaderboard-visible.
+    if (!self openCJ\checkpoints::storeCheckpointPassed(runID, cpID, timePlayed))
+        return;
+    if (!self openCJ\playerRuns::onRunFinished(cp, filters))
+        return;
+    self.playerRuns_runFinishing = false;
+    if (!isDefined(route))
+        route = "<unknown route>";
+    timeStr = formatTimeString(timePlayed, true);
+    iprintln(self.name + "^7 finished " + route + " in: ^2" + timeStr);
+    self thread _notifyFinishedMap(runID, cpID, timePlayed);
+    self thread openCJ\discord::onRunFinished(runID, timeStr, route);
     self openCJ\checkpointPointers::onRunFinished(cp);
     self openCJ\showRecords::onRunFinished(cp);
     self openCJ\huds\hudProgressBar::onRunFinished(cp);
-    self openCJ\playTime::onRunFinished(cp);
     self openCJ\events\eventHandler::onRunFinished(cp);
     self openCJ\statistics::onRunFinished();
     self openCJ\elevate::onRunFinished();
 }
-
 _notifyFinishedMap(runID, cpID, timePlayed)
 {
     self endon("disconnect");

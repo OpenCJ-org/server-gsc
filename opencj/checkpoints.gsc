@@ -40,7 +40,7 @@ storeCheckpointPassed(runID, cpID, timePlayed)
 {
     if(self openCJ\playerRuns::isRunFinished() || !self openCJ\playerRuns::hasRunID() || self openCJ\cheating::isCheating())
     {
-        return;
+        return false;
     }
 
     saveCount = self openCJ\statistics::getSaveCount();
@@ -51,7 +51,10 @@ storeCheckpointPassed(runID, cpID, timePlayed)
 
     // This is a store procedure in SQL database
     explosiveStr = explosiveJumps + ", " + explosiveLaunches + ", " + doubleExplosives;
-    query = "SELECT checkpointPassed(" + runID + ", " + cpID + ", " + timePlayed + ", " + saveCount + ", " + loadCount + ", " + explosiveStr + ", " + self openCJ\playerRuns::getRunInstanceNumber() + ")";
+    filters = "";
+    if (getCodVersion() == 4)
+        filters = ", '" + self openCJ\fps::getCurrentFPSMode() + "', " + int(self openCJ\elevate::hasUsedEle()) + ", " + int(self openCJ\anyPct::hasAnyPct()) + ", " + int(self openCJ\tas::hasHardTAS());
+    query = "SELECT checkpointPassed(" + runID + ", " + cpID + ", " + timePlayed + ", " + saveCount + ", " + loadCount + ", " + explosiveStr + filters + ", " + self openCJ\playerRuns::getRunInstanceNumber() + ")";
     printf("Executing checkpointPassed query:\n" + query + "\n");  // Debug
 
     rows = self openCJ\mySQL::mysqlAsyncQuery(query);
@@ -59,7 +62,9 @@ storeCheckpointPassed(runID, cpID, timePlayed)
     {
         self iPrintLnBold("This run was loaded by another instance of your account. Please reset. All progress will not be saved");
         self openCJ\playerRuns::printRunIDandInstanceNumber();
+        return false;
     }
+    return true;
 }
 
 _notifyCheckpointPassed(runID, cpID, timePlayed)
@@ -174,7 +179,7 @@ onInit()
             checkpoints[i].endCheckpoints = [];
         }
 
-        // Fill in the big brother checkpoints 
+        // Fill in the big brother checkpoints
         for(i = 0; i < checkpoints.size; i++)
         {
             // Ah, this checkpoint has a big brother, let's find it
@@ -208,6 +213,7 @@ onInit()
         level.checkpoints_startCheckpoint.checkpointsFromStart = 0;
 
         level.checkpoints_checkpoints = checkpoints;
+        openCJ\checkpointPublish::loadAreas();
 
         // Now it's time to figure out the route that each checkpoint is part of.
         // Pathfinding algorithm. If a checkpoint ends up at 1 ender, then the route is clear. Otherwise we know the checkpoints' multiple routes.
@@ -411,7 +417,7 @@ _determineEnderName(endCheckpoints) // Argument is the end checkpoint(s) for a s
         }
 
         // We already had an enderName from one of the other end checkpoints, and now another one
-        if (isDefined(enderName))
+        if (isDefined(enderName) && enderName != endCheckpoints[i].ender)
         {
             return undefined; // Multiple ender names, can't know for sure which route
         }
@@ -734,11 +740,38 @@ getCurrentChildCheckpoints()
     return undefined;
 }
 
+nextAllowsDoubleRPG()
+{
+    if (self openCJ\checkpointCreation::isEditing())
+    {
+        if (self.cpc.testing && self.cpc.testNext < self.cpc.rows.size)
+        {
+            cp = self openCJ\checkpointCreation::getConfirmed(self.cpc.testNext);
+            return cp.double;
+        }
+        return false;
+    }
+    next = self getCurrentChildCheckpoints();
+    if (!isDefined(next) || next.size == 0)
+        return false;
+    // Equivalent landing areas share one requirement. Distinct route splits
+    // remain ambiguous, even if one of their branches grants double RPG.
+    next = filterOutBrothers(next);
+    if (next.size != 1)
+        return false;
+    return isDefined(next[0].allowDoubleRPG) && next[0].allowDoubleRPG;
+}
+
 hasPassedCheckpoint(checkpoint)
 {
+    if (isDefined(checkpoint.bigBrother))
+        checkpoint = checkpoint.bigBrother;
     for (i = 0; i < self.checkpoints_passed.size; i++)
     {
-        if (self.checkpoints_passed[i].id == checkpoint.id)
+        passed = self.checkpoints_passed[i];
+        if (isDefined(passed.bigBrother))
+            passed = passed.bigBrother;
+        if (passed.id == checkpoint.id)
         {
             return true;
         }
@@ -758,6 +791,7 @@ onRunCreated()
 
 resetPlayerCheckpointsToStart()
 {
+    self.route = undefined;
     self.checkpoints_checkpoint = level.checkpoints_startCheckpoint;
     self.checkpoints_passed = [];
 }
@@ -878,6 +912,10 @@ _checkAnyPctTriggered(triggeredCP, childCheckpoints)
 
 whileAlive()
 {
+    if (self openCJ\checkpointCreation::isEditing())
+        return;
+    if (!self openCJ\playerRuns::hasRunID() || (isDefined(self.playerRuns_runFinishing) && self.playerRuns_runFinishing))
+        return;
     // No need to process if the run is already finished
     if (self openCJ\playerRuns::isRunFinished())
     {
@@ -896,7 +934,7 @@ whileAlive()
         cp = level.checkpoints_checkpoints[i];
 
         // Checkpoint has no radius, so it will not be triggered by any change of origin
-        if (!isDefined(cp.radius))
+        if (!isDefined(cp.radius) && !isDefined(cp.area))
         {
             continue;
         }
@@ -909,7 +947,12 @@ whileAlive()
         }
 
         // Check if player is within the radius of the checkpoint
-        if ((self getEyePos()[2] >= cp.origin[2]) && (distanceSquared(self.origin, cp.origin) < (cp.radius * cp.radius)))
+        inArea = false;
+        if (isDefined(cp.area))
+            inArea = openCJ\checkpointArea::contains(cp.area, self.origin, self isOnGround(), cp.onGround);
+        else
+            inArea = (self getEyePos()[2] >= cp.origin[2]) && (distanceSquared(self.origin, cp.origin) < (cp.radius * cp.radius));
+        if (inArea)
         {
             // Checkpoint can be on ground or in air. onGround checkpoints can only be triggered by being on ground
             if (!cp.onGround || self isOnGround())
@@ -942,7 +985,9 @@ whileAlive()
                 self.checkpoints_passed[self.checkpoints_passed.size] = cp;
 
                 // Some calculations to make the checkpoint passed time more accurate than sv_fps
-                tOffset = getSubSVFPSPassedTiming(self.previousOrigin, self.origin, self.previousOnground, cp);
+                tOffset = 0; // Landing areas use observed ground contact; radius interpolation does not apply.
+                if (!isDefined(cp.area))
+                    tOffset = getSubSVFPSPassedTiming(self.previousOrigin, self.origin, self.previousOnground, cp);
 
                 // From this point on use the bigBrother, because only those may be stored in the database
                 if (isDefined(cp.bigBrother))
@@ -958,7 +1003,7 @@ whileAlive()
                 {
                     // Checkpoint has child checkpoints, so run isn't finished yet
                     self _checkpointPassed(cp, tOffset);
-                    self openCJ\events\checkpointsChanged::main();
+                    self openCJ\events\checkpointsChanged::main(true);
                 }
 
                 break;

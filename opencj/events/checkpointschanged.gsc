@@ -1,10 +1,10 @@
 #include openCJ\util;
 
-main()
+main(checkpointPassed)
 {
     self openCJ\checkpointPointers::onCheckpointsChanged();
     self openCJ\showRecords::onCheckpointsChanged();
-    self openCJ\huds\hudProgressBar::onCheckpointsChanged();
+    self openCJ\huds\hudProgressBar::onCheckpointsChanged(checkpointPassed);
     self openCJ\elevate::onCheckpointsChanged();
     self openCJ\statistics::onCheckpointsChanged();
 

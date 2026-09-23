@@ -44,7 +44,12 @@ onRunStarted()
 
 onRunStopped()
 {
-
+    specs = self getSpectatorList(true);
+    for (i = 0; i < specs.size; i++)
+    {
+        specs[i] _hideRunIcons();
+        specs[i] _hideRunStatus();
+    }
 }
 
 onRunRestored()
@@ -59,7 +64,7 @@ onRunPaused()
 
 onRunResumed()
 {
-    
+
 }
 
 whileAlive()
@@ -255,7 +260,7 @@ _createRunInfoHud()
     self.hudRunInfo["status"].hideWhenInMenu = true;
 
     // The following are icons in bottom left corner
-    
+
     yAboveProgressBar = 467; // Right above progress bar
     self.hudRunInfo["fps"] = newClientHudElem(self);
     self.hudRunInfo["fps"].horzAlign = "fullscreen";

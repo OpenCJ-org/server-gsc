@@ -2,6 +2,9 @@
 
 onInit()
 {
+    // Stock neutral flag supports exact HUD tint without precolored textures.
+    if (getCodVersion() == 4)
+        precacheShader("compass_waypoint_neutral");
     level.checkpointShaders = [];
     level.checkpointShaders["blue"] = "opencj_checkpoint_blue";
     level.checkpointShaders["cyan"] = "opencj_checkpoint_cyan";
@@ -23,7 +26,7 @@ onInit()
             level.checkpointShadersObjective[keys[i]] += "_obj";
         }
     }
-    
+
     colors = getArrayKeys(level.checkpointShaders);
     for(i = 0; i < colors.size; i++)
     {
@@ -35,7 +38,7 @@ onInit()
 onPlayerConnect()
 {
     self.checkpointPointers_huds = [];
-    self.checkpointPointer_objectives = [];
+    self.checkpointPointers_objectives = [];
     for(i = 0; i < 16; i++)
         self objective_player_delete(i);
 }
@@ -77,21 +80,12 @@ onRunFinished(cp)
 
 showCheckpointPointers()
 {
-    if (self.sessionState != "playing")
+    if (self.sessionState != "playing" || self openCJ\checkpointCreation::isEditing() || self openCJ\demos::isPlayingDemo() || !self openCJ\playerRuns::hasRunID() || self openCJ\playerRuns::isRunFinished())
     {
+        self _hideCheckpointPointers();
         return;
     }
-
-    if (self openCJ\anyPct::hasAnyPct())
-    {
-        // If player is using any%, then only show all finish checkpoint(s)
-        checkpoints = openCJ\checkpoints::getAllEndCheckpoints();
-    }
-    else
-    {
-        // Otherwise, show their next checkpoint(s)
-        checkpoints = self openCJ\checkpoints::getCurrentChildCheckpoints();
-    }
+    checkpoints = self nextVisibleCheckpoints();
 
     for(i = 0; i < checkpoints.size; i++)
     {
@@ -103,25 +97,52 @@ showCheckpointPointers()
         shaderColor = openCJ\checkpoints::getCheckpointShaderColor(checkpoints[i]);
         shader_hud = _getShaderHud(shaderColor);
         shader_objective = _getShaderObjective(shaderColor);
+        tint = (1,1,1);
+        routeColored = getCodVersion() == 4 && isDefined(checkpoints[i].routeInfo);
+        if (routeColored)
+        {
+            shader_hud = "compass_waypoint_neutral";
+            tint = checkpoints[i].routeInfo.color;
+        }
 
-        self.checkpointPointers_huds[i] setShader(shader_hud, 5, 5);
-        self.checkpointPointers_huds[i] setWaypoint(true);
-        
+        size = 5;
+        if (routeColored)
+            size = 20;
+        self.checkpointPointers_huds[i] setShader(shader_hud, size, size);
+        self.checkpointPointers_huds[i].color = tint;
+        if (routeColored)
+        {
+            self.checkpointPointers_huds[i].alpha = 1;
+            self.checkpointPointers_huds[i] setWaypoint(true, shader_hud);
+        }
+        else
+        {
+            self.checkpointPointers_huds[i].alpha = 0.5;
+            self.checkpointPointers_huds[i] setWaypoint(true);
+        }
+
         self.checkpointPointers_huds[i].x = checkpoints[i].origin[0];
         self.checkpointPointers_huds[i].y = checkpoints[i].origin[1];
         self.checkpointPointers_huds[i].z = checkpoints[i].origin[2] + 10;
         //self.checkpointPointers_huds[i] thread _doJump(self);
 
-        if(i < 16)
+        // Compass objectives cannot carry arbitrary RGB; avoid a second,
+        // contradictory fixed-color icon for routes with exact colors.
+        if (routeColored && isDefined(self.checkpointPointers_objectives[i]))
+        {
+            self objective_player_delete(i);
+            self.checkpointPointers_objectives[i] = undefined;
+        }
+        if(i < 16 && !routeColored)
         {
             self.checkpointPointers_objectives[i] = true;
             if(getCodVersion() == 2)
             {
-                self objective_player_add(i, "current", checkpoints[i].origin, shader_objective); 
+                self objective_player_add(i, "current", checkpoints[i].origin, shader_objective);
             }
             else
             {
-                self objective_player_add(i, "active", checkpoints[i].origin, shader_objective); 
+                self objective_player_add(i, "active", checkpoints[i].origin, shader_objective);
             }
         }
     }
@@ -137,6 +158,23 @@ showCheckpointPointers()
             self.checkpointPointers_objectives[i] = undefined;
         }
     }
+}
+
+nextVisibleCheckpoints()
+{
+    if (self openCJ\anyPct::hasAnyPct())
+        return openCJ\checkpoints::getAllEndCheckpoints();
+    next = self openCJ\checkpoints::getCurrentChildCheckpoints();
+    visible = [];
+    if (!isDefined(next))
+        return visible;
+    for (i = 0; i < next.size; i++)
+    {
+        route = openCJ\checkpoints::getRouteNameForCheckpoint(next[i]);
+        if (!isDefined(self.route) || !isDefined(route) || self.route == route)
+            visible[visible.size] = next[i];
+    }
+    return visible;
 }
 
 _getShaderHud(color)

@@ -58,7 +58,7 @@ _setActivelyPlaying(active)
 
 startTimer()
 {
-    if(self openCJ\playerRuns::isRunFinished())
+    if(self openCJ\playerRuns::isRunFinished() || (isDefined(self.playerRuns_runFinishing) && self.playerRuns_runFinishing))
     {
         return;
     }

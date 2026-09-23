@@ -3,6 +3,7 @@
 main() // Threaded
 {
     level.playerCount--;
+    self openCJ\checkpointCreation::onDisconnect();
 
     // Call functions that need to use 'self' before the next frame
     self openCJ\events\eventHandler::onPlayerDisconnect();
