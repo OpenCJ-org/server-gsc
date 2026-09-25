@@ -92,6 +92,8 @@ _createProgressBar()
 
 _updateProgressBar(onFinish, checkpointPassed)
 {
+    if(self openCJ\demos::isPlayingDemo())return;
+    self.progressBar.hideWhenInMenu=true;
     // A state change must replace any remaining checkpoint flash.
     self notify("progressBarUpdated");
     self.progressBar fadeOverTime(0.05);

@@ -66,7 +66,7 @@ capture(force)
     }
     fps = self openCJ\fps::getCurrentFPS();
     rpg = isDefined(self.eventQueue["rpg"]);
-    if (!isDefined(addFrameToDemo(rec.id, self.origin, self getPlayerAngles(), 1, self frameFlags(), 0, 0, int(rpg), int(fps), cpID, self getEntityNumber())))
+    if (!isDefined(addFrameToDemo(rec.id, self.origin, self getPlayerAngles(), 1, self frameFlags(), 0, int(isDefined(rec.loaded) && rec.loaded), int(rpg), int(fps), cpID, self getEntityNumber())))
     {
         rec.failed = true;
         destroyDemo(rec.id);
@@ -74,6 +74,7 @@ capture(force)
         return;
     }
     rec.lastTick = getTime();
+    rec.loaded = false;
 }
 
 onSaved(saveNum)
@@ -100,6 +101,7 @@ onLoaded(saveNum)
     for (i=0;i<keys.size;i++)
         if (rec.saves[keys[i]] > count) rec.saves[keys[i]] = undefined;
     rec.lastTick = -1;
+    rec.loaded = true;
 }
 
 onDisconnect()

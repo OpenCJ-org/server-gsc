@@ -93,10 +93,17 @@ _updatePlayerTimers()
 
 onStartDemo()
 {
-    self.hudTimeLimit.alpha = 0;
+    self.hudTimeLimit.horzalign = "right";
+    self.hudTimeLimit.alignx = "right";
+    self.hudTimeLimit.x = -8;
+    self.hudTimeLimit.y = -74;
+    self.hudTimeLimit.hideWhenInMenu = false;
 }
 
 onStopDemo()
 {
-    self.hudTimeLimit.alpha = 1;
+    self.hudTimeLimit.horzalign = "center";
+    self.hudTimeLimit.alignx = "center";
+    self.hudTimeLimit.x = 0;
+    self.hudTimeLimit.y = -12;
 }

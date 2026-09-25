@@ -2,10 +2,11 @@
 
 onInit()
 {
+    if(getCodVersion()==4)precacheMenu("opencj_demo");
     clearAllDemos();
     level.demoCache = [];
     openCJ\demoRecording::onInit();
-    cmd = openCJ\commands_base::registerCommand("demo", "!demo [walkthrough|wt|speedrun|sr|lowrpg|rpg|low|stop]", ::_onCommandPlayback, 0, 1, 0);
+    cmd = openCJ\commands_base::registerCommand("demo", "!demo [wt|sr|rpg|stop|pause|resume|speed <1|2|4|-1|-2|-4>|next|previous]", ::_onCommandPlayback, 0, 2, 0);
     openCJ\commands_base::addAlias(cmd,"playback");
     setting = openCJ\settings::addSettingBool("demoloop", true, "Loop demo playback");
     openCJ\commands_base::addAlias(setting,"loop");
@@ -18,6 +19,24 @@ _onCommandPlayback(args)
         self cancelRequest();
         self thread doNextFrame(::stopDemo);
         return;
+    }
+    if(self isPlayingDemo() && args.size)
+    {
+        action=toLower(args[0]);
+        if(action=="pause" || action=="resume" || action=="speed" || action=="next" || action=="previous")
+        {
+            if(action=="pause")self.playbackPaused=true;
+            if(action=="resume")self.playbackPaused=false;
+            if(action=="speed" && args.size>1)
+            {
+                speed=int(args[1]);
+                if(speed==1 || speed==2 || speed==4 || speed==-1 || speed==-2 || speed==-4)
+                {self.demoRate=speed;self.playbackPaused=false;}
+            }
+            if(action=="next")self.demoCheckpointRequest=1;
+            if(action=="previous")self.demoCheckpointRequest=-1;
+            return;
+        }
     }
     kind="walkthrough";
     if (args.size) kind=toLower(args[0]);
@@ -141,6 +160,7 @@ playRun(id,full)
     if(!self canWatch()){self releasePending();return;}
     self.demoPendingId=undefined;
     self.demoBegin=range[0];self.demoEnd=range[1];
+    self.demoCheckpointed=(int(meta[0][1])&1)==0;
     self startDemo(id);
 }
 
@@ -211,6 +231,9 @@ startDemo(demoID)
     self.demoPreviousStance=state.stance;self.demoPreviousState="none";
     self.demoPreviousFPS=undefined;self.demoPreviousOnGround=true;
     self.demoFirstFrame=true;self.demoLastPresentedFrame=undefined;
+    self.demoRate=1;self.demoControlButtons=0;self.demoCheckpointRequest=0;
+    self.demoMenuOpened=false;
+    self demoDisplayStart();
     self.maxSpeed=0;
     self openCJ\huds\hudSpeedometer::_hideSpeedometer();
     self selectPlaybackDemo(demoID);
@@ -223,7 +246,15 @@ startDemo(demoID)
     self openCJ\huds\hudStatistics::onStartDemo();
     self openCJ\huds\hudProgressBar::onStartDemo();
     self openCJ\buttonPress::resetButtons();
-    self sendLocalChatMessage("Demo: Load or !demo stop to return; Melee pauses, A/D seek, Q/E seek faster, Jump slows playback.");
+    if(getCodVersion()==4)
+    {
+        self setClientCvar("opencj_demo_checkpointed",int(isDefined(self.demoCheckpointed) && self.demoCheckpointed));
+        self setClientCvar("g_scriptMainMenu","opencj_demo");
+        self.demoStatusText=undefined;self.demoMenuPaused=undefined;
+        self demoUpdateOverlay();
+        self openMenu("opencj_demo");
+    }
+    self sendLocalChatMessage("Demo: use the playback bar; Escape hides/reopens controls. Exit returns to your run.");
 }
 
 isPlayingDemo()
@@ -238,6 +269,7 @@ isPlayingDemo()
 
 onPlayerConnect()
 {
+    self thread demoMenuResponses();
     self.playingDemo = false;
     self openCJ\demoRecording::onConnect();
     self.playbackPaused = false;
@@ -334,80 +366,37 @@ whilePlayingDemo()
         self stopDemo();
         return;
     }
-    skipFails = demoHasKeyFrames(self.demoID); // TODO: temp because we don't have specific keys for skipping key frames right now
-    self linkTo(self.demoLinker, "", (0, 0, 0), (0, 0, 0));
-    if (self.playbackPaused)
+    self demoControls();
+    seek=false;
+    if(self.demoCheckpointRequest!=0)
+    {
+        if(isDefined(self.demoCheckpointed) && self.demoCheckpointed)
+        {
+            target=self demoSeekCheckpoint(self.demoCheckpointRequest);
+            if(isDefined(target))
+            {
+                self.demoBegin=0;self.demoEnd=numberOfDemoFrames(self.demoID)-1;
+                current=self skipPlaybackFrames(0);
+                self skipPlaybackFrames(target-current);
+                self.demoFirstFrame=true;self.demoLastPresentedFrame=undefined;
+                seek=true;
+            }
+        }
+        self.demoCheckpointRequest=0;
+    }
+    self demoUpdateOverlay();
+    if(self.playbackPaused && !seek && !self.demoFirstFrame)
     {
         self demoApplyPresentation();
         return;
     }
-
-    isInterpolatedFrame = false;
+    isInterpolatedFrame=false;
     if(self.demoFirstFrame)
     {
         self.demoFirstFrame=false;
         currFrame=_getDemoFrame(0,false);
     }
-    else if(self leftButtonPressed()) // Reverse
-    {
-        currFrame = _getDemoFrame(-2, skipFails);
-    }
-    else if(self rightButtonPressed()) // Forward
-    {
-        currFrame = _getDemoFrame(2, skipFails);
-    }
-    else if(self leanLeftButtonPressed()) // Faster forward
-    {
-        currFrame = _getDemoFrame(-10, skipFails);
-    }
-    else if(self leanRightButtonPressed()) // Faster reverse
-    {
-        currFrame = _getDemoFrame(10, skipFails);
-    }
-    else if(self jumpButtonPressed()) // Slow motion
-    {
-        slowmoCount = 4; // 1 / 4 -> 0.25.
-
-        self.slowmoCount++;
-        currFrame = _getDemoFrame(1, skipFails);
-        if(self.slowmoCount == slowmoCount)
-        {
-            self.slowmoCount = 0;
-        }
-        else
-        {
-            // Grab info of previous frame
-            prevFrame = _getDemoFrame(-1, skipFails);
-            isInterpolatedFrame = true;
-            if(!currFrame.loadNow)
-            {
-                // Fix angles so we don't have strange behavior when slowing
-                slowmoScale = (self.slowmoCount / slowmoCount);
-                currFwd = anglesToForward(currFrame.angles);
-                prevFwd = anglesToForward(prevFrame.angles);
-                interpFwd = vectorScale(currFwd, slowmoScale) + vectorScale(prevFwd, (1 - slowmoScale));
-                if(interpFwd != (0, 0, 0))
-                {
-                    interpAngles = vectorToAngles(interpFwd); // This already normalizes the vector
-
-                    // CoD doesn't think (...that vectors are arrays)
-                    // Also, the calculation for [2] is so angle 'roll' can be left untouched (normal interpolation)
-                    interpAngles = (interpAngles[0], interpAngles[1], (currFrame.angles[2] * slowmoScale) + (prevFrame.angles[2] * (1 - slowmoScale)));
-                    currFrame.angles = interpAngles;
-                }
-
-                currFrame.origin = vectorScale(currFrame.origin, slowmoScale) + vectorScale(prevFrame.origin, (1 - slowmoScale));
-            }
-            else
-            {
-                currFrame = prevFrame;
-            }
-        }
-    }
-    else
-    {
-        currFrame = _getDemoFrame(1, skipFails);
-    }
+    else currFrame=_getDemoFrame(self.demoRate,true);
 
     self.demoLinker.origin = currFrame.origin;
     self setPlayerAngles(currFrame.angles);
@@ -422,6 +411,8 @@ whilePlayingDemo()
     {
         self openCJ\huds\hudSpeedometer::whileAlive();
         sequential = !isDefined(self.demoLastPresentedFrame) || currFrame.number == self.demoLastPresentedFrame + 1;
+        if (isDefined(self.demoLastPresentedFrame) && sequential && !isInterpolatedFrame && !currFrame.loadNow)
+            self demoPlayLanding();
         if (currFrame.rpgNow && sequential && !isInterpolatedFrame)
         {
             sound = self readPlaybackFrame_rpgSound();
@@ -476,7 +467,8 @@ whilePlayingDemo()
     }
     
     // Check if demo ended.
-    if(currFrame.number >= self.demoEnd)
+    self demoUpdateOverlay();
+    if(!self.playbackPaused && ((self.demoRate>0 && currFrame.number >= self.demoEnd) || (self.demoRate<0 && currFrame.number <= self.demoBegin)))
     {
         self _endOfDemo();
     }
@@ -484,10 +476,18 @@ whilePlayingDemo()
 
 _endOfDemo()
 {
+    if(self.demoRate<0)
+    {
+        self.demoRate=1;
+        self.playbackPaused=true;
+        self demoUpdateOverlay();
+        return;
+    }
     if(self openCJ\settings::getSetting("demoloop"))
     {
         current=self skipPlaybackFrames(0);
-        self skipPlaybackFrames(self.demoBegin-current);
+        target=self.demoBegin;
+        self skipPlaybackFrames(target-current);
         self.demoFirstFrame=true;self.demoLastPresentedFrame=undefined;
         self.maxSpeed=0;
         return;
@@ -498,6 +498,14 @@ _endOfDemo()
 stopDemo()
 {
     if(!self isPlayingDemo())return;
+    if(getCodVersion()==4)
+    {
+        self closeInGameMenu();
+        self closeMenu();
+        self setClientCvar("g_scriptMainMenu",level.menu["ingame"]);
+    }
+    self.demoMenuOpened=false;
+    self demoDisplayStop();
     state=self.demoReturn;
     id=self.demoID;
     self unlink();
@@ -561,4 +569,113 @@ cancelRequest()
 {
     self notify("demo_request");
     self releasePending();
+}
+
+demoControls()
+{
+    buttons=int(self leftButtonPressed())+2*int(self rightButtonPressed())+4*int(self leanLeftButtonPressed())+8*int(self leanRightButtonPressed());
+    pressed=buttons & ~self.demoControlButtons;
+    self.demoControlButtons=buttons;
+    rates=[];rates[0]=-4;rates[1]=-2;rates[2]=-1;rates[3]=1;rates[4]=2;rates[5]=4;
+    index=3;
+    for(i=0;i<rates.size;i++)if(rates[i]==self.demoRate)index=i;
+    if((pressed&1) && index>0)index--;
+    if((pressed&2) && index<5)index++;
+    if(pressed&3)self.demoRate=rates[index];
+    if(pressed&4)self.demoCheckpointRequest=-1;
+    if(pressed&8)self.demoCheckpointRequest=1;
+}
+
+demoTime(frame)
+{
+    seconds=int(frame/20);minutes=int(seconds/60);seconds=seconds%60;
+    prefix="";if(seconds<10)prefix="0";
+    return minutes+":"+prefix+seconds;
+}
+
+demoUpdateOverlay()
+{
+    frame=self skipPlaybackFrames(0);
+    status="PLAY";if(self.demoRate<0)status="REVERSE";
+    if(self.playbackPaused)status="PAUSED";
+    rate=self.demoRate;if(rate<0)rate=0-rate;
+    text=status+" "+rate+"x   "+demoTime(frame-self.demoBegin)+" / "+demoTime(self.demoEnd-self.demoBegin);
+    if(!isDefined(self.demoStatusText) || self.demoStatusText!=text)
+    {
+        self.demoStatusText=text;
+        self setClientCvar("opencj_demo_status",text);
+    }
+    if(!isDefined(self.demoMenuPaused) || self.demoMenuPaused!=self.playbackPaused)
+    {
+        self.demoMenuPaused=self.playbackPaused;
+        self setClientCvar("opencj_demo_paused",int(self.playbackPaused));
+    }
+}
+
+demoMenuResponses()
+{
+    self endon("disconnect");
+    for(;;)
+    {
+        self waittill("menuresponse",menu,response);
+        if(menu!="opencj_demo" || !self isPlayingDemo())continue;
+        if(response=="opened")self.demoMenuOpened=true;
+        else if(response=="stop")self.demoExitRequested=true;
+        else if(response=="pause")self.playbackPaused=true;
+        else if(response=="resume")self.playbackPaused=false;
+        else if(response=="previous")self.demoCheckpointRequest=-1;
+        else if(response=="next")self.demoCheckpointRequest=1;
+        else
+        {
+            args=strTok(response,"_");
+            if(args.size==2 && args[0]=="speed")
+            {
+                speed=int(args[1]);
+                if(speed==1 || speed==2 || speed==4 || speed==-1 || speed==-2 || speed==-4)
+                {self.demoRate=speed;self.playbackPaused=false;}
+            }
+        }
+    }
+}
+
+// Presentation only: do not alter spectator interpolation or recorded motion.
+demoDisplayStart()
+{
+    self openCJ\huds\hudTimeLimit::onStartDemo();
+    keys=getArrayKeys(self.hudSpeed);
+    for(i=0;i<keys.size;i++)
+    {
+        self.hudSpeed[keys[i]].hideWhenInMenu=false;
+        self.hudSpeed[keys[i]].archived=true;
+    }
+    if(getCodVersion()!=4)return;
+    self setClientCvar("cg_drawSpectatorMessages",0);
+    self.demoCaption=[];
+    for(i=0;i<2;i++)
+    {
+        hud=newClientHudElem(self);
+        hud.archived=true;hud.foreground=true;hud.hideWhenInMenu=false;
+        hud.horzAlign="center";hud.vertAlign="top";
+        hud.alignX="center";hud.alignY="top";
+        hud.x=0;hud.y=8+i*16;hud.font="objective";hud.fontScale=1.4;hud.alpha=1;
+        self.demoCaption[i]=hud;
+    }
+    self.demoCaption[0] setText("VIEWING DEMO");
+    self.demoCaption[1] setText(self.name);
+}
+
+demoDisplayStop()
+{
+    self openCJ\huds\hudTimeLimit::onStopDemo();
+    keys=getArrayKeys(self.hudSpeed);
+    for(i=0;i<keys.size;i++)
+    {
+        self.hudSpeed[keys[i]].hideWhenInMenu=true;
+        self.hudSpeed[keys[i]].archived=false;
+    }
+    if(getCodVersion()!=4)return;
+    if(isDefined(self.demoCaption))
+        for(i=0;i<self.demoCaption.size;i++)self.demoCaption[i] destroy();
+    self.demoCaption=undefined;
+    self setClientCvar("cg_drawSpectatorMessages",1);
 }

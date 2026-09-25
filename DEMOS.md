@@ -71,3 +71,21 @@ weapon state, movement presentation and the original run state are restored on
 exit. Format changes require a server rebuild; no client asset rebuild is needed.
 
 Detailed playback freezes live input and drives the recorded weapon animation directly. It does not replay weapon-state timers through weapon simulation: this prevents both disableWeapons lowering the viewmodel to none and recorded RPG delays firing real missiles. The previous frozen-controls and weapon-disable state are restored on exit.
+
+Detailed playback uses the client spectator-interpolation flag for the recorded view instead of predicting viewer input. The previous flag is restored on exit. New recordings use OCJ3 and store the original landing surface and impact strength only on landing frames (two extra bytes before compression). Playback emits normal landing events for the camera dip and landing sound; damaging landing events are converted to presentation-only impacts. OCJ1/OCJ2 recordings remain readable, but need a new recording to gain landing impacts. Loads and teleports mark interpolation cuts; ordinary stationary pauses are retained. Landing events are not replayed while paused, seeking, or on a load boundary.
+
+
+Playback controls: Melee toggles pause; each strafe-left/right press steps through
+-4x, -2x, -1x, 1x, 2x, 4x. Lean-left/right selects the previous/next recorded
+checkpoint boundary for non-any-percent runs. Previous always selects the preceding checkpoint, even during a jump.
+Reverse pauses at the start and resets to forward 1x for the next Play. Navigation
+from a local jump segment opens the full recording timeline, and preserves pause.
+Load still exits to the original run. Commands `!demo pause`, `!demo resume`,
+`!demo speed -2`, `!demo previous` and `!demo next` provide bindable alternatives.
+The time display describes retained recording time (20 frames/second), not
+leaderboard time that may include discarded attempts. The normal progress bar
+is hidden during playback and restored on exit.
+No keybind text HUD is created. On CoD4 a transparent mouse menu opens automatically with Pause/Resume, all
+six signed speeds, checkpoint navigation, and Exit Demo. Escape hides/reopens
+the controls. The menu requires the rebuilt mod.ff; keyboard controls remain
+available while the menu is closed. Menu responses are ignored outside playback.
