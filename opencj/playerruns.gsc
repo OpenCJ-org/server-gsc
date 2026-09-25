@@ -226,6 +226,7 @@ saveRun(runLabel)
 
 archiveRun(runID)
 {
+    if(isDefined(self))self openCJ\demoRecording::discard(runID);
     if (isDefined(runID))
     {
         playerIDSqlStr = " ";

@@ -467,7 +467,19 @@ getPassedCheckpointCount(checkpoint)
 
 getRemainingCheckpointCount(checkpoint)
 {
-    return checkpoint.checkpointsTillEnd;
+    remaining = checkpoint.checkpointsTillEnd;
+    // Before choosing a route, show the longest possible total in the HUD.
+    if (!isDefined(getRouteNameForCheckpoint(checkpoint)))
+    {
+        ends = getEndCheckpoints(checkpoint);
+        for (i = 0; i < ends.size; i++)
+        {
+            candidate = ends[i].checkpointsFromStart - checkpoint.checkpointsFromStart;
+            if (isDefined(candidate) && (!isDefined(remaining) || candidate > remaining))
+                remaining = candidate;
+        }
+    }
+    return remaining;
 }
 
 getEndCheckpoints(checkpoint)
@@ -868,6 +880,9 @@ getSubSVFPsPassedTiming(prevOrg, newOrg, prevOnGround, cp)
 
 _checkAnyPctTriggered(triggeredCP, childCheckpoints)
 {
+    route = getRouteNameForCheckpoint(triggeredCP);
+    if (isDefined(self.route) && isDefined(route) && route != self.route)
+        return true;
     // The criterium for triggering any% is that the player passes:
     // - a *non-finish* checkpoint that *is* part of their route but isn't their next checkpoint
     for (i = 0; i < childCheckpoints.size; i++)
@@ -891,20 +906,10 @@ _checkAnyPctTriggered(triggeredCP, childCheckpoints)
     }
     else
     {
-        // Player had no route yet. If they are selecting a route now, check if they skipped previous checkpoints
-        if (isDefined(route) && triggeredCP.hasParent)
-        {
-            parents = getCheckpointParents(triggeredCP);
-            for (i = 0; i < parents.size; i++)
-            {
-                parentRoute = getRouteNameForCheckpoint(parents[i]);
-                if (isDefined(parentRoute) && (parentRoute == route))
-                {
-                    // Player had no route, but was supposed to get the previous checkpoint of the same route first
-                    return true;
-                }
-            }
-        }
+        // A shared opening has no single route name. A non-child checkpoint
+        // with parents still skips required steps, including the first branch.
+        if (triggeredCP.hasParent)
+            return true;
     }
 
     return false;
@@ -929,9 +934,20 @@ whileAlive()
         return;
     }
 
-    for (i = 0; i < level.checkpoints_checkpoints.size; i++)
+    // Expected successors win over coincident checkpoints on another route.
+    // Once standing on the current area, do not also trigger that other route
+    // on the following frame. Still test expected successors first.
+    current = self.checkpoints_checkpoint;
+    onCurrent = isDefined(current) && isDefined(current.area) && openCJ\checkpointArea::contains(current.area, self.origin, self isOnGround(), current.onGround);
+    for (i = 0; i < playerChildCheckpoints.size + level.checkpoints_checkpoints.size; i++)
     {
-        cp = level.checkpoints_checkpoints[i];
+        if (i < playerChildCheckpoints.size)
+            cp = playerChildCheckpoints[i];
+        else
+        {
+            if (onCurrent)break;
+            cp = level.checkpoints_checkpoints[i - playerChildCheckpoints.size];
+        }
 
         // Checkpoint has no radius, so it will not be triggered by any change of origin
         if (!isDefined(cp.radius) && !isDefined(cp.area))
@@ -959,12 +975,6 @@ whileAlive()
             {
                 // Player may have changed their route.
                 route = getRouteNameForCheckpoint(cp);
-                if (cp.childs.size == 0)
-                {
-                    // For any%, this matters only on the final checkpoint.
-                    // This is because any% is triggered upon skipping a checkpoint of your route, or finishing a different route
-                    self.route = route;
-                }
 
                 // OK, player has officially triggered the checkpoint. If this is not one of their next checkpoints, any% may be triggered
                 // This check requires some computation, so don't call it if player already had triggered any%
@@ -974,9 +984,15 @@ whileAlive()
                     printf("DEBUG ANYPCT: Player " + self.name + " triggered any pct on cpID: " + cp.id + "\n");
 
                     // Inform the player that they triggered any%, as it may be accidental
-                    self iprintlnbold("Checkpoint skipped, any'/. mode enabled");
+                    if (isDefined(self.route) && isDefined(route) && route != self.route)
+                        self iprintlnbold("Route changed from " + self.route + " to " + route + ": any'/. mode enabled");
+                    else
+                        self iprintlnbold("Checkpoint skipped, any'/. mode enabled");
                     self openCJ\anyPct::setAnyPct(true);
                 }
+
+                if (cp.childs.size == 0 || self openCJ\anyPct::hasAnyPct())
+                    self.route = route;
 
                 // Set the player's current checkpoint to be the one that was just triggered.
                 // Don't set it to the bigBrother, because the correct location information is needed

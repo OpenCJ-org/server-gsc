@@ -1,12 +1,12 @@
 #include openCJ\util;
 
-// First editor: independent sequential routes, planar stationary landing areas.
+// Grounded planar checkpoint routes, with alternatives and shared openings.
 // A draft is private to the account/map/route. Publishing is a separate action.
 onInit()
 {
     if (getCodVersion() != 4)
         return;
-    cmd = openCJ\commands_base::registerCommand("checkpoint", "!cp start <route> [#RRGGBB] | detect | corner | confirm | alternative | area | undo | finish | double | select <number> | new | delete | test | save | finalize | stop", ::command, 1, 3, 0);
+    cmd = openCJ\commands_base::registerCommand("checkpoint", "!cp start <route> [#RRGGBB] | split <routes> | merge <routes> | rename <old> <new> | detect | corner | confirm | alternative | area | undo | finish | double | select <number> | new | discard | edit <number|last> | delete | test | save | finalize | stop", ::command, 1, 17, 0);
     openCJ\commands_base::addAlias(cmd, "cp");
     openCJ\commands_base::addAlias(cmd, "cpc");
 }
@@ -47,14 +47,18 @@ command(args)
             return;
         }
         previous = undefined;
+        wasNetwork = false;
         if (self isEditing())
         {
             previous = self.cpc.route;
+            wasNetwork = isDefined(self.cpc.network);
             if (!self stop(true))
                 return;
         }
         self _start(route, hex);
-        if (isDefined(previous) && previous != route && self isEditing())
+        if (wasNetwork && self isEditing())
+            self sendLocalChatMessage("Network draft saved. Complete all routes, then !cp finalize to make them playable.");
+        else if (isDefined(previous) && previous != route && self isEditing())
             self sendLocalChatMessage("Opened " + route + ". " + previous + " draft saved; use !cp start " + previous + " then !cp finalize to make that draft playable.");
         return;
     }
@@ -63,12 +67,32 @@ command(args)
         self iprintln("Start with !cp start easy or !cp start hard");
         return;
     }
-    if (args[0] == "select" && args.size == 2 && isValidInt(args[1]))
+    if (args[0] == "rename" && args.size == 3)
     {
-        idx = int(args[1]) - 1;
+        self openCJ\checkpointNetwork::rename(toLower(args[1]),toLower(args[2]));
+        return;
+    }
+    if (args[0] == "split")
+    {
+        for (i = 1; i < args.size; i++)args[i] = toLower(args[i]);
+        self openCJ\checkpointNetwork::split(args);
+        return;
+    }
+    if (args[0] == "merge")
+    {
+        for (i = 1; i < args.size; i++)args[i] = toLower(args[i]);
+        self openCJ\checkpointNetwork::merge(args);
+        return;
+    }
+    if ((args[0] == "select" || args[0] == "edit") && args.size == 2 && (isValidInt(args[1]) || args[1] == "last"))
+    {
+        idx = self.cpc.rows.size - 1;
+        if (args[1] != "last")idx = int(args[1]) - 1;
         if (idx >= 0 && idx < self.cpc.rows.size)
         {
             self _remember();
+            self.cpc.alternativeBlocked = undefined;
+            self.cpc.overlap = undefined;
             self.cpc.selected = idx;
             self.cpc.draft = _decode(self.cpc.rows[idx]);
             self _save();
@@ -158,7 +182,7 @@ _decode(row)
     cp.finish = int(values[0]);
     cp.double = int(values[1]);
     areas = strTok(values[2], "|");
-    if (areas.size > 4)
+    if (areas.size > 8)
         return undefined;
     cp.points = openCJ\checkpointArea::decode(getSubStr(areas[0], 1));
     if (!isDefined(cp.points))
@@ -190,24 +214,37 @@ contains(cp, origin, grounded)
 
 _addAlternative()
 {
-    if (self.cpc.selected == self.cpc.rows.size && self.cpc.draft.points.size == 0 && self.cpc.draft.alternatives.size == 0 && self.cpc.rows.size > 0)
-    {
-        self.cpc.selected--;
-        self.cpc.draft = _decode(self.cpc.rows[self.cpc.selected]);
-    }
+    selected = self.cpc.selected;
     cp = self.cpc.draft;
-    if (openCJ\checkpointArea::validate(cp.points) != "" || cp.alternatives.size >= 3)
+    if (selected == self.cpc.rows.size && cp.points.size == 0 && cp.alternatives.size == 0 && self.cpc.rows.size > 0)
     {
-        self.cpc.status = "Detect a valid area first; maximum four areas per checkpoint";
+        selected--;
+        cp = _decode(self.cpc.rows[selected]);
+    }
+    // Validate before reopening a confirmed area. A rejected add must never
+    // turn the following Detect into an edit of the previous platform.
+    if (openCJ\checkpointArea::validate(cp.points) != "" || cp.alternatives.size >= 7)
+    {
+        self.cpc.alternativeBlocked = true;
+        self.cpc.status = "Cannot add area: confirm a valid selection first; maximum 8 areas. Use Undo or New";
         return;
     }
+    self.cpc.alternativeBlocked = undefined;
+    self.cpc.selected = selected;
+    self.cpc.draft = cp;
     cp.alternatives[cp.alternatives.size] = cp.points;
     cp.points = [];
-    self.cpc.status = "Adding an alternative area";
+    self.cpc.status = "Adding area " + (cp.alternatives.size + 1) + " to checkpoint " + (selected + 1);
 }
 
 _start(route, hex)
 {
+    route = self openCJ\checkpointNetwork::resolve(route);
+    if (!isDefined(route))
+    {
+        self sendLocalChatMessage("Network draft files exist but cannot be read; preserved for recovery.", true);
+        return;
+    }
     self.cpc = spawnStruct();
     self.cpc.route = route;
     self.cpc.rows = [];
@@ -231,6 +268,9 @@ _start(route, hex)
         latest = b;
     if (isDefined(latest))
     {
+        self.cpc.sharedRoute = latest.sharedRoute;
+        self.cpc.sharedHex = latest.sharedHex;
+        self.cpc.sharedCount = latest.sharedCount;
         self.cpc.rows = latest.rows;
         self.cpc.draft = latest.draft;
         self.cpc.selected = latest.selected;
@@ -244,8 +284,11 @@ _start(route, hex)
         hex = level.checkpointRoutes[route].hex;
     if (!isDefined(hex))
         hex = defaultRouteColor(route);
+    if (isDefined(self.cpc.sharedRoute) && !isDefined(self.cpc.sharedHex))
+        self.cpc.sharedHex = defaultRouteColor(self.cpc.sharedRoute);
     self.cpc.routeHex = hex;
     self.cpc.routeColor = routeRGB(hex);
+    self openCJ\checkpointNetwork::opened();
     self.cpc.huds = [];
     for (i = 0; i < 4; i++)
     {
@@ -265,6 +308,9 @@ _start(route, hex)
     self.cpc.huds[3].color = self.cpc.routeColor;
     self setClientCvar("developer", 1);
     self.cpc.positions = [];
+    if (isDefined(self.cpcTravelPositions))
+        self.cpc.positions = self.cpcTravelPositions;
+    self.cpc.travelIndex = 0;
     self savePosition();
     self openCJ\buttonPress::resetButtons();
     self openCJ\playerRuns::stopRun(false);
@@ -276,7 +322,7 @@ _start(route, hex)
         "bind KP_ENTER say !cp confirm; bind KP_PLUS say !cp corner; bind KP_MINUS say !cp undo; " +
         "bind KP_UPARROW say !cp double; bind KP_PGUP say !cp finish; " +
         "bind KP_LEFTARROW say !cp previous; bind KP_RIGHTARROW say !cp next; " +
-        "bind KP_HOME say !cp new; bind KP_SLASH say !cp alternative; bind KP_STAR say !cp area");
+        "bind KP_DEL say !cp discard; bind KP_HOME say !cp new; bind KP_SLASH say !cp alternative; bind KP_STAR say !cp area");
     self thread _loop();
 }
 
@@ -337,6 +383,7 @@ _loop()
         if (getTime() >= nextDraw)
         {
             nextDraw = getTime() + 500;
+            self openCJ\checkpointNetwork::trackSharedLanding(self.origin, self isOnGround());
             self.cpc.drawCommands = 0;
             self _draw();
         }
@@ -396,6 +443,8 @@ _action(action)
     }
     if (action == "undo")
     {
+        self.cpc.alternativeBlocked = undefined;
+        self.cpc.overlap = undefined;
         if (self.cpc.history.size == 0)
             return;
         n = self.cpc.history.size - 1;
@@ -408,6 +457,29 @@ _action(action)
         self _save();
         return;
     }
+    if (action == "discard")
+    {
+        self _discard();
+        return;
+    }
+    if (isDefined(self.cpc.sharedCount) && action != "new" && action != "previous" && action != "next" && action != "area")
+    {
+        target = self.cpc.selected;
+        if (action == "alternative" && target == self.cpc.rows.size && self.cpc.draft.points.size == 0)
+            target--;
+        if (target < self.cpc.sharedCount)
+        {
+            self.cpc.status = "Shared opening is read-only in a branch; use !cp new to continue";
+            return;
+        }
+    }
+    if (action == "new" || action == "previous" || action == "next")
+    {
+        self.cpc.alternativeBlocked = undefined;
+        self.cpc.overlap = undefined;
+    }
+    if (isDefined(self.cpc.alternativeBlocked))
+        return;
     self _remember();
     switch (action)
     {
@@ -433,6 +505,8 @@ _action(action)
             {
                 self.cpc.draft.points = points;
                 self.cpc.status = "Platform detected";
+                self openCJ\checkpointNetwork::selectDetectedShared();
+                self openCJ\checkpointNetwork::checkOverlap();
             }
             else
                 self.cpc.status = "Detection failed; selection unchanged";
@@ -446,6 +520,12 @@ _action(action)
                 self.cpc.draft.points[self.cpc.draft.points.size] = trace["position"];
             break;
         case "confirm":
+            self openCJ\checkpointNetwork::checkOverlap();
+            if (isDefined(self.cpc.overlap))
+            {
+                self.cpc.status = "Overlapping section: merge the routes here; split where they separate";
+                return;
+            }
             error = openCJ\checkpointArea::validate(self.cpc.draft.points);
             if (error != "")
             {
@@ -457,8 +537,11 @@ _action(action)
                 self.cpc.status = "Maximum 256 checkpoints per route";
                 return;
             }
+            followingShared = self openCJ\checkpointNetwork::followingShared();
             self.cpc.rows[self.cpc.selected] = _encode(self.cpc.draft);
             self.cpc.status = "";
+            if (followingShared)
+                break;
             self.cpc.selected = self.cpc.rows.size;
             self.cpc.draft = _empty();
             break;
@@ -497,6 +580,32 @@ _action(action)
     self _save();
 }
 
+// Discard the newest checkpoint, independent of which older checkpoint is
+// selected. An unconfirmed new selection is discarded before confirmed rows.
+_discard()
+{
+    self.cpc.overlap = undefined;
+    pending = self.cpc.selected == self.cpc.rows.size && (self.cpc.draft.points.size > 0 || self.cpc.draft.alternatives.size > 0);
+    if (!pending && (self.cpc.rows.size == 0 || (isDefined(self.cpc.sharedCount) && self.cpc.rows.size <= self.cpc.sharedCount)))
+    {
+        self.cpc.status = "No branch checkpoint to discard; shared opening is protected";
+        return;
+    }
+    self _remember();
+    self.cpc.alternativeBlocked = undefined;
+    if (pending)
+        self.cpc.status = "Discarded unconfirmed checkpoint; [Num -] Undo";
+    else
+    {
+        number = self.cpc.rows.size;
+        self.cpc.rows[number - 1] = undefined;
+        self.cpc.status = "Discarded checkpoint " + number + "; [Num -] Undo";
+    }
+    self.cpc.selected = self.cpc.rows.size;
+    self.cpc.draft = _empty();
+    self _save();
+}
+
 _save()
 {
     revision = self.cpc.revision + 1;
@@ -512,7 +621,12 @@ _save()
     hex = self.cpc.routeHex;
     if (!isDefined(hex))
         hex = defaultRouteColor(self.cpc.route);
-    ok = FS_WriteLine(file, "CPC4 " + getCvar("mapname") + " " + self.cpc.route + " " + revision + " " + self.cpc.rows.size + " " + self.cpc.selected + " " + hex);
+    if (isDefined(self.cpc.sharedRoute) && !isDefined(self.cpc.sharedHex))
+        self.cpc.sharedHex = defaultRouteColor(self.cpc.sharedRoute);
+    header = "CPC4 " + getCvar("mapname") + " " + self.cpc.route + " " + revision + " " + self.cpc.rows.size + " " + self.cpc.selected + " " + hex;
+    if (isDefined(self.cpc.sharedRoute))
+        header = "CPC6 " + getCvar("mapname") + " " + self.cpc.route + " " + revision + " " + self.cpc.rows.size + " " + self.cpc.selected + " " + hex + " " + self.cpc.sharedRoute + " " + self.cpc.sharedCount + " " + self.cpc.sharedHex;
+    ok = FS_WriteLine(file, header);
     for (i = 0; i < self.cpc.rows.size; i++)
     {
         if (!FS_WriteLine(file, self.cpc.rows[i]))
@@ -546,7 +660,9 @@ _readFile(file, route)
     if (!isDefined(line))
         return undefined;
     header = strTok(line, " ");
-    modern = header.size == 7 && header[0] == "CPC4";
+    coloredBranch = header.size == 10 && header[0] == "CPC6";
+    branched = (header.size == 9 && header[0] == "CPC5") || coloredBranch;
+    modern = (header.size == 7 && header[0] == "CPC4") || branched;
     legacy = header.size == 6 && (header[0] == "CPC2" || header[0] == "CPC3");
     if ((!modern && !legacy) || header[1] != getCvar("mapname") || header[2] != route)
         return undefined;
@@ -563,6 +679,19 @@ _readFile(file, route)
     result = spawnStruct();
     if (modern)
         result.routeHex = header[6];
+    if (branched)
+    {
+        if (!_validName(header[7]) || header[7] == route || !isValidInt(header[8]) || int(header[8]) < 1 || int(header[8]) > count)
+            return undefined;
+        result.sharedRoute = header[7];
+        result.sharedCount = int(header[8]);
+        result.sharedHex = defaultRouteColor(result.sharedRoute);
+        if (coloredBranch)
+        {
+            if (!isDefined(routeRGB(header[9])))return undefined;
+            result.sharedHex = header[9];
+        }
+    }
     result.revision = int(header[3]);
     result.selected = int(header[5]);
     result.rows = [];
@@ -610,6 +739,7 @@ _close()
     self setClientCvar("developer", 0);
     for (i = 0; i < self.cpc.huds.size; i++)
         self.cpc.huds[i] destroy();
+    self.cpcTravelPositions = self.cpc.positions;
     self.cpc = undefined;
     self openCJ\huds\hudProgressBar::onRunStopped();
 }
@@ -626,6 +756,7 @@ finalize()
         return;
     }
     route = self.cpc.route;
+    if (isDefined(self.cpc.publishedLabel))route = self.cpc.publishedLabel;
     openCJ\checkpointPublish::activate();
     // Creating the fresh run waits for SQL. Keep CPC's scoring suppression until
     // onRunCreated has reset checkpoint state and actually spawned the player.
@@ -698,7 +829,8 @@ _draw()
 {
     cp = self.cpc.draft;
     number = self.cpc.selected + 1;
-    summary = !self.cpc.testing && readyToFinalize(self.cpc);
+    followingShared = !self.cpc.testing && self openCJ\checkpointNetwork::followingShared();
+    summary = !self.cpc.testing && !followingShared && readyToFinalize(self.cpc);
     if (summary)
     {
         number = self.cpc.rows.size;
@@ -713,15 +845,37 @@ _draw()
     label = "NEW";
     if (self.cpc.selected < self.cpc.rows.size)
         label = "EDITING CONFIRMED";
+    if (followingShared)
+        label = "FOLLOWING SHARED";
     if (self.cpc.testing)
         label = "TEST";
-    self.cpc.huds[3] _setPanelText(self.cpc.route);
+    displayColor = self.cpc.routeColor;
+    displayRoute = self.cpc.route;
+    if (isDefined(self.cpc.displayRoutes))displayRoute = self.cpc.displayRoutes;
+    if (isDefined(self.cpc.sharedCount) && number <= self.cpc.sharedCount)
+    {
+        displayColor = routeRGB(self.cpc.sharedHex);
+        displayRoute = self.cpc.sharedRoute + " (shared)";
+    }
+    self.cpc.huds[3].color = displayColor;
+    self.cpc.huds[3] _setPanelText(displayRoute);
     text = label + " #" + number;
     if (summary)
         text = "READY TO FINALIZE";
     if (cp.alternatives.size > 0)
         text += " | Either area (" + (cp.alternatives.size + 1) + ")";
-    text += "\nTotal checkpoints: " + self.cpc.rows.size;
+    if (isDefined(self.cpc.network))
+        text += "\nSection checkpoints: " + self.cpc.rows.size;
+    else
+        text += "\nTotal checkpoints: " + self.cpc.rows.size;
+    if (isDefined(self.cpc.sharedCount))text += " (" + self.cpc.sharedCount + " shared)";
+    if (followingShared && isDefined(self.cpc.sharedPresence))
+    {
+        if (self.cpc.sharedPresence >= 0)
+            text += "\nStanding on existing #" + (self.cpc.sharedPresence + 1);
+        else
+            text += "\nNo existing checkpoint at this landing";
+    }
     if (self.cpc.status != "")
         text += "\n" + getSubStr(self.cpc.status, 0, 100);
     self.cpc.huds[0] _setPanelText(text);
@@ -745,6 +899,16 @@ _draw()
             text = "Test complete";
         text += "\nExit test: !cp test";
     }
+    else if (followingShared)
+    {
+        if (cp.finish)
+            text = "Shared finish selected\nIf this also finishes your route: !cp finalize";
+        else if (self.cpc.selected + 1 < self.cpc.rows.size)
+            text = "NEXT: Cyan shows the next existing landing\nLanding on a shared checkpoint selects it";
+        else
+            text = "End of this shared section";
+        text += "\nPath diverges? Split from the last shared landing\n!cp split <keep route> <new branch>";
+    }
     else if (summary)
         text = "NEXT: !cp finalize\nEdit finish: !cp select " + number + "\nOr detect another finish [Num 0]";
     else if (cp.points.size == 0)
@@ -753,7 +917,8 @@ _draw()
         if (cp.alternatives.size > 0)
             text = "NEXT: Detect the alternative landing";
         text += "\nStand on it, then press [Num 0]";
-        if (cp.alternatives.size == 0 && self.cpc.rows.size > 0)
+        text += "\n[Num 4] Edit last | [Num Del] Discard";
+        if (cp.alternatives.size == 0 && self.cpc.rows.size > 0 && (!isDefined(self.cpc.sharedCount) || self.cpc.rows.size > self.cpc.sharedCount))
             text += "\nOptional: [Num /] Add alternative instead";
     }
     else if (error != "")
@@ -763,12 +928,28 @@ _draw()
     if (cp.alternatives.size > 0)
         text += "\nMagenta: same checkpoint [Num *]";
     self.cpc.huds[1] _setPanelText(text);
-    color = _vec(self.cpc.routeColor) + " 1";
+    color = _vec(displayColor) + " 1";
     if (error != "")
         color = "1 0.3 0.1 1";
     if (self.cpc.testing && self.cpc.testNext >= self.cpc.rows.size)
         return;
     self _outlineGroup(cp, color);
+    if (followingShared && self.cpc.selected + 1 < self.cpc.rows.size)
+    {
+        next = _decode(self.cpc.rows[self.cpc.selected + 1]);
+        label = "#" + (self.cpc.selected + 2);
+        if (next.finish)
+            label += " FINISH";
+        self _previewArea(next.points, label, "0 1 1 1");
+        for (j = 0; j < next.alternatives.size; j++)
+        {
+            self _previewArea(next.alternatives[j], label, "1 0.2 1 1");
+            self _line(_center(next.points), _center(next.alternatives[j]), "1 0.2 1 1");
+        }
+        self _line(_center(cp.points), _center(next.points), "1 0.8 0 1");
+    }
+    self openCJ\checkpointNetwork::drawConnections(cp);
+    if (isDefined(self.cpc.overlap))self _outlineGroup(self.cpc.overlap, "1 0.2 0 1");
     // Only the previous checkpoint is drawn too; don't flood reliable commands for the entire map.
     previous = number - 2;
     while (previous >= 0 && previous < self.cpc.rows.size)
@@ -778,13 +959,22 @@ _draw()
             break;
         previous--;
     }
-    if (previous >= 0 && previous < self.cpc.rows.size)
+    if (!followingShared && previous >= 0 && previous < self.cpc.rows.size)
     {
         prior = _decode(self.cpc.rows[previous]);
         self _outlineGroup(prior, "0.4 0.4 0.4 1");
         if (cp.points.size > 0)
             self _line(_center(prior.points), _center(cp.points), "1 0.8 0 1");
     }
+}
+
+// Preview just the landing boundary and checkpoint number, keeping the larger
+// preview cheap and distinct from the selected area's editable corners.
+_previewArea(points, label, color)
+{
+    for (i = 0; i < points.size; i++)
+        self _line(points[i] + (0, 0, 2), points[(i + 1) % points.size] + (0, 0, 2), color);
+    self _drawCommand("M t " + _vec(_center(points)) + ";" + color + ";0.8;400;" + label);
 }
 
 _outlineGroup(cp, color)
@@ -883,7 +1073,7 @@ processTravelRequests()
         self.cpc.restoreOrigin = undefined;
         self setoriginandangles(pos.origin, pos.angles);
         self setVelocity((0, 0, 0));
-        self.cpc.positions[0] = pos;
+        self rememberPosition(pos);
     }
     if (isDefined(self.eventQueue["save"]))
         self savePosition();
@@ -902,25 +1092,40 @@ savePosition()
     pos = spawnStruct();
     pos.origin = self.origin;
     pos.angles = self getPlayerAngles();
-    self.cpc.positions[1] = self.cpc.positions[0];
-    self.cpc.positions[0] = pos;
+    self rememberPosition(pos);
     self openCJ\savePosition::printSaveSuccess();
+}
+
+// Bound session-only travel history; no run state or database writes.
+rememberPosition(pos)
+{
+    last = self.cpc.positions.size;
+    if (last > 255)
+        last = 255;
+    for (i = last; i > 0; i--)
+        self.cpc.positions[i] = self.cpc.positions[i - 1];
+    self.cpc.positions[0] = pos;
+    self.cpc.travelIndex = 0;
 }
 
 loadPosition(backwardsAmount)
 {
-    index = 0;
-    if (backwardsAmount > 0)
-        index = 1;
+    if (!isDefined(self.cpc.travelIndex) || backwardsAmount == 0)
+        self.cpc.travelIndex = 0;
+    index = self.cpc.travelIndex + backwardsAmount;
+    if (index < 0)
+        index = 0;
     pos = self.cpc.positions[index];
     if (!isDefined(pos))
-        pos = self openCJ\savePosition::getSavedPosition(index);
+        pos = self openCJ\savePosition::getSavedPosition(index - self.cpc.positions.size);
     if (!isDefined(pos))
     {
         self iprintln("No editor position saved in this slot");
-        return;
+        return false;
     }
+    self.cpc.travelIndex = index;
     self setoriginandangles(pos.origin, pos.angles);
     self setVelocity((0, 0, 0));
     self openCJ\savePosition::printLoadSuccess();
+    return true;
 }

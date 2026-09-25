@@ -112,7 +112,6 @@ onPlayerDisconnect()
 changeMap(mapName)
 {
     // Let other scripts know map is changing
-    level openCJ\events\eventHandler::onMapChanging();
 
     // CoD4(x) map() gsc call is broken due to fs_searchpath only containing current map path, but not the normal usermaps folder itself
     // So instead, use nextmap and exitLevel so it skips the check for SV_MapExists

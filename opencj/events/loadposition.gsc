@@ -78,5 +78,6 @@ main(backwardsCount)
     
     self openCJ\huds\hudFpsHistory::onLoaded();
     self thread openCJ\checkpoints::updateCheckpointsForPlayer(save.checkpointID); // This may take a bit of computational time, so let it run in background
+    self openCJ\demoRecording::onLoaded(save.saveNum);
     return save.saveNum;
 }

@@ -8,4 +8,5 @@ main()
     self openCJ\checkpoints::onRunStarted();
     self openCJ\halfBeat::onRunStarted();
     self openCJ\huds\hudRunInfo::onRunStarted();
+    self openCJ\demoRecording::onRunStarted();
 }

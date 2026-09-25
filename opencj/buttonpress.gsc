@@ -41,11 +41,6 @@ onUseButton()
         return;
     }
 
-    if (self openCJ\demos::isPlayingDemo())
-    {
-        return;
-    }
-
     if(isDefined(self.buttons_lastUse) && getTime() - self.buttons_lastUse < 500)
     {
         //load
@@ -66,11 +61,6 @@ onAttackButton()
         return;
     }
     if(self.sessionState != "playing")
-    {
-        return;
-    }
-
-    if (self openCJ\demos::isPlayingDemo())
     {
         return;
     }

@@ -23,7 +23,7 @@ onCheckpointsChanged(checkpointPassed)
 
 onStartDemo()
 {
-    self _hideProgressBar(false);
+    self _hideProgressBar();
 }
 
 onSpawnPlayer()

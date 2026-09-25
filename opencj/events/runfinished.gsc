@@ -16,6 +16,7 @@ main(cp, tOffset, route)
     if (!isDefined(cpID))
         return;
 
+    self openCJ\demoRecording::capture(true);
     self.playerRuns_runFinishing = true;
     runID = self openCJ\playerRuns::getRunID();
     filters = self openCJ\playerRuns::finishSettings();
@@ -28,6 +29,7 @@ main(cp, tOffset, route)
     if (!self openCJ\playerRuns::onRunFinished(cp, filters))
         return;
     self.playerRuns_runFinishing = false;
+    self openCJ\demoRecording::onRunFinished();
     if (!isDefined(route))
         route = "<unknown route>";
     timeStr = formatTimeString(timePlayed, true);
@@ -37,7 +39,6 @@ main(cp, tOffset, route)
     self openCJ\checkpointPointers::onRunFinished(cp);
     self openCJ\showRecords::onRunFinished(cp);
     self openCJ\huds\hudProgressBar::onRunFinished(cp);
-    self openCJ\events\eventHandler::onRunFinished(cp);
     self openCJ\statistics::onRunFinished();
     self openCJ\elevate::onRunFinished();
 }

@@ -2,9 +2,16 @@
 
 onInit()
 {
-    // Stock neutral flag supports exact HUD tint without precolored textures.
     if (getCodVersion() == 4)
-        precacheShader("compass_waypoint_neutral");
+    {
+        precacheShader("opencj_checkpoint_tint_obj");
+        level.checkpointPalette = [];
+        addPalette("aqua", (0,0.8,1));addPalette("lime", (0,1,0));
+        addPalette("gold", (1,1,0));addPalette("orng", (1,0.5333,0));
+        addPalette("soft", (1,0.4667,0.4667));addPalette("dark", (0.6667,0,0));
+        addPalette("lila", (0.6667,0.3333,1));addPalette("pink", (1,0.4667,0.8));
+        addPalette("tint", (1,1,1));
+    }
     level.checkpointShaders = [];
     level.checkpointShaders["blue"] = "opencj_checkpoint_blue";
     level.checkpointShaders["cyan"] = "opencj_checkpoint_cyan";
@@ -37,6 +44,13 @@ onInit()
 
 onPlayerConnect()
 {
+    if (getCodVersion() == 4)
+    {
+        // Scale only the offscreen icon away; the engine draws its direction
+        // pointer separately. Scale length must be positive (use subpixel fade).
+        self setClientCvar("waypointOffscreenScaleLength", "0.001");
+        self setClientCvar("waypointOffscreenScaleSmallest", "0");
+    }
     self.checkpointPointers_huds = [];
     self.checkpointPointers_objectives = [];
     for(i = 0; i < 16; i++)
@@ -101,13 +115,14 @@ showCheckpointPointers()
         routeColored = getCodVersion() == 4 && isDefined(checkpoints[i].routeInfo);
         if (routeColored)
         {
-            shader_hud = "compass_waypoint_neutral";
+            shader_hud = "opencj_checkpoint_tint_obj";
+            shader_objective = paletteShader(checkpoints[i].routeInfo.color);
             tint = checkpoints[i].routeInfo.color;
         }
 
         size = 5;
         if (routeColored)
-            size = 20;
+            size = 10;
         self.checkpointPointers_huds[i] setShader(shader_hud, size, size);
         self.checkpointPointers_huds[i].color = tint;
         if (routeColored)
@@ -118,7 +133,10 @@ showCheckpointPointers()
         else
         {
             self.checkpointPointers_huds[i].alpha = 0.5;
-            self.checkpointPointers_huds[i] setWaypoint(true);
+            if (getCodVersion() == 4)
+                self.checkpointPointers_huds[i] setWaypoint(true, shader_hud);
+            else
+                self.checkpointPointers_huds[i] setWaypoint(true);
         }
 
         self.checkpointPointers_huds[i].x = checkpoints[i].origin[0];
@@ -126,14 +144,9 @@ showCheckpointPointers()
         self.checkpointPointers_huds[i].z = checkpoints[i].origin[2] + 10;
         //self.checkpointPointers_huds[i] thread _doJump(self);
 
-        // Compass objectives cannot carry arbitrary RGB; avoid a second,
-        // contradictory fixed-color icon for routes with exact colors.
-        if (routeColored && isDefined(self.checkpointPointers_objectives[i]))
-        {
-            self objective_player_delete(i);
-            self.checkpointPointers_objectives[i] = undefined;
-        }
-        if(i < 16 && !routeColored)
+        // Stock compass objectives have no RGB field. Default route colors have
+        // matching materials; custom RGB uses the nearest palette arrow here.
+        if(i < 16)
         {
             self.checkpointPointers_objectives[i] = true;
             if(getCodVersion() == 2)
@@ -251,4 +264,22 @@ _createNewCheckpointPointerHud()
     hud.aligny = "top";
     hud.alignx = "center";
     return hud;
+}
+
+
+addPalette(name, color)
+{
+    entry = spawnStruct();entry.shader="opencj_checkpoint_"+name+"_obj";entry.color=color;
+    precacheShader(entry.shader);level.checkpointPalette[level.checkpointPalette.size]=entry;
+}
+
+paletteShader(color)
+{
+    best=0;distance=100;
+    for(i=0;i<level.checkpointPalette.size;i++)
+    {
+        delta=distanceSquared(color,level.checkpointPalette[i].color);
+        if(delta<distance){distance=delta;best=i;}
+    }
+    return level.checkpointPalette[best].shader;
 }

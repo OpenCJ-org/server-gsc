@@ -235,6 +235,10 @@ onMenuResponse()
             {
                 self handleSortChange(button);
             }
+            else if (getSubStr(button,0,8)=="playdemo")
+            {
+                self openCJ\menus\leaderboard::handleDemo(button);
+            }
             else if (isSubStr(button, "loadrun")) // Runs board has clickable 'name' to restore the run
             {
                 self openCJ\menus\runsboard::handleRestoreRun(button);

@@ -2,6 +2,7 @@
 // No waits inside the transaction: every statement uses the same sync connection.
 publish()
 {
+    if (isDefined(self.cpc.network))return self openCJ\checkpointNetwork::publish();
     if (self.cpc.rows.size == 0)
     {
         self.cpc.status = "Confirm checkpoints before publishing";
@@ -84,6 +85,7 @@ activate()
         if (!isDefined(current))
             current = level.checkpoints_startCheckpoint;
         player.checkpoints_checkpoint = current;
+        player.route = openCJ\checkpoints::getRouteNameForCheckpoint(current);
         for (j = 0; j < player.checkpoints_passed.size; j++)
             player.checkpoints_passed[j] = openCJ\checkpoints::getCheckpointByID(player.checkpoints_passed[j].id);
         if (!player openCJ\checkpointCreation::isEditing())
@@ -92,6 +94,13 @@ activate()
 }
 
 _writeRoute()
+{
+    if (isDefined(self.cpc.sharedRoute))
+        return self openCJ\checkpointBranch::publish();
+    return self _writeSequentialRoute();
+}
+
+_writeSequentialRoute()
 {
     entries = self _entries();
     mapID = openCJ\mapID::getMapID();
@@ -108,8 +117,14 @@ _writeRoute()
     if (existing.size > 0)
     {
         used = openCJ\mySQL::mysqlSyncQuery("SELECT a.cpID FROM checkpointAreas a WHERE a.mapID=" + mapID + " AND a.routeName='" + route + "' AND (EXISTS (SELECT 1 FROM checkpointStatistics s WHERE s.cpID=a.cpID) OR EXISTS (SELECT 1 FROM playerSaves s WHERE s.checkpointID=a.cpID) OR EXISTS (SELECT 1 FROM playerSaves_test s WHERE s.checkpointID=a.cpID) OR EXISTS (SELECT 1 FROM playerRuns r WHERE r.finishcpID=a.cpID)) LIMIT 1");
-        if (!isDefined(used) || used.size > 0)
+        if (!isDefined(used))return self _fail("Cannot check existing checkpoint records");
+        if (used.size > 0)
+        {
+            // A new route may join a finished, already-played route. Reusing its
+            // identical checkpoint chain must not rewrite IDs or player records.
+            if (self unchangedPublished(entries, existing))return true;
             return self _fail("Published checkpoints have records/saves. Draft retained; changes need a record migration");
+        }
         if (existing.size != entries.size)
             return self _fail("Published route length differs. Draft retained; checkpoint IDs will not be deleted");
         for (i = 0; i < entries.size; i++)
@@ -258,7 +273,11 @@ loadAreas()
             }
         }
     }
-    rows = openCJ\mySQL::mysqlSyncQuery("SELECT cpID,vertices,allowDoubleRPG,routeName FROM checkpointAreas WHERE mapID=" + openCJ\mapID::getMapID());
+    columns = openCJ\mySQL::mysqlSyncQuery("SHOW COLUMNS FROM checkpointAreas LIKE 'sectionName'");
+    query = "SELECT cpID,vertices,allowDoubleRPG,routeName,NULL FROM checkpointAreas WHERE mapID=" + openCJ\mapID::getMapID();
+    if (isDefined(columns) && columns.size)
+        query = "SELECT a.cpID,a.vertices,a.allowDoubleRPG,a.routeName,CONCAT('#',LPAD(HEX(s.colorRGB),6,'0')) FROM checkpointAreas a LEFT JOIN checkpointSectionColors s ON s.mapID=a.mapID AND s.sectionName=a.sectionName WHERE a.mapID=" + openCJ\mapID::getMapID();
+    rows = openCJ\mySQL::mysqlSyncQuery(query);
     if (!isDefined(rows))
         return;
     for (i = 0; i < rows.size; i++)
@@ -272,5 +291,29 @@ loadAreas()
         cp.area = points;
         cp.allowDoubleRPG = int(rows[i][2]);
         cp.routeInfo = level.checkpointRoutes[rows[i][3]];
+        if (isDefined(rows[i][4]))
+        {
+            info = spawnStruct();info.name = rows[i][3];info.hex = toLower(rows[i][4]);
+            info.color = openCJ\checkpointCreation::routeRGB(info.hex);cp.routeInfo = info;
+        }
     }
+}
+
+
+unchangedPublished(entries, existing)
+{
+    if(entries.size!=existing.size)return false;
+    rows=openCJ\mySQL::mysqlSyncQuery("SELECT a.vertices,a.allowDoubleRPG,c.onGround,c.ender FROM checkpointAreas a JOIN checkpoints c ON c.cpID=a.cpID WHERE a.mapID="+openCJ\mapID::getMapID()+" AND a.routeName="+openCJ\util::dbStr(self.cpc.route)+" ORDER BY a.ordinal");
+    if(!isDefined(rows)||rows.size!=entries.size)return false;
+    for(i=0;i<entries.size;i++)
+    {
+        points=openCJ\checkpointArea::decode(rows[i][0]);cp=entries[i].cp;
+        if(!isDefined(points)||points.size!=entries[i].points.size||int(rows[i][1])!=int(cp.double)||int(rows[i][2])!=1)return false;
+        if(cp.finish!=isDefined(rows[i][3]))return false;
+        if(cp.finish&&rows[i][3]!=self.cpc.route)return false;
+        for(j=0;j<points.size;j++)if(distanceSquared(points[j],entries[i].points[j])>0.0001)return false;
+        if(entries[i].leader==i && isDefined(existing[i][1]))return false;
+        if(entries[i].leader!=i && (!isDefined(existing[i][1])||int(existing[i][1])!=int(existing[entries[i].leader][0])))return false;
+    }
+    return true;
 }

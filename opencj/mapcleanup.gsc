@@ -8,6 +8,7 @@ onInit()
         _removeTurrets();
         _removeWeapons();
         setCvar("clientSideEffects", 0);
+        thread _stopMapAmbient();
     }
     else
     {
@@ -71,4 +72,11 @@ _showClassnames()
             printf(ents[i].className + "\n");
         }
     }
+}
+// Map main() may start its ambient track after the gametype callback. Stop it
+// after initialization, without muting player weapons, footsteps or UI sounds.
+_stopMapAmbient()
+{
+    wait 0.05;
+    ambientStop();
 }

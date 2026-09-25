@@ -3,10 +3,11 @@
 main() // Threaded
 {
     level.playerCount--;
+    self openCJ\demos::onDisconnect();
+    self openCJ\demoRecording::onDisconnect();
     self openCJ\checkpointCreation::onDisconnect();
 
     // Call functions that need to use 'self' before the next frame
-    self openCJ\events\eventHandler::onPlayerDisconnect();
     self openCJ\commands::onPlayerDisconnect();
     self openCJ\menus\endMapVote::onPlayerDisconnect();
     self stopFollowingMe();

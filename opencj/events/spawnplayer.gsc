@@ -7,6 +7,9 @@ main(atLastSavedPosition)
         return;
     }
 
+    self openCJ\demos::cancelRequest();
+    if(self openCJ\demos::isPlayingDemo())self openCJ\demos::stopDemo();
+
     self openCJ\noclip::disableNoclip();
 
     self notify("spawned");

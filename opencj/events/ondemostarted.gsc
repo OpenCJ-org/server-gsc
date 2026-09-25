@@ -20,7 +20,6 @@ main()
     self openCJ\huds\hudTimeLimit::onStartDemo();
     self openCJ\huds\hudRunInfo::onStartDemo();
     self openCJ\playerRuns::onStartDemo();
-    self openCJ\events\eventHandler::onStartDemo();
     self openCJ\elevate::onStartDemo();
     //todo: kill nextframe threads
 }

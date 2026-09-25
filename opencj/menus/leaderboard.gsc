@@ -96,7 +96,7 @@ fetchUpdatedData()
         // - playerInformation has playerName
         // the more difficult part of the query is the ROW_NUMBER() with PARTITION and rowNr = 1, which is used to make sure we only obtain one run per playerID
         sortStr = getSortStr(self.currentBoard["sortBy"], self.currentBoard["sort"]);
-        query = "SELECT COUNT(*) OVER() AS totalNr, b.playerName, a.timePlayed, a.explosiveJumps, a.loadCount, a.finishTimeStamp, a.FPSMode, a.ele, a.anyPct, a.hb, a.hardTas FROM (" +
+        query = "SELECT COUNT(*) OVER() AS totalNr, b.playerName, a.timePlayed, a.explosiveJumps, a.loadCount, a.finishTimeStamp, a.FPSMode, a.ele, a.anyPct, a.hb, a.hardTas, a.runID FROM (" +
                     "SELECT pr.playerID, cs.timePlayed, cs.explosiveJumps, cs.loadCount, pr.finishTimeStamp, pr.FPSMode, pr.ele, pr.anyPct, pr.hb, pr.hardTas, cs.runID, cs.saveCount, (" +
                         "ROW_NUMBER() OVER (PARTITION BY pr.playerID ORDER BY " + sortStr +
                     ")) AS rn " +
@@ -130,6 +130,7 @@ fetchUpdatedData()
         rows = self openCJ\mySQL::mysqlAsyncQuery(query);
     }
 
+    self.currentBoard["demoRunIDs"] = [];
     self.currentBoard["cols"] = []; // Hope this clears the previously used memory
 
     if (isDefined(rows) && isDefined(rows[0]) && isDefined(rows[0][0]))
@@ -149,6 +150,7 @@ fetchUpdatedData()
     {
         if (i < self.currentBoard["nrEntriesThisPage"])
         {
+            self.currentBoard["demoRunIDs"][i] = int(rows[i][11]);
             self.currentBoard["cols"][i]["nr"] = (i + firstItemOnPage);
             self.currentBoard["cols"][i]["name"] = "^7" + rows[i][1] + "^7"; // playerName
             self.currentBoard["cols"][i]["time"] = int(rows[i][2]);
@@ -243,4 +245,16 @@ getEndCheckpointIdsForRoute(routeName)
     }
 
     return "(" + cpSqlStr + ")";
+}
+
+handleDemo(button)
+{
+    if(self.currentMenu!="opencj_leaderboard")return;
+    index=int(getSubStr(button,8))-1;
+    if(index<0 || index>=self.currentBoard["nrEntriesThisPage"])return;
+    id=self.currentBoard["demoRunIDs"][index];
+    if(!isDefined(id))return;
+    self openCJ\demos::cancelRequest();
+    self closeMenu();
+    self thread openCJ\demos::playRun(id,true);
 }

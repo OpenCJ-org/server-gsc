@@ -29,13 +29,20 @@ main(inflictor, attacker, damage, flags, meansOfDeath, weapon, vPoint, vDir, hit
 
     if(damage >= self.health)
     {
-        if(self openCJ\events\loadPosition::main(0))
+        if (self openCJ\checkpointCreation::isEditing())
         {
-            if (getCodVersion() == 2)
+            if (self openCJ\checkpointCreation::loadPosition(0))return;
+        }
+        else
+        {
+            loadedSave = self openCJ\events\loadPosition::main(0);
+            // Save number zero is valid; undefined means no position was loaded.
+            if (isDefined(loadedSave))
             {
-                self openCJ\playTime::addTimeUntil(getTime() + 5000);
+                if (getCodVersion() == 2)
+                    self openCJ\playTime::addTimeUntil(getTime() + 5000);
+                return;
             }
-            return;
         }
     }
 

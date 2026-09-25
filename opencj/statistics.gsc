@@ -112,6 +112,9 @@ _updateProgress()
     if (!self openCJ\anyPct::hasAnyPct() && self openCJ\playerRuns::hasRunStarted() && isDefined(currentCheckpoint))
     {
         route = openCJ\checkpoints::getRouteNameForCheckpoint(currentCheckpoint);
+        ends = openCJ\checkpoints::getEndCheckpoints(currentCheckpoint);
+        if (!isDefined(route) && ends.size > 1)
+            route = "Shared";
         if(isDefined(route))
         {
             // Route

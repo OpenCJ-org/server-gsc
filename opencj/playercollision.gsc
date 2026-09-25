@@ -58,6 +58,12 @@ _onSettingHideRadius(newVal)
 onFrame()
 {
     updatePlayerVisibility();
+    // The native visibility pass rewrites masks every frame. Apply demo hiding
+    // afterwards, including for spectators, without changing mute/ignore settings.
+    players = getEntArray("player", "classname");
+    for (i = 0; i < players.size; i++)
+        if (players[i] openCJ\demos::isPlayingDemo())
+            players[i] hide();
 }
 
 onIgnore(player) //self onIgnore(player) when self ignores a player //also called when loading ignore list from db, and should be called onconnect if someone has the player ignored

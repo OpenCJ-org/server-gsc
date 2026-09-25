@@ -2,144 +2,228 @@
 
 onInit()
 {
-    level.demosBeingLoaded = []; // Not yet ready to play
-    level.readyDemos = []; // Loaded to enough frames
-
     clearAllDemos();
-    cmd = openCJ\commands_base::registerCommand("playback", "Play back an existing recording", ::_onCommandPlayback, 0, 1, 0);
-    openCJ\commands_base::addAlias(cmd, "demo");
-    underlyingCmd = openCJ\settings::addSettingBool("loopdemo", false, "Loop demos");
-    openCJ\commands_base::addAlias(underlyingCmd, "loop");
-
-    // TODO: re-enable after alpha :-)
-    //thread _prepareAllDemos();
-}
-
-_prepareAllDemos()
-{
-    openCJ\mySQL::mysqlAsyncQuery("SELECT prepareAllDemos()");
+    level.demoCache = [];
+    openCJ\demoRecording::onInit();
+    cmd = openCJ\commands_base::registerCommand("demo", "!demo [walkthrough|wt|speedrun|sr|lowrpg|rpg|low|stop]", ::_onCommandPlayback, 0, 1, 0);
+    openCJ\commands_base::addAlias(cmd,"playback");
+    setting = openCJ\settings::addSettingBool("demoloop", true, "Loop demo playback");
+    openCJ\commands_base::addAlias(setting,"loop");
 }
 
 _onCommandPlayback(args)
 {
-    // TODO: re-enable after alpha :-)
-    self sendLocalChatMessage("This feature is currenly disabled, sorry.", true);
-    return;
-
-    if(isDefined(args[0]))
+    if ((args.size && args[0]=="stop") || (!args.size && self isPlayingDemo()))
     {
-        self thread _doLoadRecordingQuery(int(args[0]), int(args[0]));
-    }
-    else
-    {
-        self iprintln("^1Stopped ^7playback");
+        self cancelRequest();
         self thread doNextFrame(::stopDemo);
+        return;
     }
+    kind="walkthrough";
+    if (args.size) kind=toLower(args[0]);
+    if(kind=="wt")kind="walkthrough";
+    if(kind=="sr")kind="speedrun";
+    if(kind=="rpg" || kind=="low")kind="lowrpg";
+    if(kind!="walkthrough" && kind!="speedrun" && kind!="lowrpg")
+    {
+        self sendLocalChatMessage("Use !demo wt, !demo sr, !demo rpg, or !demo stop.",true);
+        return;
+    }
+    self thread request(kind);
 }
 
-_doLoadRecordingQuery(runID, demoID)
+request(kind)
 {
-    level endon("map_ended");
+    self cancelRequest();
+    self endon("demo_request");
     self endon("disconnect");
-
-    query = "SELECT prepareDemo(" + runID + ")";
-    openCJ\mySQL::mysqlAsyncQuery(query);
-    query = "SELECT pr.x, pr.y, pr.z, pr.a, pr.b, pr.c, pr.isKeyFrame, pr.flags, ev.saveNum, ev.loadNum, ev.rpg, pr.frameTime FROM playerRecordings pr LEFT JOIN demoEvents ev ON pr.eventID = ev.eventID WHERE runID = " + runID + " ORDER BY frameNum ASC";
-
-    result = openCJ\mySQL::mysqlAsyncQueryNoRows(query);
-    if(!isDefined(result) || (result == 0))
+    if (!self canWatch()) return;
+    route=self.route;
+    if(!isDefined(route))
     {
-        iprintln("Bad result from demo query");
-        return;
-    }
-
-    rowcount = mysql_num_rows(result);
-    if(rowcount == 0)
-    {
-        self iprintln("Demo was not found!");
-        return;
-    }
-
-    self iprintln("^2Starting ^7playback");
-    self.playbackPaused = false;
-    self.slowmoCount = 0;
-
-    // Check if the demo was already previously loaded
-    createDemoResult = createDemo(demoID);
-    // -1 -> already loaded
-    // -2 -> no free spots (if this happens we should just increase it, for now it's 512)
-    if(createDemoResult == -2)
-    {
-        // Oh no, we ran out of free space.
-        printf("ERROR: Ran out of free demo space... oops\n");
-        return;
-    }
-    else if(createDemoResult == -1)
-    {
-        // Already loaded, great. Don't have to let the player wait!
-    }
-    else // createDemoResult will be demoID
-    {
-        self iprintln("Loading demo..");
-        if(rowcount > 300)
+        routes=getArrayKeys(level.routeEnders);
+        if(routes.size!=1)
         {
-            self _loadDemo(demoID, result, 300, false);
-            self thread _loadDemo(demoID, result, rowcount - 300, true);
+            self sendLocalChatMessage("Choose a route first, then use !demo.",true);
+            return;
         }
-        else
+        route=routes[0];
+    }
+    fps=self openCJ\fps::getCurrentFPSMode();
+    mask=int(self openCJ\anyPct::hasAnyPct())+2*int(self openCJ\elevate::hasUsedEle())+4*int(self openCJ\halfBeat::isHalfBeatAllowed())+8*int(self openCJ\tas::hasHardTAS());
+    if(kind=="walkthrough")
+    {
+        mask=0;
+        if(fps=="hax")fps="mix";
+        fpsFilter="("+dbStr(fps)+")";
+    }
+    else fpsFilter=openCJ\menus\board_base::getFPSModeStr(fps);
+    order="d.timePlayed,d.explosiveJumps";
+    if(kind=="lowrpg")order="d.explosiveJumps,d.timePlayed";
+    query="SELECT d.runID,d.modeMask FROM demoWinners w JOIN demoRuns d ON d.runID=w.runID WHERE d.ready=1 AND w.mapID="+openCJ\mapID::getMapID()+" AND w.routeName="+dbStr(route)+" AND w.kind="+dbStr(kind)+" AND (w.modeMask & "+mask+")=w.modeMask AND w.FPSMode IN "+fpsFilter+" ORDER BY "+order+",BIT_COUNT(d.modeMask),FIELD(d.FPSMode,'125','mix','hax'),d.runID LIMIT 1";
+    rows=self openCJ\mySQL::mysqlAsyncQuery(query);
+    if(!isDefined(rows)||!rows.size)
+    {
+        self sendLocalChatMessage("No matching demo is available for this route and these modes.",true);
+        return;
+    }
+    self playRun(int(rows[0][0]),false);
+}
+
+canWatch()
+{
+    if(!level.demoStorageReady)
+    {
+        self sendLocalChatMessage("Demo storage has not been initialized.",true);
+        return false;
+    }
+    if(isDefined(self.playerRuns_runFinishing) && self.playerRuns_runFinishing)return false;
+    if(self.sessionState!="playing" || self openCJ\checkpointCreation::isEditing() || self isPlayingDemo())
+    {
+        self sendLocalChatMessage("Spawn and leave CPC/current playback before watching a demo.",true);
+        return false;
+    }
+    return true;
+}
+
+// Called by leaderboard row selection. Explicit rows always play the full run.
+playRun(id,full)
+{
+    self endon("disconnect");
+    self endon("demo_request");
+    if(!self canWatch())return;
+    if(!isDefined(full))full=true;
+    meta=self openCJ\mySQL::mysqlAsyncQuery("SELECT frameCount,modeMask FROM demoRuns WHERE ready=1 AND mapID="+openCJ\mapID::getMapID()+" AND runID="+id);
+    if(!isDefined(meta)||!meta.size)
+    {
+        self sendLocalChatMessage("This run has no retained demo.",true);
+        return;
+    }
+    key=""+id;
+    load=false;
+    if(!isDefined(level.demoCache[key]))
+    {
+        cache=spawnStruct();cache.loading=true;cache.ready=false;cache.refs=0;
+        level.demoCache[key]=cache;
+        load=true;
+    }
+    cache=level.demoCache[key];
+    cache.refs++;
+    self.demoPendingId=id;
+    if(load)level thread _loadCache(id,int(meta[0][0]));
+    while(cache.loading)wait 0.05;
+    if(!cache.ready || !self canWatch())
+    {
+        if(!cache.ready)self sendLocalChatMessage("The recording could not be loaded.",true);
+        self releasePending();
+        return;
+    }
+    range=[];range[0]=0;range[1]=numberOfDemoFrames(id)-1;
+    if(!full)
+    {
+        cp=self openCJ\checkpoints::getCurrentCheckpoint();
+        cpID=0;
+        if(isDefined(cp))
         {
-            self _loadDemo(demoID, result, rowcount, false);
-            mysql_free_result(result);
+            if(isDefined(cp.bigBrother))cp=cp.bigBrother;
+            if(isDefined(cp.id))cpID=cp.id;
+        }
+        range=demoFindSegment(id,cpID,self.origin,int(meta[0][1])&1);
+        if(!isDefined(range))
+        {
+            self sendLocalChatMessage("No matching demo segment is available at this checkpoint.",true);
+            self releasePending();
+            return;
         }
     }
-    self iprintln("^2Demo ready to play!");
-    self.demoPreviousStance = "stand";
-    self.demoPreviousState = "none";
-    self.demoPreviousFPS = undefined;
-    self.demoPreviousOnGround = true;
-    self startDemo(demoID);
+    // Start outside a client-command / movement callback.
+    waittillframeend;
+    if(!self canWatch()){self releasePending();return;}
+    self.demoPendingId=undefined;
+    self.demoBegin=range[0];self.demoEnd=range[1];
+    self startDemo(id);
+}
+
+_loadCache(id,expected)
+{
+    cache=level.demoCache[""+id];
+    created=createDemo(id);
+    ok=created==id;
+    if(ok)
+    {
+        chunk=0;
+        while(ok && numberOfDemoFrames(id)<expected)
+        {
+            rows=openCJ\mySQL::mysqlAsyncQuery("SELECT chunkNum,HEX(payload) FROM demoChunks WHERE runID="+id+" AND chunkNum>="+chunk+" ORDER BY chunkNum LIMIT 8");
+            ok=isDefined(rows) && rows.size>0;
+            for(i=0;ok && i<rows.size;i++)
+            {
+                if(int(rows[i][0])!=chunk || !isDefined(demoDecodeChunk(id,rows[i][1])))ok=false;
+                chunk++;
+            }
+            wait 0.05;
+        }
+        if(ok)ok=numberOfDemoFrames(id)==expected;
+        if(ok)completeDemo(id);
+        else destroyDemo(id);
+    }
+    cache.ready=ok;cache.loading=false;
+    if(!ok)printf("OpenCJ: failed to load demo "+id+".\n");
+    if(cache.refs==0)releaseCache(id);
+}
+
+releaseCache(id)
+{
+    cache=level.demoCache[""+id];
+    if(!isDefined(cache))return;
+    if(cache.refs>0)cache.refs--;
+    if(cache.refs==0 && !cache.loading)
+    {
+        if(cache.ready)destroyDemo(id);
+        level.demoCache[""+id]=undefined;
+    }
 }
 
 startDemo(demoID)
 {
-    self openCJ\events\onDemoStarted::main();
-    self.demoID = demoID;
-    self.playingDemo = true;
-    self openCJ\cheating::setCheating(true);
-    self unlink();
-    self linkto(self.demoLinker, "", (0, 0, 0), (0, 0, 0));
+    if (getCodVersion() == 4 && !(self demoBeginPresentation()))
+    {
+        releaseCache(demoID);
+        self sendLocalChatMessage("Could not prepare demo playback", true);
+        return;
+    }
+    state=spawnStruct();
+    state.origin=self.origin;state.angles=self getPlayerAngles();state.velocity=self getVelocity();
+    state.stance=self getStance();state.weapon=self getCurrentWeapon();state.health=self.health;
+    state.paused=self.playerRuns_runPaused;state.time=self openCJ\playTime::getTimePlayed();
+    state.timerRunning=!isDefined(self.stopTime);
+    state.fpshistory=self.fpshistory;state.fpsHistoryText=self.fpsHistoryText;
+    state.speed=self.currSpeed;state.maxSpeed=self.maxSpeed;
+    state.started=getTime();
+    self.demoReturn=state;
+    self.playingDemo=true;
+    self.demoExitRequested=false;
+    self hide();
+    self.playerRuns_runPaused=true;
+    self openCJ\playTime::pauseTimer();
+    self.eventQueue=[];
+    self.demoID=demoID;self.playbackPaused=false;self.slowmoCount=0;
+    self.demoPreviousStance=state.stance;self.demoPreviousState="none";
+    self.demoPreviousFPS=undefined;self.demoPreviousOnGround=true;
+    self.demoFirstFrame=true;self.demoLastPresentedFrame=undefined;
+    self.maxSpeed=0;
+    self openCJ\huds\hudSpeedometer::_hideSpeedometer();
     self selectPlaybackDemo(demoID);
-    self skipPlaybackFrames(-1 * numberOfDemoFrames(demoID));
-
-}
-
-_loadDemo(demoID, result, framecount, lazyLoad)
-{
-    level endon("map_ended");
-    for(i = 0; i < framecount; i++)
-    {
-        row = mysql_fetch_row(result);
-        saved = isDefined(row[8]);
-        loaded = isDefined(row[9]);
-        rpg = isDefined(row[10]);
-        flags = int(row[7]);
-        frameTime = int(row[11]);
-        if(frameTime == 0)
-            fps = 1000;
-        else
-            fps = int(1000 / frameTime);
-        angles = short2angle((int(row[3]), int(row[4]), int(row[5])));
-        addFrameToDemo(demoID, (float(row[0]), float(row[1]), float(row[2])), angles, int(row[6]), flags, saved, loaded, rpg, fps);
-        if((i > 300) && ((i % 300) == 0) && lazyLoad)
-        {
-            // Every time we load another batch of frames, chill for a bit.
-            wait 0.05;
-        }
-    }
-    if(lazyLoad)
-    {
-        mysql_free_result(result);
-    }
+    self skipPlaybackFrames(self.demoBegin);
+    self.demoLinker.origin=self.origin;
+    self linkTo(self.demoLinker,"",(0,0,0),(0,0,0));
+    self disableWeapons();
+    self openCJ\showRecords::onStartDemo();
+    self openCJ\checkpointPointers::onStartDemo();
+    self openCJ\huds\hudStatistics::onStartDemo();
+    self openCJ\huds\hudProgressBar::onStartDemo();
+    self openCJ\buttonPress::resetButtons();
+    self sendLocalChatMessage("Demo: Load or !demo stop to return; Melee pauses, A/D seek, Q/E seek faster, Jump slows playback.");
 }
 
 isPlayingDemo()
@@ -155,6 +239,7 @@ isPlayingDemo()
 onPlayerConnect()
 {
     self.playingDemo = false;
+    self openCJ\demoRecording::onConnect();
     self.playbackPaused = false;
     self.demoLinker = spawn("script_origin", (0, 0, 0));
 }
@@ -182,6 +267,9 @@ _getDemoFrame(nrFramesToSkip, shouldSkipFails)
     {
         newFrame = self skipPlaybackFrames(nrFramesToSkip);
     }
+
+    if(newFrame<self.demoBegin)newFrame=self skipPlaybackFrames(self.demoBegin-newFrame);
+    if(newFrame>self.demoEnd)newFrame=self skipPlaybackFrames(self.demoEnd-newFrame);
 
     frame = spawnStruct();
     frame.origin = self readPlaybackFrame_origin();
@@ -241,15 +329,26 @@ _getDemoFrame(nrFramesToSkip, shouldSkipFails)
 
 whilePlayingDemo()
 {
+    if (isDefined(self.demoExitRequested) && self.demoExitRequested)
+    {
+        self stopDemo();
+        return;
+    }
     skipFails = demoHasKeyFrames(self.demoID); // TODO: temp because we don't have specific keys for skipping key frames right now
     self linkTo(self.demoLinker, "", (0, 0, 0), (0, 0, 0));
     if (self.playbackPaused)
     {
+        self demoApplyPresentation();
         return;
     }
 
     isInterpolatedFrame = false;
-    if(self leftButtonPressed()) // Reverse
+    if(self.demoFirstFrame)
+    {
+        self.demoFirstFrame=false;
+        currFrame=_getDemoFrame(0,false);
+    }
+    else if(self leftButtonPressed()) // Reverse
     {
         currFrame = _getDemoFrame(-2, skipFails);
     }
@@ -310,23 +409,26 @@ whilePlayingDemo()
         currFrame = _getDemoFrame(1, skipFails);
     }
 
-    // In perfect run (i.e. without fails) it doesn't load, so check for keyFrame as well
-    if((!currFrame.loadNow || skipFails) && (currFrame.number > 1))
+    self.demoLinker.origin = currFrame.origin;
+    self setPlayerAngles(currFrame.angles);
+    if(currFrame.stance!=self.demoPreviousStance)self setStance(currFrame.stance);
+    detailed = self demoApplyPresentation();
+    if (!detailed)
     {
-        self.demoLinker.origin = currFrame.origin;
-        self setPlayerAngles(currFrame.angles);
         self openCJ\weapons::switchToDemoWeapon(currFrame.weapon == "rpg");
+        self openCJ\huds\hudSpeedometer::_hideSpeedometer();
     }
     else
     {
-        self unlink();
-        self spawn(currFrame.origin, currFrame.angles);
-        self.demoLinker.origin = currFrame.origin;
-        self linkto(self.demoLinker, "", (0, 0, 0), (0, 0, 0));
-        self setPlayerAngles(currFrame.angles);
-        self openCJ\events\spawnPlayer::setDemoSpawnVars(currFrame.weapon == "rpg");
-        self openCJ\huds\hudFpsHistory::clearAndSetDemoFPS(openCJ\fps::getShortFPS(currFrame.FPS));
+        self openCJ\huds\hudSpeedometer::whileAlive();
+        sequential = !isDefined(self.demoLastPresentedFrame) || currFrame.number == self.demoLastPresentedFrame + 1;
+        if (currFrame.rpgNow && sequential && !isInterpolatedFrame)
+        {
+            sound = self readPlaybackFrame_rpgSound();
+            if (isDefined(sound))self playLocalSound(sound);
+        }
     }
+    if (!isInterpolatedFrame)self.demoLastPresentedFrame = currFrame.number;
     self openCJ\huds\hudOnScreenKeyboard::showKeyboardDemo(currFrame.forward, currFrame.back, currFrame.left, currFrame.right, currFrame.jump, currFrame.sprint);
     if(currFrame.stance != self.demoPreviousStance)
     {
@@ -374,7 +476,7 @@ whilePlayingDemo()
     }
     
     // Check if demo ended.
-    if(currFrame.number == (numberOfDemoFrames(self.demoID) - 1))
+    if(currFrame.number >= self.demoEnd)
     {
         self _endOfDemo();
     }
@@ -382,9 +484,12 @@ whilePlayingDemo()
 
 _endOfDemo()
 {
-    if(self openCJ\settings::getSetting("loopdemo"))
+    if(self openCJ\settings::getSetting("demoloop"))
     {
-        self skipPlaybackFrames(-1 * (numberOfDemoFrames(self.demoID) - 1));
+        current=self skipPlaybackFrames(0);
+        self skipPlaybackFrames(self.demoBegin-current);
+        self.demoFirstFrame=true;self.demoLastPresentedFrame=undefined;
+        self.maxSpeed=0;
         return;
     }
     self stopDemo();
@@ -392,18 +497,68 @@ _endOfDemo()
 
 stopDemo()
 {
-    self.playingDemo = false;
-    self.demoID = undefined;
+    if(!self isPlayingDemo())return;
+    state=self.demoReturn;
+    id=self.demoID;
     self unlink();
-    self iprintln("Demo ended");
-    if(self openCJ\savePosition::canLoadError(0) == 0)
-    {
-        self thread openCJ\events\loadPosition::main(0);
-    }
-    else
-    {
-        self thread openCJ\events\spawnPlayer::main();
-    }
+    self setoriginandangles(state.origin,state.angles);
+    self setVelocity(state.velocity);
+    self setStance(state.stance);
+    self enableWeapons();
+    if(state.weapon!="none" && state.weapon!="")self switchToWeapon(state.weapon);
+    self demoEndPresentation();
+    self.currSpeed=state.speed;self.maxSpeed=state.maxSpeed;
+    self openCJ\huds\hudSpeedometer::whileAlive();
+    self.health=state.health;
+    self.playerRuns_runPaused=state.paused;
+    self openCJ\playTime::setTimePlayed(state.time);
+    self.demoExitRequested=false;
+    self.playingDemo=false;
+    self show();
+    openCJ\playerCollision::onFrame();
+    if(state.timerRunning)self openCJ\playTime::startTimer();
+    self.activelyPlayingOrigin=state.origin;
+    self.activelyPlayingTimer=getTime()+5000;
+    self.previousOrigin=state.origin;
+    self.previousOnground=self isOnGround();
+    elapsed=getTime()-state.started;
+    timestamps=[];timestamps[0]=level.statisticsStrings_lastExplosiveFiredTime;timestamps[1]=level.statisticsStrings_lastJumpTime;
+    for(i=0;i<timestamps.size;i++)
+        if(isDefined(self.statistics[timestamps[i]]))self.statistics[timestamps[i]]+=elapsed;
+    self.eventQueue=[];
+    self openCJ\buttonPress::resetButtons();
+    self openCJ\checkpointPointers::showCheckpointPointers();
+    self openCJ\showRecords::onSpawnPlayer();
+    self openCJ\huds\hudStatistics::onSpawnPlayer();
+    self openCJ\huds\hudProgressBar::onSpawnPlayer();
+    self openCJ\huds\hudRunInfo::onSpawnPlayer();
+    self.fpshistory=state.fpshistory;self.fpsHistoryText=state.fpsHistoryText;
+    self.hud[level.fpsHistoryHudName] openCJ\huds\infiniteHuds::setInfiniteHudText(state.fpsHistoryText,self,false);
+    self.demoID=undefined;self.demoReturn=undefined;
+    releaseCache(id);
+    self sendLocalChatMessage("Demo stopped. Your run has been restored.");
+}
 
-    self openCJ\events\onDemoStopped::main();
+onDisconnect()
+{
+    self demoEndPresentation();
+    self releasePending();
+    if(self isPlayingDemo())releaseCache(self.demoID);
+    if(isDefined(self.demoLinker))self.demoLinker delete();
+}
+
+
+releasePending()
+{
+    if(isDefined(self.demoPendingId))
+    {
+        releaseCache(self.demoPendingId);
+        self.demoPendingId=undefined;
+    }
+}
+
+cancelRequest()
+{
+    self notify("demo_request");
+    self releasePending();
 }
