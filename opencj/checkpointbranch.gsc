@@ -155,7 +155,7 @@ ensurePrefix()
     for (i = 0; i < entries.size; i++)
     {
         points = openCJ\checkpointArea::decode(rows[i][1]);
-        same = isDefined(points) && points.size == entries[i].points.size && int(rows[i][2]) == int(entries[i].cp.double) && !isDefined(rows[i][4]) && int(rows[i][5]) == 1;
+        same = isDefined(points) && points.size == entries[i].points.size && int(rows[i][2]) == int(entries[i].cp.double) && !isDefined(rows[i][4]) && int(rows[i][5]) == int(entries[i].cp.onGround);
         if (same)
             for (j = 0; j < points.size; j++)
                 if (distanceSquared(points[j], entries[i].points[j]) > 0.0001)same = false;

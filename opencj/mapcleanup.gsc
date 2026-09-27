@@ -79,4 +79,33 @@ _stopMapAmbient()
 {
     wait 0.05;
     ambientStop();
+    _normalizeMapHints();
+}
+
+// BSP trigger hints may contain raw prose instead of a localization key.
+// Configstrings 277..308 are CoD4's 32 hint slots (G_GetHintStringIndex).
+_normalizeMapHints()
+{
+    repaired=0;
+    for(i=277;i<309;i++)
+    {
+        hint=sv_getconfigstring(i);
+        fixed=_literalMapHint(hint);
+        if(fixed!=hint)
+        {
+            setConfigStringByIndex(i,fixed);
+            repaired++;
+        }
+    }
+    if(repaired)printf("OpenCJ: normalized "+repaired+" literal map hint(s).\n");
+}
+
+_literalMapHint(hint)
+{
+    if(hint=="" || (!isSubStr(hint," ") && getSubStr(hint,0,1)!="^"))return hint;
+    literal=getSubStr(constructMessage("x"),0,1);
+    localized=getSubStr(constructMessage("x", &"PLATFORM_USE"),2,3);
+    // Preserve proper literal/localized mixtures and avoid adding markers twice.
+    if(isSubStr(hint,literal) || isSubStr(hint,localized))return hint;
+    return constructMessage(hint);
 }

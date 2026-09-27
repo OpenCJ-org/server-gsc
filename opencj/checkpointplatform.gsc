@@ -1,6 +1,6 @@
 #include openCJ\util;
 
-// Rectangular brush tops only. Orientation comes from collision normals, never view yaw.
+// Rectangular and mildly skewed brush tops. Orientation comes from collision normals, never view yaw.
 getRectangularPlatformOrgs()
 {
     if (!self isOnGround())
@@ -8,12 +8,28 @@ getRectangularPlatformOrgs()
         self iprintln("Land on the platform before detecting it");
         return undefined;
     }
-    points = detectAt(self.origin);
+    points = detectLandingAt(self.origin);
     if (!isDefined(points))
-        self iprintln("Could not verify a complete rectangle; use !cp corner for manual placement");
+        self iprintln("Could not identify a supported platform; use !cp corner for manual placement");
     else
         self iprintln("Detected platform edges from collision geometry");
     return points;
+}
+
+// Prefer the actual stationary collision brush. Objects above it cannot truncate
+// its face, and selecting one convex brush cannot fill a hole between brushes.
+// Traces remain the fallback for CoD2, patches and other non-brush geometry.
+detectLandingAt(origin)
+{
+    top = bulletTrace(origin + (0,0,2), origin - (0,0,24), false, undefined);
+    if (top["fraction"] < 1 && top["normal"][2] >= 0.7)
+    {
+        points = platformBrushFace(top["position"], top["normal"]);
+        if (isDefined(points) && openCJ\checkpointArea::validate(points) == "" &&
+            openCJ\checkpointArea::contains(points, origin, true))
+            return points;
+    }
+    return detectAt(origin);
 }
 
 detectAt(origin)
@@ -30,17 +46,24 @@ detectAt(origin)
         return undefined;
     axis = face["normal"];
     side = openCJ\checkpointArea::crossProduct(normal, axis);
+    // On a skewed slope, follow the adjacent edge instead of assuming a
+    // right angle: a perpendicular scan can cross that same edge twice.
+    // Allow up to about 18 degrees of skew; all corner/edge support checks remain.
+    adjacent = _side(start, side, normal);
+    if (!isDefined(adjacent) || vectorDot(adjacent["normal"], side) < 0.95)
+        return undefined;
+    along = openCJ\checkpointArea::crossProduct(adjacent["normal"], normal);
     directions = [];
-    directions[0] = axis;
+    directions[0] = along;
     directions[1] = side;
-    directions[2] = vectorScale(axis, -1);
+    directions[2] = vectorScale(along, -1);
     directions[3] = vectorScale(side, -1);
     distances = [];
     faces = [];
     for (i = 0; i < 4; i++)
     {
         hit = _side(start, directions[i], normal);
-        if (!isDefined(hit) || vectorDot(hit["normal"], directions[i]) < 0.999)
+        if (!isDefined(hit) || vectorDot(hit["normal"], directions[i]) < 0.95)
             return undefined;
         faces[i] = hit["normal"];
         distances[i] = vectorDot(hit["position"] - top["position"], faces[i]);
@@ -68,6 +91,13 @@ detectAt(origin)
                     continue;
                 above = top["position"] + normal;
                 wall = bulletTrace(above, probes[j] + normal, false, undefined);
+                // A missing corner is an exposed edge, not necessarily a wall.
+                // Clip to that edge so the cutout never becomes checkpoint area.
+                if (wall["fraction"] == 1)
+                {
+                    wall = bulletTrace(probes[j] - normal, start, false, undefined);
+                    wall["normal"] = vectorScale(wall["normal"], -1);
+                }
                 if (wall["fraction"] == 1 || abs(vectorDot(wall["normal"], normal)) > 0.99)
                     return undefined;
                 for (k = 0; k < 4; k++)
@@ -77,7 +107,7 @@ detectAt(origin)
                     if (abs(denominator) < 0.001)
                         continue;
                     limit = vectorDot(wall["position"] - top["position"], wall["normal"]) / denominator;
-                    if (vectorDot(faceNormal, directions[k]) < -0.999 && limit > 0 && limit < distances[k] - 0.01)
+                    if (vectorDot(faceNormal, faces[k]) < -0.95 && limit > 0 && limit < distances[k] - 0.01)
                     {
                         boundary = _boundary(wall, top["position"], directions[k], normal);
                         faces[k] = vectorScale(boundary["normal"], -1);
@@ -86,6 +116,11 @@ detectAt(origin)
                         break;
                     }
                 }
+                // An oblique raised brush may cover a probe without being a
+                // boundary of the landing. Keep the original checkpoint plane;
+                // standing on top of the obstruction does not pass this area.
+                if (!trimmed && _solidAt(probes[j], normal))
+                    continue;
                 if (!trimmed)
                     return undefined;
                 break;
@@ -152,6 +187,13 @@ _side(start, direction, normal)
     }
     outside = start + vectorScale(direction, far + 0.25);
     hit = bulletTrace(outside, start, false, undefined);
+    // Near a steep end face, lowering the probe can move it back inside
+    // the brush. Retry just below the landing plane to recover the edge normal.
+    if (hit["fraction"] == 0 && vectorDot(hit["normal"], hit["normal"]) < 0.001)
+    {
+        shallow = top - vectorScale(normal, 0.125);
+        hit = bulletTrace(shallow + vectorScale(direction, far + 0.25), shallow, false, undefined);
+    }
     if (hit["fraction"] == 1 || abs(vectorDot(hit["normal"], normal)) > 0.99)
         return undefined;
     boundary = _boundary(hit, top, direction, normal);
@@ -222,4 +264,12 @@ _corners(origin, axis, side, faces, distances)
         points[i] = origin + vectorScale(axis,x) + vectorScale(side,y);
     }
     return points;
+}
+
+// A zero-length normal at fraction zero means the short trace starts in solid.
+// Do not treat a missing surface (fraction one) as an obstruction.
+_solidAt(point, normal)
+{
+    hit = bulletTrace(point + vectorScale(normal, 0.125), point - vectorScale(normal, 0.125), false, undefined);
+    return hit["fraction"] == 0 && vectorDot(hit["normal"], hit["normal"]) < 0.001;
 }

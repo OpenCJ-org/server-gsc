@@ -158,7 +158,7 @@ _writeSequentialRoute()
         finish = "NULL";
         if (cp.finish)
             finish = "'" + route + "'";
-        values = "x=" + int(origin[0]) + ",y=" + int(origin[1]) + ",z=" + int(origin[2]) + ",radius=NULL,onGround=1,ender=" + finish;
+        values = "x=" + int(origin[0]) + ",y=" + int(origin[1]) + ",z=" + int(origin[2]) + ",radius=NULL,onGround=" + int(cp.onGround) + ",ender=" + finish;
         if (existing.size == 0)
         {
             result = openCJ\mySQL::mysqlSyncQuery("INSERT INTO checkpoints SET mapID=" + mapID + "," + values);
@@ -308,7 +308,7 @@ unchangedPublished(entries, existing)
     for(i=0;i<entries.size;i++)
     {
         points=openCJ\checkpointArea::decode(rows[i][0]);cp=entries[i].cp;
-        if(!isDefined(points)||points.size!=entries[i].points.size||int(rows[i][1])!=int(cp.double)||int(rows[i][2])!=1)return false;
+        if(!isDefined(points)||points.size!=entries[i].points.size||int(rows[i][1])!=int(cp.double)||int(rows[i][2])!=int(cp.onGround))return false;
         if(cp.finish!=isDefined(rows[i][3]))return false;
         if(cp.finish&&rows[i][3]!=self.cpc.route)return false;
         for(j=0;j<points.size;j++)if(distanceSquared(points[j],entries[i].points[j])>0.0001)return false;
