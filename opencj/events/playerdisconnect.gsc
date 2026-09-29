@@ -3,6 +3,7 @@
 main() // Threaded
 {
     level.playerCount--;
+    self openCJ\clips::onDisconnect();
     self openCJ\demos::onDisconnect();
     self openCJ\demoRecording::onDisconnect();
     self openCJ\checkpointCreation::onDisconnect();

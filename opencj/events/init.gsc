@@ -27,6 +27,7 @@ main()
     openCJ\noclip::onInit();
     openCJ\historySave::onInit();
     openCJ\demos::onInit();
+    openCJ\clips::onInit();
     openCJ\chat::onInit();
     openCJ\elevate::onInit();
     openCJ\showRecords::onInit();

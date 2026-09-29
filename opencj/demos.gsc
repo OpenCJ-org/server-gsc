@@ -86,7 +86,7 @@ request(kind)
         self sendLocalChatMessage("No matching demo is available for this route and these modes.",true);
         return;
     }
-    self playRun(int(rows[0][0]),false);
+    self playRun(int(rows[0][0]),false,kind);
 }
 
 canWatch()
@@ -106,12 +106,13 @@ canWatch()
 }
 
 // Called by leaderboard row selection. Explicit rows always play the full run.
-playRun(id,full)
+playRun(id,full,kind)
 {
     self endon("disconnect");
     self endon("demo_request");
     if(!self canWatch())return;
     if(!isDefined(full))full=true;
+    if(!isDefined(kind))kind="speedrun";
     meta=self openCJ\mySQL::mysqlAsyncQuery("SELECT frameCount,modeMask FROM demoRuns WHERE ready=1 AND mapID="+openCJ\mapID::getMapID()+" AND runID="+id);
     if(!isDefined(meta)||!meta.size)
     {
@@ -147,7 +148,7 @@ playRun(id,full)
             if(isDefined(cp.bigBrother))cp=cp.bigBrother;
             if(isDefined(cp.id))cpID=cp.id;
         }
-        range=demoFindSegment(id,cpID,self.origin,int(meta[0][1])&1);
+        range=demoFindSegment(id,cpID,self.origin,int(meta[0][1])&1,int(kind!="speedrun"));
         if(!isDefined(range))
         {
             self sendLocalChatMessage("No matching demo segment is available at this checkpoint.",true);
@@ -159,6 +160,9 @@ playRun(id,full)
     waittillframeend;
     if(!self canWatch()){self releasePending();return;}
     self.demoPendingId=undefined;
+    self.demoStyle=0;
+    if(kind=="lowrpg")self.demoStyle=1;
+    else if(kind=="walkthrough")self.demoStyle=2;
     self.demoBegin=range[0];self.demoEnd=range[1];
     self.demoCheckpointed=(int(meta[0][1])&1)==0;
     self startDemo(id);
@@ -230,14 +234,18 @@ startDemo(demoID)
     self.demoID=demoID;self.playbackPaused=false;self.slowmoCount=0;
     self.demoPreviousStance=state.stance;self.demoPreviousState="none";
     self.demoPreviousFPS=undefined;self.demoPreviousOnGround=true;
-    self.demoFirstFrame=true;self.demoLastPresentedFrame=undefined;
+    self.demoFirstFrame=true;self.demoLastPresentedFrame=undefined;self.demoLoopPending=false;
     self.demoRate=1;self.demoControlButtons=0;self.demoCheckpointRequest=0;
     self.demoMenuOpened=false;
     self demoDisplayStart();
     self.maxSpeed=0;
     self openCJ\huds\hudSpeedometer::_hideSpeedometer();
     self selectPlaybackDemo(demoID);
-    self skipPlaybackFrames(self.demoBegin);
+    if(!isDefined(self.demoStyle))self.demoStyle=0;
+    edited=self demoPlaybackStyle(self.demoStyle,self.demoBegin,self.demoEnd);
+    if(isDefined(edited)){self.demoBegin=edited[0];self.demoEnd=edited[1];}
+    current=self skipPlaybackFrames(0);
+    self skipPlaybackFrames(self.demoBegin-current);
     self.demoLinker.origin=self.origin;
     self linkTo(self.demoLinker,"",(0,0,0),(0,0,0));
     self disableWeapons();
@@ -249,12 +257,16 @@ startDemo(demoID)
     if(getCodVersion()==4)
     {
         self setClientCvar("opencj_demo_checkpointed",int(isDefined(self.demoCheckpointed) && self.demoCheckpointed));
-        self setClientCvar("g_scriptMainMenu","opencj_demo");
-        self.demoStatusText=undefined;self.demoMenuPaused=undefined;
+        menu="opencj_demo";
+        if(isDefined(self.clipEdit))menu="opencj_clipedit";
+        else if(isDefined(self.clipPreview))menu="opencj_clips";
+        self closeInGameMenu();self closeMenu();
+        self setClientCvar("g_scriptMainMenu",menu);
+        self.demoStatusText=undefined;self.demoMenuPaused=undefined;self.demoClipCursor=undefined;
         self demoUpdateOverlay();
-        self openMenu("opencj_demo");
+        self openMenu(menu);
     }
-    self sendLocalChatMessage("Demo: use the playback bar; Escape hides/reopens controls. Exit returns to your run.");
+    self sendLocalChatMessage("Demo: use the playback bar. Escape or Exit returns to your run.");
 }
 
 isPlayingDemo()
@@ -270,6 +282,7 @@ isPlayingDemo()
 onPlayerConnect()
 {
     self thread demoMenuResponses();
+    self openCJ\clips::onConnect();
     self.playingDemo = false;
     self openCJ\demoRecording::onConnect();
     self.playbackPaused = false;
@@ -367,6 +380,26 @@ whilePlayingDemo()
         return;
     }
     self demoControls();
+    // Keep the final frame selected for the entire snapshot. Loop only on
+    // the next tick, so pausing/marking an endpoint agrees with the picture.
+    if(isDefined(self.demoLoopPending) && self.demoLoopPending && !self.playbackPaused)
+    {
+        if(self.demoRate>0 && isDefined(self.demoLoopAt) && getTime()<self.demoLoopAt)
+        {
+            self demoApplyPresentation();
+            return;
+        }
+        self.demoLoopPending=false;
+        if(self.demoRate>0)
+        {
+            if(!isDefined(self.clipPlayback) && !isDefined(self.clipEdit) && !self openCJ\settings::getSetting("demoloop"))
+            {self stopDemo();return;}
+            current=self skipPlaybackFrames(0);
+            self skipPlaybackFrames(self.demoBegin-current);
+            self.demoFirstFrame=true;self.demoLastPresentedFrame=undefined;
+            self.maxSpeed=0;
+        }
+    }
     seek=false;
     if(self.demoCheckpointRequest!=0)
     {
@@ -396,7 +429,7 @@ whilePlayingDemo()
         self.demoFirstFrame=false;
         currFrame=_getDemoFrame(0,false);
     }
-    else currFrame=_getDemoFrame(self.demoRate,true);
+    else currFrame=_getDemoFrame(self.demoRate,self.demoStyle!=0);
 
     self.demoLinker.origin = currFrame.origin;
     self setPlayerAngles(currFrame.angles);
@@ -409,7 +442,8 @@ whilePlayingDemo()
     }
     else
     {
-        self openCJ\huds\hudSpeedometer::whileAlive();
+        if(isDefined(self.clipEdit))self openCJ\huds\hudSpeedometer::_hideSpeedometer();
+        else self openCJ\huds\hudSpeedometer::whileAlive();
         sequential = !isDefined(self.demoLastPresentedFrame) || currFrame.number == self.demoLastPresentedFrame + 1;
         if (isDefined(self.demoLastPresentedFrame) && sequential && !isInterpolatedFrame && !currFrame.loadNow)
             self demoPlayLanding();
@@ -420,7 +454,8 @@ whilePlayingDemo()
         }
     }
     if (!isInterpolatedFrame)self.demoLastPresentedFrame = currFrame.number;
-    self openCJ\huds\hudOnScreenKeyboard::showKeyboardDemo(currFrame.forward, currFrame.back, currFrame.left, currFrame.right, currFrame.jump, currFrame.sprint);
+    if(!isDefined(self.clipEdit))
+        self openCJ\huds\hudOnScreenKeyboard::showKeyboardDemo(currFrame.forward, currFrame.back, currFrame.left, currFrame.right, currFrame.jump, currFrame.sprint);
     if(currFrame.stance != self.demoPreviousStance)
     {
         //self iprintlnbold("stance changed to " + currFrame.stance);
@@ -483,19 +518,13 @@ _endOfDemo()
         self demoUpdateOverlay();
         return;
     }
-    if(self openCJ\settings::getSetting("demoloop"))
-    {
-        current=self skipPlaybackFrames(0);
-        target=self.demoBegin;
-        self skipPlaybackFrames(target-current);
-        self.demoFirstFrame=true;self.demoLastPresentedFrame=undefined;
-        self.maxSpeed=0;
-        return;
-    }
-    self stopDemo();
+    // Let the client render the terminal snapshot before looping or exiting.
+    // This is presentation time only; no frames are added to the recording.
+    self.demoLoopPending=true;
+    self.demoLoopAt=getTime()+200;
 }
 
-stopDemo()
+stopDemo(loadClipSave)
 {
     if(!self isPlayingDemo())return;
     if(getCodVersion()==4)
@@ -507,14 +536,17 @@ stopDemo()
     self.demoMenuOpened=false;
     self demoDisplayStop();
     state=self.demoReturn;
+    returnToSave=(!isDefined(loadClipSave) || loadClipSave) && (isDefined(self.clipEdit) || isDefined(self.clipPlayback) || isDefined(self.clipPreview));
     id=self.demoID;
     self unlink();
+    // Disable playback prediction/freeze before the normal teleport runs Pmove.
+    self demoEndPresentation();
     self setoriginandangles(state.origin,state.angles);
     self setVelocity(state.velocity);
     self setStance(state.stance);
     self enableWeapons();
     if(state.weapon!="none" && state.weapon!="")self switchToWeapon(state.weapon);
-    self demoEndPresentation();
+    self.demoStyle=undefined;
     self.currSpeed=state.speed;self.maxSpeed=state.maxSpeed;
     self openCJ\huds\hudSpeedometer::whileAlive();
     self.health=state.health;
@@ -522,6 +554,7 @@ stopDemo()
     self openCJ\playTime::setTimePlayed(state.time);
     self.demoExitRequested=false;
     self.playingDemo=false;
+    self openCJ\clips::onPlaybackStopped();
     self show();
     openCJ\playerCollision::onFrame();
     if(state.timerRunning)self openCJ\playTime::startTimer();
@@ -544,12 +577,19 @@ stopDemo()
     self.hud[level.fpsHistoryHudName] openCJ\huds\infiniteHuds::setInfiniteHudText(state.fpsHistoryText,self,false);
     self.demoID=undefined;self.demoReturn=undefined;
     releaseCache(id);
-    self sendLocalChatMessage("Demo stopped. Your run has been restored.");
+    if(returnToSave && isDefined(self openCJ\savePosition::getSavedPosition(0)))
+    {
+        self openCJ\savePosition::resetBackwardsCount();
+        self openCJ\events\loadPosition::main(0);
+        self sendLocalChatMessage("Clip stopped. Loaded your saved position.");
+    }
+    else self sendLocalChatMessage("Demo stopped. Returned to your previous position and run.");
 }
 
 onDisconnect()
 {
     self demoEndPresentation();
+    self.demoStyle=undefined;
     self releasePending();
     if(self isPlayingDemo())releaseCache(self.demoID);
     if(isDefined(self.demoLinker))self.demoLinker delete();
@@ -599,7 +639,20 @@ demoUpdateOverlay()
     status="PLAY";if(self.demoRate<0)status="REVERSE";
     if(self.playbackPaused)status="PAUSED";
     rate=self.demoRate;if(rate<0)rate=0-rate;
-    text=status+" "+rate+"x   "+demoTime(frame-self.demoBegin)+" / "+demoTime(self.demoEnd-self.demoBegin);
+    elapsed=frame-self.demoBegin;duration=self.demoEnd-self.demoBegin;
+    timing=self demoPlaybackTime(self.demoBegin,self.demoEnd);
+    if(isDefined(timing)){elapsed=timing[0];duration=timing[1];}
+    text=status+" "+rate+"x   "+demoTime(elapsed)+" / "+demoTime(duration);
+    if(isDefined(self.clipEdit))
+    {
+        count=numberOfDemoFrames(self.demoID);
+        text=status+" "+rate+"x   Frame "+(frame+1)+" / "+count;
+        if(!isDefined(self.demoClipCursor) || self.demoClipCursor!=frame)
+        {
+            self.demoClipCursor=frame;
+            self setClientCvar("opencj_clip_cursor_x",20+frame*600/count);
+        }
+    }
     if(!isDefined(self.demoStatusText) || self.demoStatusText!=text)
     {
         self.demoStatusText=text;
@@ -642,10 +695,10 @@ demoMenuResponses()
 demoDisplayStart()
 {
     self openCJ\huds\hudTimeLimit::onStartDemo();
+    self demoMovementHudInMenu(isDefined(self.clipEdit) || isDefined(self.clipPreview));
     keys=getArrayKeys(self.hudSpeed);
     for(i=0;i<keys.size;i++)
     {
-        self.hudSpeed[keys[i]].hideWhenInMenu=false;
         self.hudSpeed[keys[i]].archived=true;
     }
     if(getCodVersion()!=4)return;
@@ -660,17 +713,25 @@ demoDisplayStart()
         hud.x=0;hud.y=8+i*16;hud.font="objective";hud.fontScale=1.4;hud.alpha=1;
         self.demoCaption[i]=hud;
     }
-    self.demoCaption[0] setText("VIEWING DEMO");
-    self.demoCaption[1] setText(self.name);
+    if(isDefined(self.clipDescription))
+    {
+        self.demoCaption[0] setText("VIEWING CLIP");
+        self.demoCaption[1] setText(self.clipDescription);
+    }
+    else
+    {
+        self.demoCaption[0] setText("VIEWING DEMO");
+        self.demoCaption[1] setText(self.name);
+    }
 }
 
 demoDisplayStop()
 {
     self openCJ\huds\hudTimeLimit::onStopDemo();
+    self demoMovementHudInMenu(true);
     keys=getArrayKeys(self.hudSpeed);
     for(i=0;i<keys.size;i++)
     {
-        self.hudSpeed[keys[i]].hideWhenInMenu=true;
         self.hudSpeed[keys[i]].archived=false;
     }
     if(getCodVersion()!=4)return;
@@ -678,4 +739,14 @@ demoDisplayStop()
         for(i=0;i<self.demoCaption.size;i++)self.demoCaption[i] destroy();
     self.demoCaption=undefined;
     self setClientCvar("cg_drawSpectatorMessages",1);
+}
+
+// Native HUD suppression follows all client menus, including stock menus.
+// The playback toolbar is the only exception; its movement HUD is useful.
+demoMovementHudInMenu(hide)
+{
+    keys=getArrayKeys(self.hudSpeed);
+    for(i=0;i<keys.size;i++)self.hudSpeed[keys[i]].hideWhenInMenu=hide;
+    keys=getArrayKeys(self.keyboard);
+    for(i=0;i<keys.size;i++)self.keyboard[keys[i]].hideWhenInMenu=hide;
 }

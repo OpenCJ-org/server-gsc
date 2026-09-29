@@ -91,7 +91,7 @@ onLoaded(saveNum)
     rec = self current();
     if (!isDefined(rec) || rec.failed || rec.finishing) return;
     count = rec.saves["" + saveNum];
-    if (!isDefined(count) || !isDefined(demoTruncate(rec.id, count)))
+    if (!isDefined(count) || !isDefined(demoMarkFailedSince(rec.id, count)))
     {
         rec.failed = true;
         destroyDemo(rec.id);

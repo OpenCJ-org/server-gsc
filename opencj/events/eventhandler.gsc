@@ -111,5 +111,6 @@ whileAlive()
     {
         self openCJ\demoRecording::capture();
     }
+    self openCJ\clips::capture();
     self.eventQueue = [];
 }
