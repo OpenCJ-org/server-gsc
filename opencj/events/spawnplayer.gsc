@@ -7,6 +7,15 @@ main(atLastSavedPosition)
         return;
     }
 
+    if (!self openCJ\fpsRegistration::canStart())
+    {
+        self.fpsRegistrationSpawnPending = true;
+        self.fpsRegistrationSpawnAtSave = atLastSavedPosition;
+        self openCJ\fpsRegistration::explainBlocked();
+        self openCJ\events\spawnSpectator::main();
+        return;
+    }
+
     self openCJ\demos::cancelRequest();
     if(self openCJ\demos::isPlayingDemo())self openCJ\demos::stopDemo();
 

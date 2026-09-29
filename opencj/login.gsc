@@ -2,11 +2,8 @@
 
 onPlayerConnected()
 {
+    self thread openCJ\fpsRegistration::onConnected();
     self thread _tryLogin();
-    if(getCodVersion() == 4)
-    {
-        self openCJ\menus::openFPSUserinfoMenu();
-    }
 }
 
 onPlayerCommand(args)

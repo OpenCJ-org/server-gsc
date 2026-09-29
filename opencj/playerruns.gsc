@@ -333,6 +333,12 @@ startRun()
         return;
     if(self isPlayerReady(false) && self hasRunID() && (self.sessionState == "playing") && !self hasRunStarted())
     {
+        if (!self openCJ\fpsRegistration::canStart())
+        {
+            self openCJ\fpsRegistration::explainBlocked();
+            self openCJ\events\spawnSpectator::main();
+            return;
+        }
         self.playerRuns_runStarted = true;
         self.playerRuns_runPaused = false;
         self openCJ\events\onRunStarted::main();

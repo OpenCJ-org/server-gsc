@@ -31,8 +31,8 @@ onPlayerLogin()
 
 openFPSUserinfoMenu()
 {
+    // Let onOpen and its queued restoration execute before closing.
     self openMenu(level.menu["fpsuserinfo"]);
-    self closeMenu();
 }
 
 onStartDemo()
