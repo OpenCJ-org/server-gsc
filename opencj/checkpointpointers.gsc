@@ -260,7 +260,8 @@ _createNewCheckpointPointerHud()
 {
     hud = newClientHudElem(self);
     hud.alpha = 0.5;
-    hud.foreground = true;
+    // Let menus cover world checkpoint indicators, like the stock scoreboard.
+    hud.foreground = false;
     hud.aligny = "top";
     hud.alignx = "center";
     return hud;

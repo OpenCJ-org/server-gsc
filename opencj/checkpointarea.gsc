@@ -64,6 +64,36 @@ contains(points, origin, grounded, requireGround)
     return true;
 }
 
+// A grounded player can stand with their center outside the landing perimeter.
+// Keep geometric contains() strict for editor overlap/merge detection; only
+// player contact tests use the 15-unit collision footprint.
+touchesPlayer(points, origin, grounded, requireGround)
+{
+    if (!isDefined(requireGround))requireGround = true;
+    if ((requireGround && !grounded) || points.size < 3)return false;
+    if (contains(points, origin, grounded, requireGround))return true;
+    normal = planeNormal(points);
+    if (normal[2] < 0.7)return false;
+    for (i = 0; i < points.size; i++)
+    {
+        a = points[i];b = points[(i + 1) % points.size];
+        dx = b[0] - a[0];dy = b[1] - a[1];
+        lengthSquared = dx * dx + dy * dy;
+        if (lengthSquared < 0.0001)continue;
+        t = ((origin[0] - a[0]) * dx + (origin[1] - a[1]) * dy) / lengthSquared;
+        if (t < 0)t = 0;
+        if (t > 1)t = 1;
+        nearest = a + vectorScale(b - a, t);
+        x = origin[0] - nearest[0];y = origin[1] - nearest[1];
+        // Segment distance also rounds corners instead of extending each edge
+        // independently, which would award checkpoints beyond the footprint.
+        if (x * x + y * y > 225)continue;
+        height = origin[2] - nearest[2];
+        if (height >= -2 && height <= 4 + supportOffset(points))return true;
+    }
+    return false;
+}
+
 crossProduct(a, b)
 {
     return (a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]);

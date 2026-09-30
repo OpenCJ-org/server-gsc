@@ -6,7 +6,7 @@ onInit()
 {
     if (getCodVersion() != 4)
         return;
-    cmd = openCJ\commands_base::registerCommand("checkpoint", "!cp start <route> [#RRGGBB] | split <routes> | merge <routes> | rename <old> <new> | detect | corner | confirm | alternative | area | undo | finish | double | ground | select <number> | new | discard | edit <number|last> | delete | test | save | finalize | stop", ::command, 1, 17, 0);
+    cmd = openCJ\commands_base::registerCommand("checkpoint", "!cp start <route> [#RRGGBB] | split <routes> | merge <routes> | rename <old> <new> | detect | corner | confirm | alternative | area | undo | finish | double | ground | allowsave | select <number> | new | discard | edit [number|last] | delete | test | save | finalize | stop", ::command, 1, 17, 0);
     openCJ\commands_base::addAlias(cmd, "cp");
     openCJ\commands_base::addAlias(cmd, "cpc");
 }
@@ -16,11 +16,23 @@ isEditing()
     return isDefined(self.cpc);
 }
 
+// Explicit editor access does not grant general administrator permissions.
+hasEditorAccess()
+{
+    if (!self openCJ\login::isLoggedIn())return false;
+    id = self openCJ\login::getPlayerID();
+    if (self.adminLevel >= 40 || id == getCvarInt("opencj_checkpoint_editor_playerid"))return true;
+    ids = strTok(getCvar("opencj_checkpoint_editor_playerids"), " ,");
+    for (i = 0; i < ids.size; i++)
+        if (isValidInt(ids[i]) && int(ids[i]) == id)return true;
+    return false;
+}
+
 command(args)
 {
     if (self isEditing() && isDefined(self.cpc.finalizing))
         return;
-    if (self.adminLevel < 40 && self openCJ\login::getPlayerID() != getCvarInt("opencj_checkpoint_editor_playerid"))
+    if (!self hasEditorAccess())
     {
         self iprintln("Checkpoint editing requires admin level 40 or explicit editor access");
         return;
@@ -84,6 +96,30 @@ command(args)
         self openCJ\checkpointNetwork::merge(args);
         return;
     }
+    if (args[0] == "edit" && args.size == 1)
+    {
+        if (self.cpc.testing)
+        {
+            self sendLocalChatMessage("Exit checkpoint testing with !cp test before editing.");
+            return;
+        }
+        idx = checkpointAt(self.cpc.rows, self.origin, self isOnGround());
+        if (idx < 0)
+        {
+            message = "No checkpoint in the current draft at your position.";
+            if (idx == -2) message = "Multiple checkpoints overlap here; use !cp edit <number> to select one.";
+            self sendLocalChatMessage(message);
+            return;
+        }
+        if (idx != self.cpc.selected && openCJ\checkpointNetwork::pendingEdit(self.cpc))
+        {
+            self sendLocalChatMessage("Confirm/apply your current selection first, or Undo/Discard it before editing another checkpoint.");
+            return;
+        }
+        if (idx == self.cpc.selected && openCJ\checkpointNetwork::pendingEdit(self.cpc))
+            return;
+        args[1] = "" + (idx + 1);
+    }
     if ((args[0] == "select" || args[0] == "edit") && args.size == 2 && (isValidInt(args[1]) || args[1] == "last"))
     {
         idx = self.cpc.rows.size - 1;
@@ -95,11 +131,28 @@ command(args)
             self.cpc.overlap = undefined;
             self.cpc.selected = idx;
             self.cpc.draft = _decode(self.cpc.rows[idx]);
+            self.cpc.status = "Editing checkpoint " + (idx + 1) + "; confirm/apply with Num Enter";
             self _save();
         }
         return;
     }
     self _action(args[0]);
+}
+
+// Alternatives belong to one checkpoint; distinct overlapping checkpoints are ambiguous.
+checkpointAt(rows, origin, grounded)
+{
+    found = -1;
+    for (i = 0; i < rows.size; i++)
+    {
+        cp = _decode(rows[i]);
+        if (!isDefined(cp) || !contains(cp, origin, grounded))
+            continue;
+        if (found >= 0)
+            return -2;
+        found = i;
+    }
+    return found;
 }
 
 _validName(name)
@@ -161,6 +214,7 @@ _empty()
     cp.finish = false;
     cp.double = false;
     cp.onGround = true;
+    cp.allowSave = true;
     return cp;
 }
 
@@ -169,24 +223,30 @@ _encode(cp)
     text = int(cp.finish) + ":" + int(cp.double) + ":p" + openCJ\checkpointArea::encode(cp.points);
     for (i = 0; i < cp.alternatives.size; i++)
         text += "|p" + openCJ\checkpointArea::encode(cp.alternatives[i]);
-    if (!cp.onGround) text += ":0";
+    if (!cp.allowSave) text += ":" + int(cp.onGround) + ":0";
+    else if (!cp.onGround) text += ":0";
     return text;
 }
 
 _decode(row)
 {
     values = strTok(row, ":");
-    if ((values.size != 3 && values.size != 4) || (values[0] != "0" && values[0] != "1") || (values[1] != "0" && values[1] != "1"))
+    if ((values.size != 3 && values.size != 4 && values.size != 5) || (values[0] != "0" && values[0] != "1") || (values[1] != "0" && values[1] != "1"))
         return undefined;
     if (values[2][0] != "p")
         return undefined;
     cp = _empty();
     cp.finish = int(values[0]);
     cp.double = int(values[1]);
-    if (values.size == 4)
+    if (values.size >= 4)
     {
         if (values[3] != "0" && values[3] != "1") return undefined;
         cp.onGround = int(values[3]);
+    }
+    if (values.size == 5)
+    {
+        if (values[4] != "0" && values[4] != "1") return undefined;
+        cp.allowSave = int(values[4]);
     }
     areas = strTok(values[2], "|");
     if (areas.size > 8)
@@ -209,11 +269,11 @@ _decode(row)
 // The active area and its alternatives share requirements and one progress step.
 contains(cp, origin, grounded)
 {
-    if (openCJ\checkpointArea::contains(cp.points, origin, grounded, cp.onGround))
+    if (openCJ\checkpointArea::touchesPlayer(cp.points, origin, grounded, cp.onGround))
         return true;
     for (i = 0; i < cp.alternatives.size; i++)
     {
-        if (openCJ\checkpointArea::contains(cp.alternatives[i], origin, grounded, cp.onGround))
+        if (openCJ\checkpointArea::touchesPlayer(cp.alternatives[i], origin, grounded, cp.onGround))
             return true;
     }
     return false;
@@ -252,6 +312,7 @@ _start(route, hex)
         self sendLocalChatMessage("Network draft files exist but cannot be read; preserved for recovery.", true);
         return;
     }
+    self notify("cpc_started");
     self.cpc = spawnStruct();
     self.cpc.route = route;
     self.cpc.rows = [];
@@ -345,7 +406,7 @@ _start(route, hex)
     // The mod's existing client-command menu applies these without a local cfg.
     self execClientCmd("bind KP_INS say !cp detect; bind KP_5 say !cp detect; " +
         "bind KP_ENTER say !cp confirm; bind KP_PLUS say !cp corner; bind KP_MINUS say !cp undo; " +
-        "bind KP_UPARROW say !cp double; bind KP_PGUP say !cp finish; bind KP_DOWNARROW say !cp ground; " +
+        "bind KP_UPARROW say !cp double; bind KP_PGUP say !cp finish; bind KP_DOWNARROW say !cp ground; bind KP_PGDN say !cp allowsave; " +
         "bind KP_LEFTARROW say !cp previous; bind KP_RIGHTARROW say !cp next; " +
         "bind KP_DEL say !cp discard; bind KP_HOME say !cp new; bind KP_SLASH say !cp alternative; bind KP_STAR say !cp area");
     self thread _loop();
@@ -469,7 +530,7 @@ _action(action)
         return;
     }
     // When the panel shows the last checkpoint, property keys edit that checkpoint.
-    if ((action == "finish" || action == "double" || action == "ground") &&
+    if ((action == "finish" || action == "double" || action == "ground" || action == "allowsave") &&
         self.cpc.selected == self.cpc.rows.size && self.cpc.rows.size > 0 &&
         self.cpc.draft.points.size == 0 && self.cpc.draft.alternatives.size == 0)
         self _action("previous");
@@ -576,6 +637,7 @@ _action(action)
             self.cpc.selected = self.cpc.rows.size;
             self.cpc.draft = _empty();
             break;
+        case "allowsave": self.cpc.draft.allowSave = !self.cpc.draft.allowSave; break;
         case "ground": self.cpc.draft.onGround = !self.cpc.draft.onGround; break;
         case "finish": self.cpc.draft.finish = !self.cpc.draft.finish; break;
         case "double": self.cpc.draft.double = !self.cpc.draft.double; break;
@@ -919,6 +981,9 @@ _draw()
     text = "Double RPG: " + doubleRPG + " [Num 8]";
     text += "\nFinish: " + finish + " [Num 9]";
     text += "\nOn ground: " + ground + " [Num 2]";
+    saving = "Yes";
+    if (!props.allowSave) saving = "No";
+    text += "\nAllow save: " + saving + " [Num 3]";
     self.cpc.huds[2] _setPanelText(text);
     if (self.cpc.testing)
         text = "Follow the outline\nExit test: !cp test";
@@ -950,7 +1015,7 @@ _draw()
     lines = 1;
     for (lineIndex = 0; lineIndex < text.size; lineIndex++)
         if (text[lineIndex] == "\n") lines++;
-    if (lines < 3) lines = 3;
+    if (lines < 4) lines = 4;
     panelHeight = 36 + lines * 17;
     if (!isDefined(self.cpc.panelHeight) || self.cpc.panelHeight != panelHeight)
     {

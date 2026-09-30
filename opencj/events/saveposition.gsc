@@ -7,6 +7,12 @@ main() // Not threaded as it returns a result
         return undefined;
     }
 
+    if (!self openCJ\checkpoints::canSaveHere())
+    {
+        self sendLocalChatMessage("Saving is not allowed in this checkpoint area (except in any%).", true);
+        return undefined;
+    }
+
     saveNum = self openCJ\savePosition::setSavedPosition();
     self openCJ\savePosition::resetBackwardsCount();
     self openCJ\savePosition::printSaveSuccess();

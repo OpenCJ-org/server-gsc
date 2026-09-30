@@ -527,7 +527,7 @@ selectAndTeleport(index)
 
 sameCheckpoint(a,b)
 {
-    if(a.finish!=b.finish||a.double!=b.double||a.points.size!=b.points.size||a.alternatives.size!=b.alternatives.size)return false;
+    if(a.allowSave!=b.allowSave||a.onGround!=b.onGround||a.finish!=b.finish||a.double!=b.double||a.points.size!=b.points.size||a.alternatives.size!=b.alternatives.size)return false;
     for(i=0;i<a.points.size;i++)if(distanceSquared(a.points[i],b.points[i])>0.0001)return false;
     for(i=0;i<a.alternatives.size;i++)
     {

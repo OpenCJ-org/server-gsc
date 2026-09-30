@@ -158,7 +158,7 @@ _writeSequentialRoute()
         finish = "NULL";
         if (cp.finish)
             finish = "'" + route + "'";
-        values = "x=" + int(origin[0]) + ",y=" + int(origin[1]) + ",z=" + int(origin[2]) + ",radius=NULL,onGround=" + int(cp.onGround) + ",ender=" + finish;
+        values = "x=" + int(origin[0]) + ",y=" + int(origin[1]) + ",z=" + int(origin[2]) + ",radius=NULL,allowSave=" + int(cp.allowSave) + ",onGround=" + int(cp.onGround) + ",ender=" + finish;
         if (existing.size == 0)
         {
             result = openCJ\mySQL::mysqlSyncQuery("INSERT INTO checkpoints SET mapID=" + mapID + "," + values);
@@ -303,12 +303,13 @@ loadAreas()
 unchangedPublished(entries, existing)
 {
     if(entries.size!=existing.size)return false;
-    rows=openCJ\mySQL::mysqlSyncQuery("SELECT a.vertices,a.allowDoubleRPG,c.onGround,c.ender FROM checkpointAreas a JOIN checkpoints c ON c.cpID=a.cpID WHERE a.mapID="+openCJ\mapID::getMapID()+" AND a.routeName="+openCJ\util::dbStr(self.cpc.route)+" ORDER BY a.ordinal");
+    rows=openCJ\mySQL::mysqlSyncQuery("SELECT a.vertices,a.allowDoubleRPG,c.onGround,c.ender,c.allowSave FROM checkpointAreas a JOIN checkpoints c ON c.cpID=a.cpID WHERE a.mapID="+openCJ\mapID::getMapID()+" AND a.routeName="+openCJ\util::dbStr(self.cpc.route)+" ORDER BY a.ordinal");
     if(!isDefined(rows)||rows.size!=entries.size)return false;
     for(i=0;i<entries.size;i++)
     {
         points=openCJ\checkpointArea::decode(rows[i][0]);cp=entries[i].cp;
         if(!isDefined(points)||points.size!=entries[i].points.size||int(rows[i][1])!=int(cp.double)||int(rows[i][2])!=int(cp.onGround))return false;
+        if(int(rows[i][4])!=int(cp.allowSave))return false;
         if(cp.finish!=isDefined(rows[i][3]))return false;
         if(cp.finish&&rows[i][3]!=self.cpc.route)return false;
         for(j=0;j<points.size;j++)if(distanceSquared(points[j],entries[i].points[j])>0.0001)return false;

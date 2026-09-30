@@ -249,6 +249,13 @@ archiveRun(runID)
 
 restoreRun(runID) // Call this function as a thread
 {
+    if (isDefined(self.cpc))
+    {
+        self sendLocalChatMessage("Exit checkpoint editing with !cp stop before restoring a run.", true);
+        return;
+    }
+    self endon("cpc_started");
+
     if ((self.sessionState != "playing") && (self.sessionState != "spectator"))
     {
         return;
@@ -370,6 +377,8 @@ setRunIDAndInstanceNumber(runID, instanceNumber)
 
 _createRunID()
 {
+    if (isDefined(self.cpc))return;
+    self endon("cpc_started");
     if(!self openCJ\login::IsLoggedIn())
     {
         return;

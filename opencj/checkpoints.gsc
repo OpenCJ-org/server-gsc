@@ -116,7 +116,7 @@ onInit()
 
     if(openCJ\mapid::hasMapID())
     {
-        rows = openCJ\mySQL::mysqlSyncQuery("SELECT a.cpID, a.x, a.y, a.z, a.radius, a.onGround, GROUP_CONCAT(b.childCpID), a.ender, a.elevate, a.endShaderColor, c.bigBrotherID FROM checkpoints a LEFT JOIN checkpointConnections b ON a.cpID = b.cpID LEFT JOIN checkpointBrothers c ON a.cpID = c.cpID WHERE a.mapID = " + openCJ\mapid::getMapID() + " GROUP BY a.cpID");
+        rows = openCJ\mySQL::mysqlSyncQuery("SELECT a.cpID, a.x, a.y, a.z, a.radius, a.onGround, GROUP_CONCAT(b.childCpID), a.ender, a.elevate, a.endShaderColor, c.bigBrotherID, a.allowSave FROM checkpoints a LEFT JOIN checkpointConnections b ON a.cpID = b.cpID LEFT JOIN checkpointBrothers c ON a.cpID = c.cpID WHERE a.mapID = " + openCJ\mapid::getMapID() + " GROUP BY a.cpID");
 
         // First we obtain all checkpoints for the current map from the database
         checkpoints = [];
@@ -126,6 +126,7 @@ onInit()
             checkpoint.id = int(rows[i][0]);
             checkpoint.origin = (int(rows[i][1]), int(rows[i][2]), int(rows[i][3]));
             checkpoint.radius = intOrUndefined(rows[i][4]);
+            checkpoint.allowSave = int(rows[i][11]) != 0;
             checkpoint.onGround = (int(rows[i][5]) != 0);
             if(!isDefined(rows[i][6]))
             {
@@ -938,7 +939,7 @@ whileAlive()
     // Once standing on the current area, do not also trigger that other route
     // on the following frame. Still test expected successors first.
     current = self.checkpoints_checkpoint;
-    onCurrent = isDefined(current) && isDefined(current.area) && openCJ\checkpointArea::contains(current.area, self.origin, self isOnGround(), current.onGround);
+    onCurrent = isDefined(current) && isDefined(current.area) && openCJ\checkpointArea::touchesPlayer(current.area, self.origin, self isOnGround(), current.onGround);
     for (i = 0; i < playerChildCheckpoints.size + level.checkpoints_checkpoints.size; i++)
     {
         if (i < playerChildCheckpoints.size)
@@ -965,7 +966,7 @@ whileAlive()
         // Check if player is within the radius of the checkpoint
         inArea = false;
         if (isDefined(cp.area))
-            inArea = openCJ\checkpointArea::contains(cp.area, self.origin, self isOnGround(), cp.onGround);
+            inArea = openCJ\checkpointArea::touchesPlayer(cp.area, self.origin, self isOnGround(), cp.onGround);
         else
             inArea = (self getEyePos()[2] >= cp.origin[2]) && (distanceSquared(self.origin, cp.origin) < (cp.radius * cp.radius));
         if (inArea)
@@ -1030,4 +1031,25 @@ whileAlive()
     // Set variables so the change in origin and onground can be detected in the next iteration
     self.previousOrigin = self.origin;
     self.previousOnground = self isOnground();
+}
+
+// Match the actual landing area, including alternatives loaded as separate areas.
+canSaveHere()
+{
+    if (isDefined(self.cpc) || self openCJ\anyPct::hasAnyPct())
+        return true;
+    for (i = 0; i < level.checkpoints_checkpoints.size; i++)
+    {
+        cp = level.checkpoints_checkpoints[i];
+        if (!isDefined(cp.allowSave) || cp.allowSave)
+            continue;
+        if (isDefined(cp.area))
+        {
+            if (openCJ\checkpointArea::touchesPlayer(cp.area, self.origin, self isOnGround(), false))
+                return false;
+        }
+        else if (isDefined(cp.radius) && distanceSquared(self.origin, cp.origin) <= cp.radius * cp.radius)
+            return false;
+    }
+    return true;
 }

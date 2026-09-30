@@ -7,6 +7,8 @@ onInit()
 
 historyLoad(runID)
 {
+    if (isDefined(self.cpc))return false;
+    self endon("cpc_started");
     self endon("disconnect");
     rows = self openCJ\mySQL::mysqlAsyncQuery("SELECT historyLoad(" + openCJ\mapID::getMapID() + ", " + self openCJ\login::getPlayerID() + ", " + runID + ")");
     if(isDefined(rows) && isDefined(rows[0]) && isDefined(rows[0][0]))

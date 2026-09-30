@@ -193,6 +193,13 @@ _onCmdRuns(args) // TODO: support self-named runs
 
 _restoreLastRun(runID)
 {
+    if (isDefined(self.cpc))
+    {
+        self sendLocalChatMessage("Exit checkpoint editing with !cp stop before restoring a run.", true);
+        return;
+    }
+    self endon("cpc_started");
+
     if (!self openCJ\mapID::hasMapID())
     {
         self sendLocalChatMessage("Sorry, the current map is not in the database", true);
