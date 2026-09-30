@@ -112,13 +112,15 @@ playRun(id,full,kind)
     self endon("demo_request");
     if(!self canWatch())return;
     if(!isDefined(full))full=true;
-    if(!isDefined(kind))kind="speedrun";
-    meta=self openCJ\mySQL::mysqlAsyncQuery("SELECT frameCount,modeMask FROM demoRuns WHERE ready=1 AND mapID="+openCJ\mapID::getMapID()+" AND runID="+id);
+    meta=self openCJ\mySQL::mysqlAsyncQuery("SELECT frameCount,modeMask,EXISTS(SELECT 1 FROM demoWinners w WHERE w.runID=demoRuns.runID AND w.kind='walkthrough') FROM demoRuns WHERE ready=1 AND mapID="+openCJ\mapID::getMapID()+" AND runID="+id);
     if(!isDefined(meta)||!meta.size)
     {
         self sendLocalChatMessage("This run has no retained demo.",true);
         return;
     }
+    // Leaderboard rows can also be the walkthrough winner. Explicit requests
+    // retain their requested style, even when the same recording wins both.
+    if(!isDefined(kind))kind=leaderboardKind(int(meta[0][2])!=0);
     key=""+id;
     load=false;
     if(!isDefined(level.demoCache[key]))
@@ -166,6 +168,12 @@ playRun(id,full,kind)
     self.demoBegin=range[0];self.demoEnd=range[1];
     self.demoCheckpointed=(int(meta[0][1])&1)==0;
     self startDemo(id);
+}
+
+leaderboardKind(isWalkthrough)
+{
+    if(isWalkthrough)return "walkthrough";
+    return "speedrun";
 }
 
 _loadCache(id,expected)
@@ -225,6 +233,7 @@ startDemo(demoID)
     state.speed=self.currSpeed;state.maxSpeed=self.maxSpeed;
     state.started=getTime();
     self.demoReturn=state;
+    self.checkpointContact=undefined;
     self.playingDemo=true;
     self.demoExitRequested=false;
     self hide();

@@ -804,6 +804,7 @@ onRunCreated()
 
 resetPlayerCheckpointsToStart()
 {
+    self.checkpointContact = undefined;
     self.route = undefined;
     self.checkpoints_checkpoint = level.checkpoints_startCheckpoint;
     self.checkpoints_passed = [];
@@ -811,12 +812,14 @@ resetPlayerCheckpointsToStart()
 
 onLoadPosition()
 {
+    self.checkpointContact = undefined;
     self.previousOrigin = self.origin;
     self.previousOnground = true;
 }
 
 onSpawnPlayer()
 {
+    self.checkpointContact = undefined;
     self.previousOrigin = self.origin;
     self.previousOnground = true;
 }
@@ -928,6 +931,7 @@ whileAlive()
         return;
     }
 
+    foundContact = false;
     playerChildCheckpoints = self getCurrentChildCheckpoints();
     if (!isDefined(playerChildCheckpoints))
     {
@@ -974,6 +978,12 @@ whileAlive()
             // Checkpoint can be on ground or in air. onGround checkpoints can only be triggered by being on ground
             if (!cp.onGround || self isOnGround())
             {
+                foundContact = true;
+                // Reserve this expected landing while it settles; do not fall
+                // through to a coincident checkpoint belonging to another route.
+                if (!self contactReady(cp, self isOnGround(), getTime()))break;
+                self.checkpointContact = undefined;
+
                 // Player may have changed their route.
                 route = getRouteNameForCheckpoint(cp);
 
@@ -1052,4 +1062,30 @@ canSaveHere()
             return false;
     }
     return true;
+}
+
+// Require a short continuous landing, not a bunny-hop contact. This is kept
+// separate from geometry so CPC selection and no-save areas remain immediate.
+contactReady(cp, grounded, now)
+{
+    if (!cp.onGround)
+    {
+        self.checkpointContact = undefined;
+        return true;
+    }
+    if (!grounded)
+    {
+        self.checkpointContact = undefined;
+        return false;
+    }
+    contact = self.checkpointContact;
+    if (!isDefined(contact) || contact.cp != cp || now - contact.seen > 100)
+    {
+        contact = spawnStruct();
+        contact.cp = cp;
+        contact.started = now;
+    }
+    contact.seen = now;
+    self.checkpointContact = contact;
+    return now - contact.started >= 150;
 }

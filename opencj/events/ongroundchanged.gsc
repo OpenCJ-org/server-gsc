@@ -10,6 +10,8 @@ onPlayerConnect()
 
 main(isOnGround, time, origin)
 {
+    // Even a brief hop between server polls interrupts checkpoint contact.
+    if (!isOnGround)self.checkpointContact = undefined;
     // Filter events as this can be spammed on clients' FPS!
     if (isOnGround)
     {
