@@ -111,8 +111,9 @@ playRun(id,full,kind)
     self endon("disconnect");
     self endon("demo_request");
     if(!self canWatch())return;
+    self sendLocalChatMessage("Loading demo...");
     if(!isDefined(full))full=true;
-    meta=self openCJ\mySQL::mysqlAsyncQuery("SELECT frameCount,modeMask,EXISTS(SELECT 1 FROM demoWinners w WHERE w.runID=demoRuns.runID AND w.kind='walkthrough') FROM demoRuns WHERE ready=1 AND mapID="+openCJ\mapID::getMapID()+" AND runID="+id);
+    meta=self openCJ\mySQL::mysqlAsyncQuery("SELECT frameCount,modeMask,EXISTS(SELECT 1 FROM demoWinners w WHERE w.runID=demoRuns.runID AND w.kind='walkthrough'),(SELECT p.playerName FROM playerRuns r JOIN playerInformation p ON p.playerID=r.playerID WHERE r.runID=demoRuns.runID) FROM demoRuns WHERE ready=1 AND mapID="+openCJ\mapID::getMapID()+" AND runID="+id);
     if(!isDefined(meta)||!meta.size)
     {
         self sendLocalChatMessage("This run has no retained demo.",true);
@@ -162,6 +163,8 @@ playRun(id,full,kind)
     waittillframeend;
     if(!self canWatch()){self releasePending();return;}
     self.demoPendingId=undefined;
+    self.demoAuthor=meta[0][3];
+    if(!isDefined(self.demoAuthor) || self.demoAuthor=="")self.demoAuthor="Unknown player";
     self.demoStyle=0;
     if(kind=="lowrpg")self.demoStyle=1;
     else if(kind=="walkthrough")self.demoStyle=2;
@@ -183,17 +186,18 @@ _loadCache(id,expected)
     ok=created==id;
     if(ok)
     {
+        // Bound result size while amortizing the 50ms async database poll.
+        // Each query already yields; another wait after decoding doubles latency.
         chunk=0;
         while(ok && numberOfDemoFrames(id)<expected)
         {
-            rows=openCJ\mySQL::mysqlAsyncQuery("SELECT chunkNum,HEX(payload) FROM demoChunks WHERE runID="+id+" AND chunkNum>="+chunk+" ORDER BY chunkNum LIMIT 8");
+            rows=openCJ\mySQL::mysqlAsyncQuery("SELECT chunkNum,HEX(payload) FROM demoChunks WHERE runID="+id+" AND chunkNum>="+chunk+" ORDER BY chunkNum LIMIT 32");
             ok=isDefined(rows) && rows.size>0;
             for(i=0;ok && i<rows.size;i++)
             {
                 if(int(rows[i][0])!=chunk || !isDefined(demoDecodeChunk(id,rows[i][1])))ok=false;
                 chunk++;
             }
-            wait 0.05;
         }
         if(ok)ok=numberOfDemoFrames(id)==expected;
         if(ok)completeDemo(id);
@@ -722,7 +726,12 @@ demoDisplayStart()
         hud.x=0;hud.y=8+i*16;hud.font="objective";hud.fontScale=1.4;hud.alpha=1;
         self.demoCaption[i]=hud;
     }
-    if(isDefined(self.clipDescription))
+    if(isDefined(self.clipEdit))
+    {
+        self.demoCaption[0] setText("EDITING CLIP");
+        self.demoCaption[1] setText(self.name);
+    }
+    else if(isDefined(self.clipDescription))
     {
         self.demoCaption[0] setText("VIEWING CLIP");
         self.demoCaption[1] setText(self.clipDescription);
@@ -730,7 +739,9 @@ demoDisplayStart()
     else
     {
         self.demoCaption[0] setText("VIEWING DEMO");
-        self.demoCaption[1] setText(self.name);
+        author="Unknown player";
+        if(isDefined(self.demoAuthor))author=self.demoAuthor;
+        self.demoCaption[1] setText(author);
     }
 }
 
@@ -747,6 +758,7 @@ demoDisplayStop()
     if(isDefined(self.demoCaption))
         for(i=0;i<self.demoCaption.size;i++)self.demoCaption[i] destroy();
     self.demoCaption=undefined;
+    self.demoAuthor=undefined;
     self setClientCvar("cg_drawSpectatorMessages",1);
 }
 
@@ -758,4 +770,22 @@ demoMovementHudInMenu(hide)
     for(i=0;i<keys.size;i++)self.hudSpeed[keys[i]].hideWhenInMenu=hide;
     keys=getArrayKeys(self.keyboard);
     for(i=0;i<keys.size;i++)self.keyboard[keys[i]].hideWhenInMenu=hide;
+}
+
+// Archived demo captions are inherited by followers. Suppress only the stock
+// spectator label while following playback, restoring it when the target changes.
+spectatorCaption()
+{
+    if(getCodVersion()!=4)return;
+    playback=false;
+    if(self.sessionState=="spectator" && self.spectatorClient>=0)
+    {
+        target=getEntByNum(self.spectatorClient);
+        playback=isDefined(target) && target isPlayingDemo();
+    }
+    if(!isDefined(self.demoSpectatorCaption) || self.demoSpectatorCaption!=playback)
+    {
+        self.demoSpectatorCaption=playback;
+        self setClientCvar("cg_drawSpectatorMessages",int(!playback));
+    }
 }

@@ -21,6 +21,8 @@ main(atLastSavedPosition)
 
     self openCJ\noclip::disableNoclip();
 
+    self.demoSpectatorCaption=undefined;
+    self setClientCvar("cg_drawSpectatorMessages",1);
     self notify("spawned");
 
     resetTimeout();
