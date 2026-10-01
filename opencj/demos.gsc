@@ -747,6 +747,8 @@ demoDisplayStart()
 
 demoDisplayStop()
 {
+    // Playback returns without spawning, so explicitly clear its input overlay.
+    self openCJ\huds\hudOnScreenKeyboard::_hideKeyboard();
     self openCJ\huds\hudTimeLimit::onStopDemo();
     self demoMovementHudInMenu(true);
     keys=getArrayKeys(self.hudSpeed);
