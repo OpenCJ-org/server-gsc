@@ -7,6 +7,7 @@ main()
 
     self openCJ\login::onPlayerConnected();
     self openCJ\challenges::onPlayerConnected();
+    self openCJ\shop::onPlayerConnected();
     self openCJ\country::onPlayerConnected();
     self openCJ\huds\infiniteHuds::onPlayerConnected();
     self openCJ\graphics::onPlayerConnected();

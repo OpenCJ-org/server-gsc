@@ -384,7 +384,7 @@ _start(route, hex)
     self.cpc.huds[4].color = (0,0,0);
     self.cpc.huds[4].alpha = 0.55;
     self.cpc.huds[4].sort = -1;
-    self.cpc.huds[4] setShader("white", 320, 104);
+    self.cpc.huds[4] setShader("white", 344, 104);
     self setClientCvar("developer", 1);
     self.cpc.positions = [];
     if (isDefined(self.cpcTravelPositions))
@@ -1019,7 +1019,7 @@ _draw()
     panelHeight = 36 + lines * 17;
     if (!isDefined(self.cpc.panelHeight) || self.cpc.panelHeight != panelHeight)
     {
-        self.cpc.huds[4] setShader("white", 320, panelHeight);
+        self.cpc.huds[4] setShader("white", 344, panelHeight);
         self.cpc.panelHeight = panelHeight;
     }
     if (self.cpc.status != "" && (!isDefined(self.cpc.lastPanelStatus) || self.cpc.lastPanelStatus != self.cpc.status))

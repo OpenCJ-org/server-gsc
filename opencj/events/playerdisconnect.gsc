@@ -2,6 +2,7 @@
 
 main() // Threaded
 {
+    self openCJ\shop::stopInspect();
     level.playerCount--;
     self openCJ\clips::onDisconnect();
     self openCJ\demos::onDisconnect();

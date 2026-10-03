@@ -1,7 +1,7 @@
 #include openCJ\util;
 
 // All challenge definitions, rules, awards, ranks and menu data live here.
-// IDs are permanent. Link routeName only after confirming the published route.
+// IDs are permanent. Published finishes link by map and case-insensitive route name.
 // Mode bits: any%=1, elevators=2, halfbeat=4, TAS=8. FPS is specified separately.
 definitions()
 {
@@ -100,6 +100,7 @@ initialize()
     level.challengeTierPoints=[];
     for(t=1;t<=10;t++)level.challengeTierPoints[t]=0;
     for(i=0;i<keys.size;i++){c=level.challenges[keys[i]];level.challengeTierPoints[c.tier]+=c.points;}
+    if(!isDefined(openCJ\mySQL::mysqlSyncQuery(routeLinkSQL())))return;
     // Only proven, finalized run snapshots qualify, including existing players.
     result=openCJ\mySQL::mysqlAsyncQuery(awardSQL(""));
     if(!isDefined(result))return;
@@ -232,7 +233,7 @@ show()
             done=isDefined(row[8]) && int(row[8])!=0;
             status=1;state="Incomplete";
             if(!isDefined(row[6])){state="Not available yet";status=3;}
-            if(done){state="Complete";status=2;}
+            if(done){state="Completed";status=2;}
             self setUI("ocj_ch_status"+i,status);
             icons=allowedModeIcons(row[9],int(row[10]));
             self setUI("ocj_ch_modes"+i,icons.size);
@@ -270,4 +271,25 @@ allowedModeIcons(fps,allowed)
     if(allowed & 4)icons[icons.size]="opencj_icon_halfbeat";
     if(allowed & 8)icons[icons.size]="opencj_icon_tas";
     return icons;
+}
+
+// Only committed checkpoint areas with an actual finish make a challenge available.
+// Exact route names are case-insensitive; never guess between unrelated routes.
+routeLinkSQL()
+{
+    return "UPDATE challenges c JOIN mapids m ON m.mapname=c.mapName LEFT JOIN (SELECT cp.mapID,LOWER(cp.ender) AS routeKey,MIN(cp.ender) AS routeName FROM checkpoints cp JOIN checkpointAreas a ON a.cpID=cp.cpID AND a.mapID=cp.mapID WHERE cp.ender IS NOT NULL AND cp.ender<>'' GROUP BY cp.mapID,LOWER(cp.ender)) p ON p.mapID=m.mapID AND p.routeKey=LOWER(COALESCE(c.routeName,c.routeLabel)) SET c.routeName=p.routeName WHERE c.active=1";
+}
+onRoutesPublished()
+{
+    if(getCodVersion()!=4 || !isDefined(level.challengesReady) || !level.challengesReady)return;
+    if(!isDefined(openCJ\mySQL::mysqlSyncQuery(routeLinkSQL())))return;
+    level thread backfillPublishedRoutes();
+}
+backfillPublishedRoutes()
+{
+    result=openCJ\mySQL::mysqlAsyncQuery(awardSQL(""));
+    if(!isDefined(result))return;
+    players=getEntArray("player","classname");
+    for(i=0;i<players.size;i++)
+        if(players[i] openCJ\login::isLoggedIn())players[i] thread refresh();
 }

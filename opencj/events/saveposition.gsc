@@ -2,6 +2,7 @@
 
 main() // Not threaded as it returns a result
 {
+    if(isDefined(self.shopInspect))return undefined;
     if(!self openCJ\login::isLoggedIn())
     {
         return undefined;

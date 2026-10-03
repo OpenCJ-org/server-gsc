@@ -33,7 +33,7 @@ giveWeapons(giveRPG, isSpawn)
     }
     else if (giveRPG)
     {
-        self switchToWeaponSeamless(level.weapons_rpgs["default"]);
+        self switchToWeaponSeamless(self rpgWeapon());
     }
     self _deleteGrenades();
 }
@@ -42,16 +42,16 @@ switchToDemoWeapon(isRPG)
 {
     if(isRPG)
     {
-        if(self hasWeapon(level.weapons_rpgs["default"]) && self getCurrentWeapon() != level.weapons_rpgs["default"])
+        if(self hasWeapon(self rpgWeapon()) && self getCurrentWeapon() != self rpgWeapon())
         {
-            self switchToWeapon(level.weapons_rpgs["default"]);
+            self switchToWeapon(self rpgWeapon());
         }
     }
     else
     {
-        if(self hasWeapon(level.weapons_loadouts["default"]) && self getCurrentWeapon() != level.weapons_loadouts["default"])
+        if(self hasWeapon(self pistolWeapon()) && self getCurrentWeapon() != self pistolWeapon())
         {
-            self switchToWeapon(level.weapons_loadouts["default"]);
+            self switchToWeapon(self pistolWeapon());
         }
     }
 }
@@ -82,9 +82,9 @@ _deleteGrenades()
 _giveWeapons(rpgDefault)
 {
     self takeAllWeapons();
-    self _giveLoadout("default", !rpgDefault);
+    self _giveLoadout(self openCJ\shop::resource(level.weapons_loadouts["default"]), !rpgDefault);
     self _giveGrenades("default", false);
-    self _giveRPG("default", rpgDefault);
+    self _giveRPG(self openCJ\shop::resource(level.weapons_rpgs["default"]), rpgDefault);
 }
 
 _registerLoadout(name, weapon)
@@ -143,7 +143,7 @@ onRPGFired(rpg, name)
     if(self openCJ\settings::getSetting("rpgputaway"))
     {
         self setWeaponAmmoClip(name, 1);
-        self switchToWeapon(level.weapons_loadouts["default"]);
+        self switchToWeapon(self pistolWeapon());
     }
     if(self openCJ\settings::getSetting("rpgsustain"))
     {
@@ -155,6 +155,7 @@ _rpgSustain(name)
     self endon("disconnect");
     self endon("spawned");
     self endon("spawned_spectator");
+    self endon("shop_inspect_started");
     self SetWeaponAmmoStock(name, 0);
     wait 0.9;
     self SetWeaponAmmoClip(name, 1);
@@ -234,3 +235,5 @@ setWeaponSpread(value)
         self ResetSpreadOverride();
     }
 }
+pistolWeapon(){return level.weapons_loadouts[self openCJ\shop::resource(level.weapons_loadouts["default"])];}
+rpgWeapon(){return level.weapons_rpgs[self openCJ\shop::resource(level.weapons_rpgs["default"])];}

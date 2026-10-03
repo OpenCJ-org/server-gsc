@@ -222,6 +222,7 @@ releaseCache(id)
 
 startDemo(demoID)
 {
+    self openCJ\shop::stopInspect();
     if (getCodVersion() == 4 && !(self demoBeginPresentation()))
     {
         releaseCache(demoID);

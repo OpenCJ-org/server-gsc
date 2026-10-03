@@ -2,6 +2,7 @@
 
 main()
 {
+    self openCJ\shop::stopInspect();
     if (self.sessionState == "spectator")
     {
         return;

@@ -6,7 +6,7 @@ onInit()
                          "The Beta helps us find crashes and game-breaking bugs. " +
                          "Our website is opencj.org. " +
                          "Join our Discord at discord.opencj.org for updates.";
-    level.motd_date = "September 28th, 2026";
+    level.motd_date = "October 3rd, 2026";
 }
 
 onPlayerConnected()

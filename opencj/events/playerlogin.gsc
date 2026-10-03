@@ -2,6 +2,7 @@
 
 main()
 {
+    self openCJ\shop::loadEquipment();
     self openCJ\playerRuns::onPlayerLogin();
     self openCJ\country::onPlayerLogin();
     self openCJ\menus::onPlayerLogin();

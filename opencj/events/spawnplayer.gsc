@@ -16,6 +16,9 @@ main(atLastSavedPosition)
         return;
     }
 
+    self openCJ\shop::stopInspect();
+    if(!self openCJ\shop::loadEquipment())return;
+
     self openCJ\demos::cancelRequest();
     if(self openCJ\demos::isPlayingDemo())self openCJ\demos::stopDemo();
 

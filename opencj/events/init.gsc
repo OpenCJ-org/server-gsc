@@ -17,6 +17,7 @@ main()
     openCJ\commands::onInit();
     openCJ\scoreboard::onInit();
     openCJ\challenges::onInit();
+    openCJ\shop::onInit();
     openCJ\settings::onInit();
     openCJ\shellShock::onInit();
     openCJ\spawnpoints::onInit();

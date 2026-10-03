@@ -2,6 +2,7 @@
 
 main(backwardsCount)
 {
+    self openCJ\shop::stopInspect();
     if (isDefined(self.cpc))
         return self openCJ\checkpointCreation::loadPosition(backwardsCount);
     if (self.sessionState != "playing")

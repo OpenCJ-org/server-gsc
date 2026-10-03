@@ -53,7 +53,7 @@ setPlayerModel()
 
     self notify("deleteBody");
 
-    self _setModel("default");
+    self _setModel(self openCJ\shop::resource("player"));
 }
 
 _setModel(name)
