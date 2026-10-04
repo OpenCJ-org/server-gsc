@@ -65,7 +65,7 @@ onPlayerConnected()
         if(self openCJ\settings::getSetting("hideall")) mode = 2;
         else if(self openCJ\settings::getSetting("hidenear")) mode = 1;
         self setClientCvar("opencj_gfx_hidemode", mode);
-        self execClientCmd("setfromdvar opencj_gfx_map_sunShadow sm_sunEnable; setfromdvar opencj_gfx_map_spotShadow sm_spotEnable; setfromdvar opencj_gfx_map_blur r_blur");
+        // Map defaults are captured by the acknowledged client startup menu.
         self thread _graphicsMenuResponses();
     }
 }

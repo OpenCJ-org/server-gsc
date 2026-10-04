@@ -13,6 +13,7 @@ onInit()
     }
     else
     {
+        precacheMenu("opencj_client_init");
         level.menu["fpsuserinfo"] = "opencj_fps_userinfo";
         precacheMenu(level.menu["fpsuserinfo"]);
     }
@@ -31,7 +32,7 @@ onPlayerLogin()
 
 openFPSUserinfoMenu()
 {
-    // Let onOpen and its queued restoration execute before closing.
+    // Registration/restoration is immediate; the menu closes itself.
     self openMenu(level.menu["fpsuserinfo"]);
 }
 

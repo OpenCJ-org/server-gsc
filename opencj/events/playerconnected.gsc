@@ -3,6 +3,7 @@
 main()
 {
     self.isFullyConnected = true;
+    self thread openCJ\clientInit::onConnected();
     self openCJ\scoreboard::onPlayerConnected();
 
     self openCJ\login::onPlayerConnected();

@@ -17,27 +17,8 @@ onPlayerConnected()
     self.scoreboardCache=[];
     self setClientCvar("opencj_sb_held",0);
     self setClientCvar("opencj_sb_active",0);
-    self thread installControls();
     self thread watch();
     self thread scrollInput();
-}
-
-installControls()
-{
-    self endon("disconnect");
-    self setClientCvar("opencj_sb_ready", "0");
-    // Connection hooks open/close other menus in this same frame.
-    waittillframeend;
-    for(attempt=0;attempt<3;attempt++)
-    {
-        self openMenu("opencj_scoreboard_setup");
-        for(check=0;check<10;check++)
-        {
-            wait 0.1;
-            if(self getUserinfo("opencj_sb_ready")=="3")return;
-        }
-    }
-    printf("Scoreboard controls: client did not acknowledge initialization.\n");
 }
 
 command(args)
@@ -48,6 +29,7 @@ command(args)
 watch()
 {
     self endon("disconnect");
+    self openCJ\clientInit::waitUntilFinished();
     nextUpdate=0;inputOpen=false;
     for(;;)
     {

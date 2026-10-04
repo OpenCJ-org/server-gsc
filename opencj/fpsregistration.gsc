@@ -23,47 +23,17 @@ hasRestoredFPS(value)
     return hasReportedFPS(value) && value != "999";
 }
 
-onConnected()
+begin()
 {
-    self endon("disconnect");
-    level endon("game_ended");
-    if (getCodVersion() != 4)
-        return;
-
-    self.fpsRegistrationRequested = false;
-    self.fpsRegistrationPending = true;
+    self.fpsRegistrationRequested = !hasReportedFPS(self getUserInfo("com_maxfps"));
+    self.fpsRegistrationPending = self.fpsRegistrationRequested;
     self.fpsRegistrationMessageAt = undefined;
-    if (hasReportedFPS(self getUserInfo("com_maxfps")))
-    {
-        self.fpsRegistrationPending = false;
-        return;
-    }
+}
 
-    self.fpsRegistrationRequested = true;
-    for (attempt = 0; attempt < 3; attempt++)
-    {
-        if (hasRestoredFPS(self getUserInfo("com_maxfps")))
-            break;
-        self openCJ\menus::openFPSUserinfoMenu();
-        // Try immediately; only slow/unresponsive clients use the full timeout.
-        // Do not close the menu before its one-frame restoration has completed.
-        for (poll = 0; poll < 20; poll++)
-        {
-            wait 0.05;
-            if (hasRestoredFPS(self getUserInfo("com_maxfps")))
-                break;
-        }
-        self closeMenu();
-        value = self getUserInfo("com_maxfps");
-        if (hasRestoredFPS(value))
-            break;
-        // Reopening while restoration is stuck would save 999 into temp,
-        // overwriting the player's original FPS. Fail rather than doing that.
-        if (value == "999")
-            break;
-    }
+finish()
+{
     self.fpsRegistrationPending = false;
-    if (!hasRestoredFPS(self getUserInfo("com_maxfps")))
+    if (!self canStart())
     {
         // A pending message must never suppress the terminal failure message.
         self.fpsRegistrationMessageAt = undefined;

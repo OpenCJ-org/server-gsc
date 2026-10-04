@@ -2,7 +2,6 @@
 
 onPlayerConnected()
 {
-    self thread openCJ\fpsRegistration::onConnected();
     self thread _tryLogin();
 }
 
@@ -24,6 +23,9 @@ getPlayerID()
 _tryLogin()
 {
     self endon("disconnect");
+    // Saved graphics settings can open command menus; startup owns that channel
+    // until it has captured map defaults and completed FPS/scoreboard setup.
+    self openCJ\clientInit::waitUntilFinished();
 
     uid = self openCJ\loginHelper::requestUID();
 
