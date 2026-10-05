@@ -4,4 +4,6 @@ main()
     self openCJ\huds\hudRunInfo::onRunResumed();
     self openCJ\huds\hudProgressBar::onRunResumed();
     self openCJ\elevate::onRunResumed();
+    // Recheck FPS changed while mode detection was paused.
+    self openCJ\fps::onSpawnPlayer();
 }

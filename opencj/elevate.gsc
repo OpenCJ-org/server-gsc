@@ -14,7 +14,7 @@ _onSettingAllowEle(allow)
     }
 
     // Don't use _updateAllowEle here, since the value hasn't been applied yet so it will use the previous value
-    self _setAllowElevate(allow);
+    self _setAllowElevate(allow || !self openCJ\playerRuns::modeDetectionActive() || self _isEleAllowedThisCheckpoint());
 }
 
 _setAllowElevate(val)
@@ -35,9 +35,8 @@ _setAllowElevate(val)
 
 _updateAllowEle()
 {
-    allowEle = self hasUsedEle() || self openCJ\settings::getSetting("allowele") || self _isEleAllowedThisCheckpoint() ||
-               !self openCJ\playerRuns::hasRunID() || self openCJ\playerRuns::isRunPaused() || self openCJ\playerRuns::isRunFinished() ||
-               self openCJ\cheating::isCheating() || self openCJ\demos::isPlayingDemo();
+    allowEle = !self openCJ\playerRuns::modeDetectionActive() || self hasUsedEle() ||
+               self openCJ\settings::getSetting("allowele") || self _isEleAllowedThisCheckpoint();
 
     self _setAllowElevate(allowEle);
 }
@@ -97,6 +96,8 @@ hasUsedEle()
 
 onElevate()
 {
+    if (!self openCJ\playerRuns::modeDetectionActive() || self _isEleAllowedThisCheckpoint())
+        return;
     if (!isDefined(self.hasUsedEle) || !self.hasUsedEle)
     {
         if (!self.allowEle)
@@ -112,5 +113,5 @@ onElevate()
 
 _isEleAllowedThisCheckpoint()
 {
-    return (isDefined(self openCJ\checkpoints::getCurrentCheckpoint()) && openCJ\checkpoints::isEleAllowed(self openCJ\checkpoints::getCurrentCheckpoint()));
+    return self openCJ\checkpoints::nextAllowsEle();
 }

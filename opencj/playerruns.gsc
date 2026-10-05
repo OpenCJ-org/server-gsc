@@ -93,6 +93,15 @@ hasRunID()
     return isDefined(self.playerRuns_runID) && isDefined(self.runInstanceNumber);
 }
 
+// Automatic mode detection only applies while actually playing a scored run.
+modeDetectionActive()
+{
+    return self hasRunID() && self.sessionState == "playing" &&
+        !self isRunPaused() && !self isRunFinished() &&
+        !self openCJ\checkpointCreation::isEditing() && !self openCJ\demos::isPlayingDemo() &&
+        !self openCJ\cheating::isCheating();
+}
+
 getRunID()
 {
     return self.playerRuns_runID;

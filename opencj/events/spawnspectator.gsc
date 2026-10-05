@@ -36,6 +36,7 @@ main()
     self openCJ\shellShock::resetShellShock();
     self openCJ\healthRegen::onSpawnSpectator();
     self openCJ\playerRuns::onSpawnSpectator();
+    self openCJ\elevate::_updateAllowEle();
     self openCJ\showRecords::onSpawnSpectator();
     self openCJ\checkpointPointers::onSpawnSpectator();
     self openCJ\huds\hudProgressBar::onSpawnSpectator();

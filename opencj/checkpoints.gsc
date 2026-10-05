@@ -775,6 +775,16 @@ nextAllowsDoubleRPG()
     return isDefined(next[0].allowDoubleRPG) && next[0].allowDoubleRPG;
 }
 
+// Same ambiguity rule as Double RPG: alternative areas share one requirement;
+// a split into different checkpoints does not grant a branch's exemption globally.
+nextAllowsEle()
+{
+    next = self getCurrentChildCheckpoints();
+    if (!isDefined(next) || next.size == 0) return false;
+    next = filterOutBrothers(next);
+    return next.size == 1 && isDefined(next[0].isEleAllowed) && next[0].isEleAllowed;
+}
+
 hasPassedCheckpoint(checkpoint)
 {
     if (isDefined(checkpoint.bigBrother))
@@ -921,15 +931,8 @@ _checkAnyPctTriggered(triggeredCP, childCheckpoints)
 
 whileAlive()
 {
-    if (self openCJ\checkpointCreation::isEditing())
+    if (!self openCJ\playerRuns::modeDetectionActive() || (isDefined(self.playerRuns_runFinishing) && self.playerRuns_runFinishing))
         return;
-    if (!self openCJ\playerRuns::hasRunID() || (isDefined(self.playerRuns_runFinishing) && self.playerRuns_runFinishing))
-        return;
-    // No need to process if the run is already finished
-    if (self openCJ\playerRuns::isRunFinished())
-    {
-        return;
-    }
 
     foundContact = false;
     playerChildCheckpoints = self getCurrentChildCheckpoints();

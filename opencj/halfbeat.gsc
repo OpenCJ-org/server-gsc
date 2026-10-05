@@ -61,6 +61,14 @@ _detectHalfBeat()
 
     while (true)
     {
+        if (!self openCJ\playerRuns::modeDetectionActive())
+        {
+            self.hbPrevVel = undefined;
+            self.prevForwardOrBackButtonPressed = false;
+            self.prevStrafeButtonPressed = false;
+            wait .1;
+            continue;
+        }
         if (self isHalfBeatAllowed())
         {
             wait .05;

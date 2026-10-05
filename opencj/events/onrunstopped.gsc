@@ -1,6 +1,7 @@
 main()
 {
     self openCJ\playTime::pauseTimer();
+    self openCJ\elevate::_updateAllowEle();
     self openCJ\statistics::onRunStopped();
     self openCJ\checkpointPointers::onRunStopped();
     self openCJ\huds\hudStatistics::onRunStopped();

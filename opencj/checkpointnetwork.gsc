@@ -527,7 +527,7 @@ selectAndTeleport(index)
 
 sameCheckpoint(a,b)
 {
-    if(a.allowSave!=b.allowSave||a.onGround!=b.onGround||a.finish!=b.finish||a.double!=b.double||a.points.size!=b.points.size||a.alternatives.size!=b.alternatives.size)return false;
+    if(a.allowEle!=b.allowEle||a.allowSave!=b.allowSave||a.onGround!=b.onGround||a.finish!=b.finish||a.double!=b.double||a.points.size!=b.points.size||a.alternatives.size!=b.alternatives.size)return false;
     for(i=0;i<a.points.size;i++)if(distanceSquared(a.points[i],b.points[i])>0.0001)return false;
     for(i=0;i<a.alternatives.size;i++)
     {
@@ -644,7 +644,7 @@ rename(old,name)
     }
     active=self.cpc.route;if(active==old)active=name;
     self openCJ\checkpointCreation::_close();
-    openCJ\checkpointPublish::activate();
+    self openCJ\checkpointPublish::activate();
     self openCJ\checkpointCreation::_start(active);
     self sendLocalChatMessage("Renamed "+old+" to "+name+". Colors, checkpoint IDs and records retained; separately named branches are unchanged.");
     return true;

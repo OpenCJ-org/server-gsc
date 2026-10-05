@@ -112,7 +112,7 @@ onFPSChange(newFPS) // Not called with undefined FPS
     self.FPS = newFPS;
 
     // Update the FPS mode. This may be accepted or prevented based on user settings.
-    if (!self isSpectator()) // If player is spectating, don't bother them with this, handle it when they spawn.
+    if (self openCJ\playerRuns::modeDetectionActive())
     {
         self setFPSMode(self getNewFPSModeStrByFPS(self getCurrentFPSMode(), newFPS));
     }
@@ -131,10 +131,12 @@ setFPSMode(newFPSMode)
 _setFPSMode(newFPSMode, forced)
 {
     // If player is not ready / no run started, FPS mode will be updated by onRunStarted
-    if(!self isPlayerReady() || self openCJ\demos::isPlayingDemo())
+    if(!self isPlayerReady() || !self openCJ\playerRuns::hasRunID() || self openCJ\checkpointCreation::isEditing() || self openCJ\demos::isPlayingDemo())
     {
         return;
     }
+
+    if (!forced && !self openCJ\playerRuns::modeDetectionActive()) return;
 
     // No hax for CoD2
     if ((getCodVersion() == 2) && (newFPSMode == "hax"))
@@ -222,7 +224,7 @@ _shouldFPSModeChange(currentFPSMode, newFPSMode)
 
 userSettingsPreventFPSMode(currentFPSMode, newFPSMode)
 {
-    if (!self openCJ\playerRuns::hasRunID() || self openCJ\playerRuns::isRunPaused() || self openCJ\playerRuns::isRunFinished())
+    if (!self openCJ\playerRuns::modeDetectionActive())
     {
         return false;
     }

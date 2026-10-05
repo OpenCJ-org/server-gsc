@@ -9,7 +9,7 @@ onInit()
 
 _onCommandHardTAS(args)
 {
-    if (!self openCJ\playerRuns::hasRunID())
+    if (!self openCJ\playerRuns::modeDetectionActive())
     {
         self sendLocalChatMessage("This command can only be used during a run", true);
         return;

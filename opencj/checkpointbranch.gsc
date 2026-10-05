@@ -143,7 +143,7 @@ ensurePrefix()
     for (i = 0; i < entries.size; i++)
         if (entries[i].cp.finish){self.cpc.status = "Shared opening contains a Finish";return undefined;}
     where = "a.mapID=" + mapID + " AND a.routeName=" + dbStr(self.cpc.route);
-    rows = openCJ\mySQL::mysqlSyncQuery("SELECT a.cpID,a.vertices,a.allowDoubleRPG,b.bigBrotherID,c.ender,c.onGround,c.allowSave FROM checkpointAreas a JOIN checkpoints c ON c.cpID=a.cpID LEFT JOIN checkpointBrothers b ON b.cpID=a.cpID WHERE " + where + " ORDER BY a.ordinal");
+    rows = openCJ\mySQL::mysqlSyncQuery("SELECT a.cpID,a.vertices,a.allowDoubleRPG,b.bigBrotherID,c.ender,c.onGround,c.allowSave,c.elevate FROM checkpointAreas a JOIN checkpoints c ON c.cpID=a.cpID LEFT JOIN checkpointBrothers b ON b.cpID=a.cpID WHERE " + where + " ORDER BY a.ordinal");
     if (!isDefined(rows)){self.cpc.status = "Cannot read shared opening";return undefined;}
     if (rows.size == 0)
     {
@@ -155,7 +155,7 @@ ensurePrefix()
     for (i = 0; i < entries.size; i++)
     {
         points = openCJ\checkpointArea::decode(rows[i][1]);
-        same = isDefined(points) && points.size == entries[i].points.size && int(rows[i][2]) == int(entries[i].cp.double) && !isDefined(rows[i][4]) && int(rows[i][5]) == int(entries[i].cp.onGround) && int(rows[i][6]) == int(entries[i].cp.allowSave);
+        same = isDefined(points) && points.size == entries[i].points.size && int(rows[i][2]) == int(entries[i].cp.double) && !isDefined(rows[i][4]) && int(rows[i][5]) == int(entries[i].cp.onGround) && int(rows[i][6]) == int(entries[i].cp.allowSave) && int(rows[i][7]) == int(entries[i].cp.allowEle);
         if (same)
             for (j = 0; j < points.size; j++)
                 if (distanceSquared(points[j], entries[i].points[j]) > 0.0001)same = false;

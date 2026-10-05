@@ -273,16 +273,32 @@ allowedModeIcons(fps,allowed)
     return icons;
 }
 
-// Only committed checkpoint areas with an actual finish make a challenge available.
-// Exact route names are case-insensitive; never guess between unrelated routes.
+// Exact names take priority. A generic Main route label may use the only
+// published route, but never infer a difficulty from a partially checkpointed map.
 routeLinkSQL()
 {
-    return "UPDATE challenges c JOIN mapids m ON m.mapname=c.mapName LEFT JOIN (SELECT cp.mapID,LOWER(cp.ender) AS routeKey,MIN(cp.ender) AS routeName FROM checkpoints cp JOIN checkpointAreas a ON a.cpID=cp.cpID AND a.mapID=cp.mapID WHERE cp.ender IS NOT NULL AND cp.ender<>'' GROUP BY cp.mapID,LOWER(cp.ender)) p ON p.mapID=m.mapID AND p.routeKey=LOWER(COALESCE(c.routeName,c.routeLabel)) SET c.routeName=p.routeName WHERE c.active=1";
+    published="SELECT cp.mapID,LOWER(cp.ender) AS routeKey,MIN(cp.ender) AS routeName FROM checkpoints cp JOIN checkpointAreas a ON a.cpID=cp.cpID AND a.mapID=cp.mapID WHERE cp.ender IS NOT NULL AND cp.ender<>'' GROUP BY cp.mapID,LOWER(cp.ender)";
+    return "UPDATE challenges c JOIN mapids m ON m.mapname=c.mapName LEFT JOIN ("+published+") p ON p.mapID=m.mapID AND p.routeKey=LOWER(COALESCE(c.routeName,c.routeLabel)) LEFT JOIN (SELECT mapID,MIN(routeName) AS routeName FROM ("+published+") routes GROUP BY mapID HAVING COUNT(*)=1) sole ON sole.mapID=m.mapID LEFT JOIN (SELECT mapName,COUNT(DISTINCT LOWER(routeLabel)) AS routeCount FROM challenges WHERE active=1 GROUP BY mapName) labels ON labels.mapName=c.mapName SET c.routeName=COALESCE(p.routeName,CASE WHEN labels.routeCount=1 AND (LOWER(c.routeLabel)='main route' OR LOWER(c.routeLabel) LIKE 'main route (%)') THEN sole.routeName ELSE NULL END) WHERE c.active=1";
 }
 onRoutesPublished()
 {
     if(getCodVersion()!=4 || !isDefined(level.challengesReady) || !level.challengesReady)return;
+    // Snapshot unavailable challenges before linking, so re-publishing is quiet.
+    pending=openCJ\mySQL::mysqlSyncQuery("SELECT challengeKey FROM challenges WHERE active=1 AND routeName IS NULL AND mapName="+dbStr(getDvar("mapname")));
     if(!isDefined(openCJ\mySQL::mysqlSyncQuery(routeLinkSQL())))return;
+    if(isDefined(pending) && pending.size)
+    {
+        keys="";
+        for(i=0;i<pending.size;i++)
+        {
+            if(i)keys+=",";
+            keys+=dbStr(pending[i][0]);
+        }
+        enabled=openCJ\mySQL::mysqlSyncQuery("SELECT routeLabel,tier FROM challenges WHERE active=1 AND routeName IS NOT NULL AND challengeKey IN ("+keys+") ORDER BY tier,challengeKey");
+        if(isDefined(enabled))
+            for(i=0;i<enabled.size;i++)
+                self sendLocalChatMessage("Challenge now available: "+getDvar("mapname")+" / "+enabled[i][0]+" (Tier "+enabled[i][1]+").");
+    }
     level thread backfillPublishedRoutes();
 }
 backfillPublishedRoutes()

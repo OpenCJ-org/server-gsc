@@ -22,24 +22,27 @@ getRectangularPlatformOrgs()
 detectLandingAt(origin)
 {
     top = bulletTrace(origin + (0,0,2), origin - (0,0,24), false, undefined);
-    if (top["fraction"] < 1 && top["normal"][2] >= 0.7)
+    if (top["fraction"] < 1 && top["normal"][2] >= 0.7 && abs(top["position"][2] - origin[2]) <= 0.5)
     {
-        points = platformBrushFace(top["position"], top["normal"]);
+        points = platformBrushFace(top["position"], top["normal"], false, true);
         if (isDefined(points) && openCJ\checkpointArea::validate(points) == "" &&
             openCJ\checkpointArea::contains(points, origin, true))
         {
-            // One floor brush can span several cubbies. Prefer traced bounds
-            // only for an enclosed landing, not an isolated object on its floor.
-            traced = detectAt(origin);
-            if (isDefined(traced) && openCJ\checkpointArea::validate(traced) == "" &&
-                openCJ\checkpointArea::contains(traced, origin, true) &&
-                _surfaceArea(traced, top["normal"]) < _surfaceArea(points, top["normal"]) * 0.95 &&
-                _enclosedLanding(traced, top["normal"]))
-                return traced;
             return points;
         }
     }
-    return detectAt(origin);
+    // A grounded player's center may hang over an edge. Find a walkable face
+    // intersecting the 30x30 feet at this height, retaining its original perimeter.
+    supported = platformBrushFace(origin, (0,0,1), true, true);
+    if (isDefined(supported) && openCJ\checkpointArea::validate(supported) == "")
+        return supported;
+    // If a brush exists but cannot be safely clipped, preserve the current selection.
+    // Trace fallback is only for non-brush surfaces (and CoD2), never failed validation.
+    if (isDefined(platformBrushFace(origin, (0,0,1), true)))
+        return undefined;
+    if (top["fraction"] < 1 && abs(top["position"][2] - origin[2]) <= 0.5)
+        return detectAt(origin);
+    return undefined;
 }
 
 detectAt(origin)
@@ -282,41 +285,4 @@ _solidAt(point, normal)
 {
     hit = bulletTrace(point + vectorScale(normal, 0.125), point - vectorScale(normal, 0.125), false, undefined);
     return hit["fraction"] == 0 && vectorDot(hit["normal"], hit["normal"]) < 0.001;
-}
-
-_surfaceArea(points, normal)
-{
-    area = 0;
-    for (i = 1; i < points.size - 1; i++)
-        area += abs(vectorDot(openCJ\checkpointArea::crossProduct(points[i] - points[0], points[i+1] - points[0]), normal));
-    return area * 0.5;
-}
-
-// Opposing walls must cover the floor edge and reach standing height at its center.
-// A small prop or a wall touching only one corner must not crop the brush.
-_enclosedLanding(points, normal)
-{
-    if (points.size != 4) return false;
-    center = vectorScale(points[0]+points[1]+points[2]+points[3], 0.25);
-    walls = [];
-    for (i = 0; i < 4; i++)
-    {
-        edge = points[(i+1)%4] - points[i];
-        inward = vectorNormalize(openCJ\checkpointArea::crossProduct(normal, edge));
-        if (vectorDot(inward, center-points[i]) < 0) inward = vectorScale(inward,-1);
-        walls[i] = true;
-        for (sample = 0; sample < 3 && walls[i]; sample++)
-        {
-            point = points[i] + vectorScale(edge, 0.05 + sample*0.45);
-            maxHeight = 1; if (sample == 1) maxHeight = 61;
-            for (height = 1; height <= maxHeight; height += 60)
-            {
-                above = point + (0,0,height);
-                hit = bulletTrace(above + vectorScale(inward,2), above - vectorScale(inward,2), false, undefined);
-                if (hit["fraction"] == 1 || vectorDot(hit["normal"],inward) < 0.95)
-                    walls[i] = false;
-            }
-        }
-    }
-    return (walls[0] && walls[2]) || (walls[1] && walls[3]);
 }

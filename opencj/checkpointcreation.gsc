@@ -6,7 +6,7 @@ onInit()
 {
     if (getCodVersion() != 4)
         return;
-    cmd = openCJ\commands_base::registerCommand("checkpoint", "!cp start <route> [#RRGGBB] | split <routes> | merge <routes> | rename <old> <new> | detect | corner | confirm | alternative | area | undo | finish | double | ground | allowsave | select <number> | new | discard | edit [number|last] | delete | test | save | finalize | stop", ::command, 1, 17, 0);
+    cmd = openCJ\commands_base::registerCommand("checkpoint", "!cp <route> [#RRGGBB] (start or continue your draft) | split <routes> | merge <routes> | rename <old> <new> | detect | corner | confirm | alternative | area | undo | finish | double | ele | ground | allowsave | select <number> | new | discard | edit [number|last] | delete | test | save | finalize | stop", ::command, 1, 17, 0);
     openCJ\commands_base::addAlias(cmd, "cp");
     openCJ\commands_base::addAlias(cmd, "cpc");
 }
@@ -42,20 +42,23 @@ command(args)
         self iprintln("Enable opencj_checkpoint_editor on the development server first");
         return;
     }
-    if (args[0] == "start" && (args.size == 2 || args.size == 3))
+    // Non-command names open the player's existing draft or create a new one.
+    args[0] = toLower(args[0]);
+    commands = "|rename|split|merge|edit|select|stop|save|finalize|publish|test|finish|double|ele|ground|allowsave|undo|discard|alternative|area|detect|corner|confirm|new|previous|next|delete|";
+    if ((args.size == 1 || args.size == 2) && !isSubStr(commands, "|" + args[0] + "|"))
     {
-        route = toLower(args[1]);
+        route = args[0];
         if (!_validName(route) || self.sessionState != "playing" || self openCJ\demos::isPlayingDemo())
         {
             self iprintln("Spawn first; route names use 1-20 letters, digits, underscores or +");
             return;
         }
         hex = undefined;
-        if (args.size == 3)
-            hex = toLower(args[2]);
+        if (args.size == 2)
+            hex = toLower(args[1]);
         if (isDefined(hex) && !isDefined(routeRGB(hex)))
         {
-            self iprintln("Use a six-digit color, for example !cp start easy #ffffff");
+            self iprintln("Use a six-digit color, for example !cpc easy #ffffff");
             return;
         }
         previous = undefined;
@@ -71,12 +74,12 @@ command(args)
         if (wasNetwork && self isEditing())
             self sendLocalChatMessage("Network draft saved. Complete all routes, then !cp finalize to make them playable.");
         else if (isDefined(previous) && previous != route && self isEditing())
-            self sendLocalChatMessage("Opened " + route + ". " + previous + " draft saved; use !cp start " + previous + " then !cp finalize to make that draft playable.");
+            self sendLocalChatMessage("Opened " + route + ". " + previous + " draft saved; use !cpc " + previous + " then !cp finalize to make that draft playable.");
         return;
     }
     if (!self isEditing())
     {
-        self iprintln("Start with !cp start easy or !cp start hard");
+        self iprintln("Start or continue your draft with !cpc easy or !cpc hard");
         return;
     }
     if (args[0] == "rename" && args.size == 3)
@@ -215,6 +218,7 @@ _empty()
     cp.double = false;
     cp.onGround = true;
     cp.allowSave = true;
+    cp.allowEle = false;
     return cp;
 }
 
@@ -223,7 +227,8 @@ _encode(cp)
     text = int(cp.finish) + ":" + int(cp.double) + ":p" + openCJ\checkpointArea::encode(cp.points);
     for (i = 0; i < cp.alternatives.size; i++)
         text += "|p" + openCJ\checkpointArea::encode(cp.alternatives[i]);
-    if (!cp.allowSave) text += ":" + int(cp.onGround) + ":0";
+    if (cp.allowEle) text += ":" + int(cp.onGround) + ":" + int(cp.allowSave) + ":1";
+    else if (!cp.allowSave) text += ":" + int(cp.onGround) + ":0";
     else if (!cp.onGround) text += ":0";
     return text;
 }
@@ -231,7 +236,7 @@ _encode(cp)
 _decode(row)
 {
     values = strTok(row, ":");
-    if ((values.size != 3 && values.size != 4 && values.size != 5) || (values[0] != "0" && values[0] != "1") || (values[1] != "0" && values[1] != "1"))
+    if ((values.size != 3 && values.size != 4 && values.size != 5 && values.size != 6) || (values[0] != "0" && values[0] != "1") || (values[1] != "0" && values[1] != "1"))
         return undefined;
     if (values[2][0] != "p")
         return undefined;
@@ -243,10 +248,15 @@ _decode(row)
         if (values[3] != "0" && values[3] != "1") return undefined;
         cp.onGround = int(values[3]);
     }
-    if (values.size == 5)
+    if (values.size >= 5)
     {
         if (values[4] != "0" && values[4] != "1") return undefined;
         cp.allowSave = int(values[4]);
+    }
+    if (values.size == 6)
+    {
+        if (values[5] != "0" && values[5] != "1") return undefined;
+        cp.allowEle = int(values[5]);
     }
     areas = strTok(values[2], "|");
     if (areas.size > 8)
@@ -364,8 +374,9 @@ _start(route, hex)
     self.cpc.routeColor = routeRGB(hex);
     self openCJ\checkpointNetwork::opened();
     self.cpc.huds = [];
-    for (i = 0; i < 5; i++)
+    for (i = 0; i < 4; i++)
     {
+        if (i == 2) continue; // Properties use the client HUD for smaller, crisp text.
         self.cpc.huds[i] = newClientHudElem(self);
         self.cpc.huds[i].lastText = "";
         configureHud(self.cpc.huds[i]);
@@ -375,16 +386,8 @@ _start(route, hex)
     self.cpc.huds[0].font = "objective";
     self.cpc.huds[0].color = (0.75,0.85,1);
     self.cpc.huds[1].y = 30;
-    self.cpc.huds[2].x = 282;
-    self.cpc.huds[2].y = 30;
     self.cpc.huds[3].fontScale = 1.4;
     self.cpc.huds[3].color = self.cpc.routeColor;
-    self.cpc.huds[4].x = 116;
-    self.cpc.huds[4].y = 0;
-    self.cpc.huds[4].color = (0,0,0);
-    self.cpc.huds[4].alpha = 0.55;
-    self.cpc.huds[4].sort = -1;
-    self.cpc.huds[4] setShader("white", 344, 104);
     self setClientCvar("developer", 1);
     self.cpc.positions = [];
     if (isDefined(self.cpcTravelPositions))
@@ -406,7 +409,7 @@ _start(route, hex)
     // The mod's existing client-command menu applies these without a local cfg.
     self execClientCmd("bind KP_INS say !cp detect; bind KP_5 say !cp detect; " +
         "bind KP_ENTER say !cp confirm; bind KP_PLUS say !cp corner; bind KP_MINUS say !cp undo; " +
-        "bind KP_UPARROW say !cp double; bind KP_PGUP say !cp finish; bind KP_DOWNARROW say !cp ground; bind KP_PGDN say !cp allowsave; " +
+        "bind KP_UPARROW say !cp ele; bind KP_END say !cp double; bind KP_PGUP say !cp finish; bind KP_DOWNARROW say !cp ground; bind KP_PGDN say !cp allowsave; " +
         "bind KP_LEFTARROW say !cp previous; bind KP_RIGHTARROW say !cp next; " +
         "bind KP_DEL say !cp discard; bind KP_HOME say !cp new; bind KP_SLASH say !cp alternative; bind KP_STAR say !cp area");
     self thread _loop();
@@ -530,7 +533,7 @@ _action(action)
         return;
     }
     // When the panel shows the last checkpoint, property keys edit that checkpoint.
-    if ((action == "finish" || action == "double" || action == "ground" || action == "allowsave") &&
+    if ((action == "finish" || action == "double" || action == "ele" || action == "ground" || action == "allowsave") &&
         self.cpc.selected == self.cpc.rows.size && self.cpc.rows.size > 0 &&
         self.cpc.draft.points.size == 0 && self.cpc.draft.alternatives.size == 0)
         self _action("previous");
@@ -637,6 +640,7 @@ _action(action)
             self.cpc.selected = self.cpc.rows.size;
             self.cpc.draft = _empty();
             break;
+        case "ele": self.cpc.draft.allowEle = !self.cpc.draft.allowEle; break;
         case "allowsave": self.cpc.draft.allowSave = !self.cpc.draft.allowSave; break;
         case "ground": self.cpc.draft.onGround = !self.cpc.draft.onGround; break;
         case "finish": self.cpc.draft.finish = !self.cpc.draft.finish; break;
@@ -848,8 +852,9 @@ _close()
 {
     self notify("cpc_stopped");
     self setClientCvar("developer", 0);
+    self setClientCvar("opencj_cpc_properties", "");
     for (i = 0; i < self.cpc.huds.size; i++)
-        self.cpc.huds[i] destroy();
+        if (isDefined(self.cpc.huds[i])) self.cpc.huds[i] destroy();
     self.cpcTravelPositions = self.cpc.positions;
     self.cpc = undefined;
     self openCJ\huds\hudProgressBar::onRunStopped();
@@ -868,7 +873,7 @@ finalize()
     }
     route = self.cpc.route;
     if (isDefined(self.cpc.publishedLabel))route = self.cpc.publishedLabel;
-    openCJ\checkpointPublish::activate();
+    self openCJ\checkpointPublish::activate();
     // Creating the fresh run waits for SQL. Keep CPC's scoring suppression until
     // onRunCreated has reset checkpoint state and actually spawned the player.
     self openCJ\playerRuns::stopRun(true);
@@ -978,13 +983,19 @@ _draw()
     if (props.double) doubleRPG = "On";
     if (props.finish) finish = "Yes";
     if (!props.onGround) ground = "No";
-    text = "Double RPG: " + doubleRPG + " [Num 8]";
+    text = "Double RPG: " + doubleRPG + " [Num 1]";
     text += "\nFinish: " + finish + " [Num 9]";
     text += "\nOn ground: " + ground + " [Num 2]";
     saving = "Yes";
     if (!props.allowSave) saving = "No";
     text += "\nAllow save: " + saving + " [Num 3]";
-    self.cpc.huds[2] _setPanelText(text);
+    elevator = "No"; if (props.allowEle) elevator = "Yes";
+    text += "\nAllow ele: " + elevator + " [Num 8]";
+    if (!isDefined(self.cpc.propertiesText) || self.cpc.propertiesText != text)
+    {
+        self setClientCvar("opencj_cpc_properties", text);
+        self.cpc.propertiesText = text;
+    }
     if (self.cpc.testing)
         text = "Follow the outline\nExit test: !cp test";
     else if (followingShared)
@@ -1019,7 +1030,7 @@ _draw()
     panelHeight = 36 + lines * 17;
     if (!isDefined(self.cpc.panelHeight) || self.cpc.panelHeight != panelHeight)
     {
-        self.cpc.huds[4] setShader("white", 344, panelHeight);
+        self setClientCvar("opencj_cpc_panel_height", panelHeight);
         self.cpc.panelHeight = panelHeight;
     }
     if (self.cpc.status != "" && (!isDefined(self.cpc.lastPanelStatus) || self.cpc.lastPanelStatus != self.cpc.status))
