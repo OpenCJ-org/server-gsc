@@ -1,4 +1,5 @@
-// OpenCJ: guard uninitialized finish flags in the original mp_blue2 map script.
+// OpenCJ: guard uninitialized map flags and disable map-granted weapons.
+// OpenCJ equipment remains authoritative; pickup platforms grant no weapons.
 #include maps\mp\_utility;
 #include maps\mp\gametypes\_hud_util;
 #include common_scripts\utility;
@@ -6,6 +7,7 @@
 main()
 {
 	maps\mp\_load::main();
+
 
 	game["allies"] = "marines";
 	game["axis"] = "opfor";
@@ -27,21 +29,7 @@ main()
 	thread end_easy_msg();
 	thread end_inter_msg();
 	thread end_hard_msg();
-	thread give_ak_1();
-	thread give_ak_2();
-	thread give_ak_3();
-	thread give_ak_4();
-	thread give_deagle_2();
-	thread give_deagle_3();
-	thread give_r700_1();
-	thread give_r700_2();
-	thread give_m40a3_1();
-	thread give_m40a3_2();
-	thread give_usp_1();
-	thread give_usp_2();
-	thread give_usp_3();
 
-	addFunc("no_rpg", ::no_rpg);
 	addFunc("fps", ::fps);
 }
 
@@ -54,52 +42,6 @@ addFunc(targetname, function)
 		if(isDefined(entArray[Idx]))
 			thread [[function]](entArray[Idx]);
 	}
-}
-
-no_rpg(trigger, user)
-{
-	if(!isDefined(user))
-	{
-		for(;;)
-		{
-			trigger waittill("trigger", user);
-
-			if(isDefined(user.no_rpg))
-				continue;
-
-			thread no_rpg(trigger, user);
-		}
-	}
-
-	user endon("disconnect");
-
-	user.no_rpg = true;
-
-	for(;user isTouching(trigger);)
-	{
-		if(!user isOnLadder() && !user isMantling() && weaponType(user getCurrentWeapon()) == "projectile")
-		{
-			if(user hasWeapon("beretta_mp"))
-				user switchToWeapon("beretta_mp");
-			else if(!user hasWeapon("beretta_mp") && user hasWeapon("deserteaglegold_mp"))
-				user switchToWeapon("deserteaglegold_mp");
-			else if(!user hasWeapon("beretta_mp") && !user hasWeapon("deserteaglegold_mp") && user hasWeapon("colt45_mp"))
-				user switchToWeapon("colt45_mp");
-			else if(!user hasWeapon("beretta_mp") && !user hasWeapon("deserteaglegold_mp") && !user hasWeapon("colt45_mp") && user hasWeapon("usp_mp"))
-				user switchToWeapon("usp_mp");
-			else
-			{
-				user giveWeapon("beretta_mp");
-				user switchToWeapon("beretta_mp");
-			}
-
-			wait 1;
-		}
-
-		wait 0.75;
-	}
-
-	user.no_rpg = undefined;
 }
 
 fps(trigger, user)
@@ -357,13 +299,7 @@ guid()
 			{
 				player iprintlnbold("^1A^7ccess ^1G^7ranted^1.");
 
-				player giveweapon("deserteaglegold_mp");
-				player giveweapon("usp_mp");
-				player switchtoweapon("deserteaglegold_mp");
-				player giveMaxAmmo("deserteaglegold_mp");
-				player giveMaxAmmo("usp_mp");
-
-				if(!player.gotHUD)
+				if(!isDefined(player.gotHUD) || !player.gotHUD)
 				{
 					player.hud = newClientHudElem(player);
 					player.hud.sort = 99990;
@@ -401,7 +337,7 @@ credits()
 	{
 		trig waittill ("trigger", user);
 
-		if(user useButtonPressed() && user.free)
+		if(user useButtonPressed() && (!isDefined(user.free) || user.free))
 		{
 			user.free = false;
 			user.hud_clock = newClientHudElem(user);
@@ -554,250 +490,6 @@ end_hard_msg()
 				user.endhard = true;
 				iprintlnbold ("^5Congratulations ^3" + user.name + " ^5you've completed ^2Hard!\n^3Map by ^2Chucky.");
 			}
-		}
-	}
-}
-
-give_ak_1()
-{
-	trigger = getEnt("ak_1","targetname");
-
-	while(1)
-	{
-		trigger waittill("trigger", user);
-
-		if(!user hasWeapon("ak74u_mp"))
-		{
-			user iprintlnbold("You Have Taken [^4Ak74u^7]");
-			user giveWeapon( "ak74u_mp");
-			user setWeaponAmmoClip("ak74u_mp", 0);
-			user setWeaponAmmoStock("ak74u_mp", 0);
-			user switchToWeapon("ak74u_mp");
-			user iPrintLn("^1There's no ammo here, thanks to spamming noobs!");
-		}
-	}
-}
-
-give_ak_2()
-{
-	trigger = getEnt("ak_2","targetname");
-
-	while(1)
-	{
-		trigger waittill("trigger", user);
-
-		if(!user hasWeapon("ak74u_mp"))
-		{
-			user iprintlnbold("You Have Taken [^4Ak74u^7]");
-			user giveWeapon( "ak74u_mp");
-			user setWeaponAmmoClip("ak74u_mp", 0);
-			user setWeaponAmmoStock("ak74u_mp", 0);
-			user switchToWeapon("ak74u_mp");
-			user iPrintLn("^1There's no ammo here, thanks to spamming noobs!");
-		}
-	}
-}
-
-give_ak_3()
-{
-	trigger = getEnt("ak_3","targetname");
-
-	while(1)
-	{
-		trigger waittill("trigger", user);
-
-		if(!user hasWeapon("ak74u_mp"))
-		{
-			user iprintlnbold("You Have Taken [^4Ak74u^7]");
-			user giveWeapon( "ak74u_mp");
-			user giveMaxAmmo("ak74u_mp");
-			user switchToWeapon("ak74u_mp");
-		}
-	}
-}
-
-give_ak_4()
-{
-	trigger = getEnt("ak_4","targetname");
-
-	while(1)
-	{
-		trigger waittill("trigger", user);
-
-		if(!user hasWeapon("ak74u_mp"))
-		{
-			user iprintlnbold("You Have Taken [^4Ak74u^7]");
-			user giveWeapon( "ak74u_mp");
-			user giveMaxAmmo("ak74u_mp");
-			user switchToWeapon("ak74u_mp");
-		}
-	}
-}
-
-give_deagle_2()
-{
-	trigger = getEnt("deagle_2","targetname");
-
-	while(1)
-	{
-		trigger waittill ("trigger", user);
-
-		if(!user hasWeapon("deserteagle_mp"))
-		{
-			user iprintlnbold("You Have Taken [^4Deagle^7]");
-			user giveWeapon( "deserteagle_mp");
-			user setWeaponAmmoClip("deserteagle_mp", 0);
-			user setWeaponAmmoStock("deserteagle_mp", 0);
-			user switchToWeapon("deserteagle_mp");
-			user iPrintLn("^1There's no ammo here, thanks to spamming noobs!");
-		}
-	}
-}
-
-give_deagle_3()
-{
-	trigger = getEnt("deagle_3","targetname");
-
-	while(1)
-	{
-		trigger waittill ("trigger", user);
-
-		if(!user hasWeapon("deserteagle_mp"))
-		{
-			user iprintlnbold("You Have Taken [^4Deagle^7]");
-			user giveWeapon( "deserteagle_mp");
-			user giveMaxammo("deserteagle_mp");
-			user switchToWeapon("deserteagle_mp");
-		}
-	}
-}
-
-give_r700_1()
-{
-	trigger = getEnt("r700_1","targetname");
-
-	while(1)
-	{
-		trigger waittill ("trigger", user);
-
-		if(!user hasWeapon("remington700_mp"))
-		{
-			user iprintlnbold("You Have Taken [^4R700^7]");
-			user giveWeapon( "remington700_mp");
-			user setWeaponAmmoClip("remington700_mp", 0);
-			user setWeaponAmmoStock("remington700_mp", 0);
-			user switchToWeapon("remington700_mp");
-			user iPrintLn("^1There's no ammo here, thanks to spamming noobs!");
-		}
-	}
-}
-
-give_r700_2()
-{
-	trigger = getEnt("r700_2","targetname");
-
-	while(1)
-	{
-		trigger waittill ("trigger", user);
-
-		if(!user hasWeapon("remington700_mp"))
-		{
-			user iprintlnbold("You Have Taken [^4R700^7]");
-			user giveWeapon( "remington700_mp");
-			user giveMaxammo("remington700_mp");
-			user switchToWeapon("remington700_mp");
-		}
-	}
-}
-
-give_m40a3_1()
-{
-	trigger = getEnt("m40a3_1","targetname");
-
-	while(1)
-	{
-		trigger waittill ("trigger", user);
-
-		if(!user hasWeapon("m40a3_mp"))
-		{
-			user iprintlnbold("You Have Taken [^4M40a3^7]");
-			user giveWeapon( "m40a3_mp");
-			user setWeaponAmmoClip("m40a3_mp", 0);
-			user setWeaponAmmoStock("m40a3_mp", 0);
-			user switchToWeapon("m40a3_mp");
-			user iPrintLn("^1There's no ammo here, thanks to spamming noobs!");
-		}
-	}
-}
-
-give_m40a3_2()
-{
-	trigger = getEnt("m40a3_2","targetname");
-
-	while(1)
-	{
-		trigger waittill ("trigger", user);
-
-		if(!user hasWeapon("m40a3_mp"))
-		{
-			user iprintlnbold("You Have Taken [^4M40a3^7]");
-			user giveWeapon( "m40a3_mp");
-			user giveMaxammo("m40a3_mp");
-			user switchToWeapon("m40a3_mp");
-		}
-	}
-}
-
-give_usp_1()
-{
-	trigger = getEnt("usp_1","targetname");
-
-	while(1)
-	{
-		trigger waittill("trigger", user);
-
-		if(!user hasWeapon("usp_mp"))
-		{
-			user iprintlnbold("You Have Taken [^4USP^7]");
-			user giveWeapon( "usp_mp");
-			user giveMaxammo("usp_mp");
-			user switchToWeapon("usp_mp");
-		}
-	}
-}
-
-give_usp_2()
-{
-	trigger = getEnt("usp_2","targetname");
-
-	while(1)
-	{
-		trigger waittill("trigger", user);
-
-		if(!user hasWeapon("usp_mp"))
-		{
-			user iprintlnbold("You Have Taken [^4USP^7]");
-			user giveWeapon( "usp_mp");
-			user giveMaxammo("usp_mp");
-			user switchToWeapon("usp_mp");
-		}
-	}
-}
-
-give_usp_3()
-{
-	trigger = getEnt("usp_3","targetname");
-
-	while(1)
-	{
-		trigger waittill("trigger", user);
-
-		if(!user hasWeapon("usp_mp"))
-		{
-			user iprintlnbold("You Have Taken [^4USP^7]");
-			user giveWeapon( "usp_mp");
-			user giveMaxammo("usp_mp");
-			user switchToWeapon("usp_mp");
 		}
 	}
 }
