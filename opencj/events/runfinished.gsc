@@ -29,6 +29,7 @@ main(cp, tOffset, route)
     if (!self openCJ\playerRuns::onRunFinished(cp, filters))
         return;
     self.playerRuns_runFinishing = false;
+    self thread openCJ\finishSounds::onRunFinished(runID);
     self thread openCJ\challenges::awardRun(runID);
     self openCJ\demoRecording::onRunFinished();
     if (!isDefined(route))
