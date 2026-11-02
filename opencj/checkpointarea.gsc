@@ -1,5 +1,34 @@
 // Stationary, planar, convex landing areas. Editor preview and gameplay share this test.
 // Vertices must follow the perimeter, clockwise or counter-clockwise.
+// Order selected corners without moving, dropping or inventing any points.
+// XY ordering also works for walkable slopes; validate() still checks the plane
+// and convexity, so interior/duplicate corners cannot silently expand the area.
+orderCorners(points)
+{
+    ordered=[];
+    if(points.size<3)
+    {
+        for(i=0;i<points.size;i++)ordered[i]=points[i];
+        return ordered;
+    }
+    center=(0,0,0);
+    for(i=0;i<points.size;i++)center+=points[i];
+    center=vectorScale(center,1.0/points.size);
+    angles=[];
+    for(i=0;i<points.size;i++)
+    {
+        direction=points[i]-center;
+        angle=vectorToAngles((direction[0],direction[1],0))[1];
+        j=ordered.size;
+        while(j>0 && angles[j-1]>angle)
+        {
+            ordered[j]=ordered[j-1];angles[j]=angles[j-1];j--;
+        }
+        ordered[j]=points[i];angles[j]=angle;
+    }
+    return ordered;
+}
+
 validate(points)
 {
     if (points.size < 3 || points.size > 8)

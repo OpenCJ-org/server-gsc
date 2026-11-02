@@ -612,9 +612,15 @@ _action(action)
             eye = self getEyePos();
             trace = bulletTrace(eye, eye + vectorScale(anglesToForward(self getPlayerAngles()), 1000), false, self);
             if (trace["fraction"] < 1)
+            {
                 self.cpc.draft.points[self.cpc.draft.points.size] = trace["position"];
+                self.cpc.draft.points = openCJ\checkpointArea::orderCorners(self.cpc.draft.points);
+                self.cpc.status = "Corner added (" + self.cpc.draft.points.size + "/8)";
+            }
             break;
         case "confirm":
+            // Repair click-order crossings in drafts saved before automatic ordering.
+            self.cpc.draft.points = openCJ\checkpointArea::orderCorners(self.cpc.draft.points);
             self openCJ\checkpointNetwork::checkOverlap();
             if (isDefined(self.cpc.overlap))
             {
