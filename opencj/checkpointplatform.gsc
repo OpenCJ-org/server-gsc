@@ -16,8 +16,8 @@ getRectangularPlatformOrgs()
     return points;
 }
 
-// Prefer the actual stationary collision brush. Objects above it cannot truncate
-// its face, and selecting one convex brush cannot fill a hole between brushes.
+// Prefer stationary collision faces, combining connected coplanar brushes only
+// when their union covers the entire landing. Never fill holes between brushes.
 // Traces remain the fallback for CoD2, patches and other non-brush geometry.
 detectLandingAt(origin)
 {
