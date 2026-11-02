@@ -147,3 +147,7 @@ AbortLevel()
 callbackVoid()
 {
 }
+CodeCallback_FragButton()
+{
+    self openCJ\buttonPress::onFragButton();
+}

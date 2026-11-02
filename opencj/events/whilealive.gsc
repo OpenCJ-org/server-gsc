@@ -10,6 +10,7 @@ main()
     {
         if(self openCJ\util::isPlayerReady(false))
         {
+            self openCJ\buttonPress::processFragTeleport();
             if(self openCJ\demos::isPlayingDemo())
             {
                 self openCJ\demos::whilePlayingDemo();
