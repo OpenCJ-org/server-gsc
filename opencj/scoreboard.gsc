@@ -11,9 +11,25 @@ onInit()
     openCJ\commands_base::registerCommand("scoreboard","!scoreboard",::command,0,0,0);
 }
 
+// A connecting client can exist before it has the "player" classname.
+// Track the connect callback itself, just as the stock scoreboard tracks slots.
+onPlayerConnecting()
+{
+    if(!isDefined(level.scoreboardClients))level.scoreboardClients=[];
+    level.scoreboardClients[self getEntityNumber()]=self;
+    level.scoreboardNextUpdate=0;
+}
+
+onPlayerDisconnected()
+{
+    if(isDefined(level.scoreboardClients))level.scoreboardClients[self getEntityNumber()]=undefined;
+    level.scoreboardNextUpdate=0;
+}
+
 onPlayerConnected()
 {
     if(getCodVersion()!=4)return;
+    self onPlayerConnecting();
     self.scoreboardCache=[];
     self setClientCvar("opencj_sb_held",0);
     self setClientCvar("opencj_sb_active",0);
@@ -74,14 +90,22 @@ scrollInput()
     }
 }
 
+connecting(player)
+{
+    return !isDefined(player.isFullyConnected) || !player.isFullyConnected;
+}
+
 spectatorRow(player)
 {
+    // Connecting clients have not chosen a playing state yet.
+    if(connecting(player))return true;
     // Playback uses spectator presentation but remains a jumper activity.
     return player.sessionState=="spectator" && !player openCJ\demos::isPlayingDemo() && !isDefined(player.cpc);
 }
 
 status(player)
 {
+    if(connecting(player))return "^3Connecting...";
     if(isDefined(player.cpc))return "^5CPC";
     if(isDefined(player.clipEdit))return "^5Clip editor";
     if(isDefined(player.clipPreview))return "^5Clip preview";
@@ -110,8 +134,19 @@ clean(text,limit)
     return out;
 }
 
+// Safe before player initialization: no login, gameplay or network stats needed.
+connectingRow(name)
+{
+    r=[];r["name"]=clean(name,20);r["points"]=0;r["rank"]="";
+    r["country"]="";r["flag"]="";r["ping"]=-1;r["pingText"]="-";
+    r["route"]="^3Connecting...";r["progress"]=-1;r["time"]="-";r["rpg"]="-";
+    r["fps"]=0;r["ele"]=0;r["hb"]=0;r["tas"]=0;r["any"]=0;
+    return r;
+}
+
 row(player)
 {
+    if(connecting(player))return connectingRow(player.name);
     r=[];
     r["name"]=clean(player.name,20);
     r["points"]=points(player);
@@ -240,11 +275,16 @@ sortByPoints(players)
 
 buildSnapshot()
 {
-    players=getEntArray("player","classname");jumpers=[];spectators=[];
+    players=[];jumpers=[];spectators=[];
+    if(isDefined(level.scoreboardClients))
+    {
+        slots=getArrayKeys(level.scoreboardClients);
+        for(i=0;i<slots.size;i++)
+            if(isDefined(level.scoreboardClients[slots[i]]))players[players.size]=level.scoreboardClients[slots[i]];
+    }
     // Stable point ordering within each team; tied players retain entity order.
     for(i=0;i<players.size;i++)
     {
-        if(!isDefined(players[i].isFullyConnected) || !players[i].isFullyConnected)continue;
         if(spectatorRow(players[i]))spectators[spectators.size]=players[i];
         else jumpers[jumpers.size]=players[i];
     }
