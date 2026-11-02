@@ -6,7 +6,7 @@ onInit()
 {
     if (getCodVersion() != 4)
         return;
-    cmd = openCJ\commands_base::registerCommand("checkpoint", "!cp <route> [#RRGGBB] (start or continue your draft) | split <routes> | merge <routes> | rename <old> <new> | detect | corner | confirm | alternative | area | undo | finish | double | ele | ground | allowsave | select <number> | new | discard | edit [number|last] | delete | test | save | finalize | stop", ::command, 1, 17, 0);
+    cmd = openCJ\commands_base::registerCommand("checkpoint", "!cp <route> [#RRGGBB] (start or continue your draft) | list | reset <route> | split <routes> | merge <routes> | rename <old> <new> | detect | corner | confirm | alternative | area | undo | finish | double | ele | ground | allowsave | select <number> | new | discard | edit [number|last] | replace | delete [area] | test | save | finalize | stop", ::command, 1, 17, 0);
     openCJ\commands_base::addAlias(cmd, "cp");
     openCJ\commands_base::addAlias(cmd, "cpc");
 }
@@ -42,9 +42,24 @@ command(args)
         self iprintln("Enable opencj_checkpoint_editor on the development server first");
         return;
     }
+    if (toLower(args[0]) == "list")
+    {
+        self openCJ\checkpointList::show();
+        return;
+    }
+    if (toLower(args[0]) == "reset")
+    {
+        if (args.size != 2)
+        {
+            self sendLocalChatMessage("Use !cpc reset <route>, for example !cpc reset hard.");
+            return;
+        }
+        self openCJ\checkpointReset::reset(toLower(args[1]));
+        return;
+    }
     // Non-command names open the player's existing draft or create a new one.
     args[0] = toLower(args[0]);
-    commands = "|rename|split|merge|edit|select|stop|save|finalize|publish|test|finish|double|ele|ground|allowsave|undo|discard|alternative|area|detect|corner|confirm|new|previous|next|delete|";
+    commands = "|list|reset|rename|split|merge|edit|replace|deletearea|select|stop|save|finalize|publish|test|finish|double|ele|ground|allowsave|undo|discard|alternative|area|detect|corner|confirm|new|previous|next|delete|";
     if ((args.size == 1 || args.size == 2) && !isSubStr(commands, "|" + args[0] + "|"))
     {
         route = args[0];
@@ -139,7 +154,46 @@ command(args)
         }
         return;
     }
+    if (args[0] == "delete" && args.size > 1)
+    {
+        if (args.size != 2 || toLower(args[1]) != "area")
+        {
+            self sendLocalChatMessage("Use !cp delete area for one area, or !cp delete for the whole checkpoint.");
+            return;
+        }
+        self _action("deletearea");
+        return;
+    }
     self _action(args[0]);
+}
+
+// Detection warns without selecting, overwriting or blocking intentional edits.
+// Only this player's draft and public gameplay checkpoints are inspected.
+detectedCheckpointWarning(points)
+{
+    for (i = 0; i < self.cpc.rows.size; i++)
+    {
+        cp = _decode(self.cpc.rows[i]);
+        if (!isDefined(cp)) continue;
+        match = openCJ\checkpointNetwork::overlap(points, cp.points);
+        for (j = 0; !match && j < cp.alternatives.size; j++)
+            match = openCJ\checkpointNetwork::overlap(points, cp.alternatives[j]);
+        if (match)
+            return "Checkpoint #" + (i + 1) + " already exists here in " + self.cpc.route + ". Use !cp edit " + (i + 1) + " to edit it.";
+    }
+    for (i = 0; i < self.cpc.draft.alternatives.size; i++)
+        if (openCJ\checkpointNetwork::overlap(points, self.cpc.draft.alternatives[i]))
+            return "An alternative area of the selected checkpoint already exists here.";
+    if (isDefined(level.checkpoints_checkpoints))
+        for (i = 0; i < level.checkpoints_checkpoints.size; i++)
+        {
+            cp = level.checkpoints_checkpoints[i];
+            if (!isDefined(cp.area) || !openCJ\checkpointNetwork::overlap(points, cp.area)) continue;
+            route = "";
+            if (isDefined(cp.routeInfo)) route = " (" + cp.routeInfo.name + ")";
+            return "Published checkpoint #" + cp.id + route + " already exists here.";
+        }
+    return "";
 }
 
 // Alternatives belong to one checkpoint; distinct overlapping checkpoints are ambiguous.
@@ -576,6 +630,11 @@ _action(action)
     }
     if (isDefined(self.cpc.alternativeBlocked))
         return;
+    if (action == "replace" && self.cpc.selected >= self.cpc.rows.size)
+    {
+        self.cpc.status = "Select an existing checkpoint with !cp edit <number> first";
+        return;
+    }
     self _remember();
     switch (action)
     {
@@ -602,6 +661,16 @@ _action(action)
                 self.cpc.status = "Platform detected";
                 self openCJ\checkpointNetwork::selectDetectedShared();
                 self openCJ\checkpointNetwork::checkOverlap();
+                if (!isDefined(self.cpc.overlap))
+                {
+                    warning = self detectedCheckpointWarning(points);
+                    if (warning != "")
+                    {
+                        self.cpc.status = warning;
+                        self.cpc.lastPanelStatus = warning;
+                        self sendLocalChatMessage(warning, true);
+                    }
+                }
             }
             else
                 self.cpc.status = "Detection failed; selection unchanged";
@@ -666,6 +735,21 @@ _action(action)
                 self.cpc.draft = _decode(self.cpc.rows[self.cpc.selected]);
             }
             break;
+        case "replace":
+            // Keep the original confirmed row until Apply succeeds. Its index,
+            // requirements, incoming link and outgoing link remain unchanged.
+            self.cpc.draft.points = [];
+            self.cpc.draft.alternatives = [];
+            self.cpc.overlap = undefined;
+            self.cpc.status = "Detect replacement, then Apply; checkpoint position and links are kept";
+            break;
+        case "deletearea":
+            // Area cycling rotates the active geometry into points. Remove only
+            // that geometry, promoting an alternative when one is available.
+            self.cpc.draft = removeSelectedArea(self.cpc.draft);
+            self.cpc.overlap = undefined;
+            self.cpc.status = "Area removed from selection; Apply to keep, or detect its replacement";
+            break;
         case "delete":
             if (self.cpc.selected < self.cpc.rows.size)
             {
@@ -684,10 +768,31 @@ _action(action)
     self _save();
 }
 
-// Discard the newest checkpoint, independent of which older checkpoint is
-// selected. An unconfirmed new selection is discarded before confirmed rows.
+// Geometry-only edit: callers retain the selected row and confirm explicitly.
+removeSelectedArea(cp)
+{
+    cp.points = [];
+    if (cp.alternatives.size > 0)
+    {
+        cp.points = cp.alternatives[0];
+        for (i = 1; i < cp.alternatives.size; i++)
+            cp.alternatives[i - 1] = cp.alternatives[i];
+        cp.alternatives[cp.alternatives.size - 1] = undefined;
+    }
+    return cp;
+}
+
+// Delete the selected existing checkpoint; otherwise discard the pending new
+// checkpoint, or the last confirmed checkpoint when in the empty append slot.
 _discard()
 {
+    if (self.cpc.selected < self.cpc.rows.size)
+    {
+        // Reuse Delete so selection, sequential links, shared protection and
+        // Undo all behave identically to the explicit command.
+        self _action("delete");
+        return;
+    }
     self.cpc.overlap = undefined;
     pending = self.cpc.selected == self.cpc.rows.size && (self.cpc.draft.points.size > 0 || self.cpc.draft.alternatives.size > 0);
     if (!pending && (self.cpc.rows.size == 0 || (isDefined(self.cpc.sharedCount) && self.cpc.rows.size <= self.cpc.sharedCount)))
@@ -1002,6 +1107,11 @@ _draw()
         self setClientCvar("opencj_cpc_properties", text);
         self.cpc.propertiesText = text;
     }
+    discardLabel = "^1Discard new:^7 Num Del";
+    if (self.cpc.selected < self.cpc.rows.size)
+        discardLabel = "^1Delete selected:^7 Num Del";
+    else if (empty || summary)
+        discardLabel = "^1Delete last:^7 Num Del";
     if (self.cpc.testing)
         text = "Follow the outline\nExit test: !cp test";
     else if (followingShared)
@@ -1009,23 +1119,26 @@ _draw()
         text = "Follow shared landings\n^2Detect:^7 Num 0\n^5Split:^7 !cp split <routes>";
         if (cp.finish) text += "\n^2Finalize:^7 !cp finalize";
     }
+    else if (empty && self.cpc.selected < self.cpc.rows.size)
+        text = "^2Detect replacement:^7 Num 0\n^3Undo:^7 Num -";
     else if (empty || summary)
     {
         text = "^2Detect:^7 Num 0";
         if (self.cpc.rows.size > 0)
-            text += "\n^3Edit:^7 Num 4\n^1Discard:^7 Num Del\n^5Add alternative:^7 Num /";
+            text += "\n^3Edit:^7 Num 4\n" + discardLabel + "\n^5Add alternative:^7 Num /";
         if (summary) text += "\n^2Finalize:^7 !cp finalize";
     }
     else if (self.cpc.draft.points.size == 0)
-        text = "^2Detect alternative:^7 Num 0\n^1Discard:^7 Num Del";
+        text = "^2Detect alternative:^7 Num 0\n" + discardLabel;
     else if (error != "")
-        text = "^2Corner:^7 Num +\n^3Undo:^7 Num -\n^2Detect:^7 Num 0\n^1Discard:^7 Num Del";
+        text = "^2Corner:^7 Num +\n^3Undo:^7 Num -\n^2Detect:^7 Num 0\n" + discardLabel;
     else
     {
         text = "^2Confirm:^7 Num Enter";
         if (self.cpc.selected < self.cpc.rows.size) text = "^3Apply:^7 Num Enter";
-        text += "\n^2Detect again:^7 Num 0\n^1Discard:^7 Num Del";
-        if (cp.alternatives.size > 0) text += "\n^5Cycle area:^7 Num *";
+        text += "\n^2Detect again:^7 Num 0\n" + discardLabel;
+        if (self.cpc.selected < self.cpc.rows.size) text += "\n^3Replace:^7 !cp replace";
+        if (cp.alternatives.size > 0) text += "\n^5Cycle area:^7 Num *\n^1Remove area:^7 !cp delete area";
     }
     self.cpc.huds[1] _setPanelText(text);
     // Fit the current action list; do not reserve empty rows in shorter states.

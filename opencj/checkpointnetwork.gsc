@@ -582,8 +582,8 @@ splitExisting(args,n)
 
 pendingEdit(part)
 {
-    if(!part.draft.points.size && !part.draft.alternatives.size)return false;
-    if(part.selected>=part.rows.size)return true;
+    if(part.selected>=part.rows.size)return part.draft.points.size>0 || part.draft.alternatives.size>0;
+    // An empty replacement of an existing checkpoint is still an unapplied edit.
     return !sameCheckpoint(part.draft,openCJ\checkpointCreation::_decode(part.rows[part.selected]));
 }
 
