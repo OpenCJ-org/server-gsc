@@ -108,6 +108,8 @@ onRunStarted()
 
 onInit()
 {
+    if(!isDefined(level.checkpointLayoutEpoch))level.checkpointLayoutEpoch=0;
+    level.checkpointLayoutEpoch++;
     level.checkpoints_startCheckpoint = spawnStruct();
     level.checkpoints_startCheckpoint.isEleAllowed = false;
     level.checkpoints_startCheckpoint.childs = [];
@@ -116,7 +118,7 @@ onInit()
 
     if(openCJ\mapid::hasMapID())
     {
-        rows = openCJ\mySQL::mysqlSyncQuery("SELECT a.cpID, a.x, a.y, a.z, a.radius, a.onGround, GROUP_CONCAT(b.childCpID), a.ender, a.elevate, a.endShaderColor, c.bigBrotherID, a.allowSave FROM checkpoints a LEFT JOIN checkpointConnections b ON a.cpID = b.cpID LEFT JOIN checkpointBrothers c ON a.cpID = c.cpID WHERE a.mapID = " + openCJ\mapid::getMapID() + " GROUP BY a.cpID");
+        rows = openCJ\mySQL::mysqlSyncQuery("SELECT a.cpID, a.x, a.y, a.z, a.radius, a.onGround, GROUP_CONCAT(b.childCpID), a.ender, a.elevate, a.endShaderColor, c.bigBrotherID, a.allowSave FROM checkpoints a LEFT JOIN checkpointConnections b ON a.cpID = b.cpID LEFT JOIN checkpointBrothers c ON a.cpID = c.cpID WHERE a.retired=0 AND a.mapID = " + openCJ\mapid::getMapID() + " GROUP BY a.cpID");
 
         // First we obtain all checkpoints for the current map from the database
         checkpoints = [];

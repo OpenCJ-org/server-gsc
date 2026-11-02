@@ -115,29 +115,13 @@ _writeSequentialRoute()
     existing = openCJ\mySQL::mysqlSyncQuery("SELECT cpID,(SELECT bigBrotherID FROM checkpointBrothers b WHERE b.cpID=checkpointAreas.cpID),(SELECT ender FROM checkpoints c WHERE c.cpID=checkpointAreas.cpID) FROM checkpointAreas WHERE " + where + " ORDER BY ordinal");
     if (!isDefined(existing))
         return self _fail("Cannot read published checkpoint IDs");
-    // Existing recorded routes must not change meaning underneath player records/saves.
+    migration=undefined;
     if (existing.size > 0)
     {
-        used = openCJ\mySQL::mysqlSyncQuery("SELECT a.cpID FROM checkpointAreas a WHERE a.mapID=" + mapID + " AND a.routeName='" + route + "' AND (EXISTS (SELECT 1 FROM checkpointStatistics s WHERE s.cpID=a.cpID) OR EXISTS (SELECT 1 FROM playerSaves s WHERE s.checkpointID=a.cpID) OR EXISTS (SELECT 1 FROM playerSaves_test s WHERE s.checkpointID=a.cpID) OR EXISTS (SELECT 1 FROM playerRuns r WHERE r.finishcpID=a.cpID)) LIMIT 1");
-        if (!isDefined(used))return self _fail("Cannot check existing checkpoint records");
-        if (used.size > 0)
-        {
-            // A new route may join a finished, already-played route. Reusing its
-            // identical checkpoint chain must not rewrite IDs or player records.
-            if (self unchangedPublished(entries, existing))return true;
-            return self _fail("Published checkpoints have records/saves. Draft retained; changes need a record migration");
-        }
-        if (existing.size != entries.size)
-            return self _fail("Published route length differs. Draft retained; checkpoint IDs will not be deleted");
-        for (i = 0; i < entries.size; i++)
-        {
-            if (entries[i].cp.finish != isDefined(existing[i][2]))
-                return self _fail("Published finish layout differs; draft retained");
-            if (entries[i].leader == i && isDefined(existing[i][1]))
-                return self _fail("Published area grouping differs; draft retained");
-            if (entries[i].leader != i && (!isDefined(existing[i][1]) || int(existing[i][1]) != int(existing[entries[i].leader][0])))
-                return self _fail("Published area grouping differs; draft retained");
-        }
+        if (self unchangedPublished(entries, existing))return true;
+        migration=self openCJ\checkpointMigration::prepare(entries,existing);
+        if(!isDefined(migration))return false;
+        existing=migration.existing;
     }
     else
     {
@@ -161,7 +145,7 @@ _writeSequentialRoute()
         if (cp.finish)
             finish = "'" + route + "'";
         values = "x=" + int(origin[0]) + ",y=" + int(origin[1]) + ",z=" + int(origin[2]) + ",radius=NULL,elevate=" + int(cp.allowEle) + ",allowSave=" + int(cp.allowSave) + ",onGround=" + int(cp.onGround) + ",ender=" + finish;
-        if (existing.size == 0)
+        if (existing.size == 0 || !existing[i].size)
         {
             result = openCJ\mySQL::mysqlSyncQuery("INSERT INTO checkpoints SET mapID=" + mapID + "," + values);
             if (!isDefined(result))
@@ -183,13 +167,13 @@ _writeSequentialRoute()
         result = openCJ\mySQL::mysqlSyncQuery("INSERT INTO checkpointAreas (cpID,mapID,routeName,ordinal,vertices,allowDoubleRPG) VALUES (" + ids[i] + "," + mapID + ",'" + route + "'," + i + ",'" + vertices + "'," + int(cp.double) + ") ON DUPLICATE KEY UPDATE vertices=VALUES(vertices),allowDoubleRPG=VALUES(allowDoubleRPG)");
         if (!isDefined(result))
             return self _fail("Failed to save checkpoint area");
-        if (existing.size == 0 && entries[i].leader != i)
+        if ((existing.size == 0 || isDefined(migration)) && entries[i].leader != i)
         {
             if (!isDefined(openCJ\mySQL::mysqlSyncQuery("INSERT INTO checkpointBrothers (cpID,bigBrotherID) VALUES (" + ids[i] + "," + ids[entries[i].leader] + ")")))
                 return self _fail("Failed to link alternative area");
         }
     }
-    if (existing.size == 0)
+    if (existing.size == 0 || isDefined(migration))
     {
         parent = 0;
         first = self openCJ\checkpointCreation::getConfirmed(0);

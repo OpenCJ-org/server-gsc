@@ -158,6 +158,8 @@ persist(id)
         destroyDemo(id);
         return;
     }
+    if(!isDefined(level.demoPersisting))level.demoPersisting=0;
+    level.demoPersisting++;
     query = "INSERT INTO demoRuns(runID,mapID,routeName,FPSMode,modeMask,timePlayed,explosiveJumps,frameCount) SELECT r.runID,r.mapID,c.ender,r.FPSMode,r.anyPct+2*r.ele+4*r.hb+8*r.hardTAS,s.timePlayed,s.explosiveJumps," + count + " FROM playerRuns r JOIN checkpoints c ON c.cpID=r.finishcpID JOIN checkpointStatistics s ON s.runID=r.runID AND s.cpID=r.finishcpID WHERE r.runID=" + id + " AND r.finishTimeStamp IS NOT NULL";
     ok = isDefined(openCJ\mySQL::mysqlAsyncQuery(query));
     for (first=0;ok && first<count;first+=64)
@@ -175,6 +177,7 @@ persist(id)
         // Only our unpublished candidate can be removed here.
         openCJ\mySQL::mysqlAsyncQuery("DELETE FROM demoRuns WHERE runID=" + id + " AND ready=0");
     }
+    level.demoPersisting--;
     destroyDemo(id);
 }
 
@@ -187,12 +190,18 @@ promote(id)
     row=rows[0];
     if (!isDefined(openCJ\mySQL::mysqlSyncQuery("START TRANSACTION"))) return false;
     ok = isDefined(openCJ\mySQL::mysqlSyncQuery("SELECT mapID FROM mapids WHERE mapID=" + row[0] + " FOR UPDATE"));
+    state=openCJ\mySQL::mysqlSyncQuery("SELECT ready FROM demoRuns WHERE runID="+id);
+    if(!ok || !isDefined(state) || !state.size || int(state[0][0])==2)
+    {
+        openCJ\mySQL::mysqlSyncQuery("ROLLBACK");
+        return false;
+    }
     kinds=[];kinds[0]="speedrun";kinds[1]="lowrpg";
     if (int(row[3])==0 && row[2]!="hax") kinds[2]="walkthrough";
     for (i=0;ok && i<kinds.size;i++)
     {
         where = "w.mapID="+row[0]+" AND w.routeName="+dbStr(row[1])+" AND w.FPSMode="+dbStr(row[2])+" AND w.modeMask="+row[3]+" AND w.kind="+dbStr(kinds[i]);
-        old = openCJ\mySQL::mysqlSyncQuery("SELECT d.timePlayed,d.explosiveJumps FROM demoWinners w JOIN demoRuns d ON d.runID=w.runID WHERE "+where);
+        old = openCJ\mySQL::mysqlSyncQuery("SELECT d.timePlayed,d.explosiveJumps FROM demoWinners w JOIN demoRuns d ON d.runID=w.runID WHERE d.ready=1 AND "+where);
         if (!isDefined(old)) {ok=false;break;}
         better = old.size==0;
         if (!better) better = isBetter(kinds[i],int(row[4]),int(row[5]),int(old[0][0]),int(old[0][1]));

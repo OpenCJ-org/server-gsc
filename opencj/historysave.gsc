@@ -10,14 +10,19 @@ historyLoad(runID)
     if (isDefined(self.cpc))return false;
     self endon("cpc_started");
     self endon("disconnect");
+    allowed=self openCJ\mySQL::mysqlAsyncQuery("SELECT runID FROM playerRuns WHERE runID="+runID+" AND archived=0");
+    if(!isDefined(allowed)||!allowed.size)
+    {
+        self iprintlnbold("This run is archived and cannot be resumed. Start a new run.");
+        return false;
+    }
     rows = self openCJ\mySQL::mysqlAsyncQuery("SELECT historyLoad(" + openCJ\mapID::getMapID() + ", " + self openCJ\login::getPlayerID() + ", " + runID + ")");
     if(isDefined(rows) && isDefined(rows[0]) && isDefined(rows[0][0]))
     {
         instanceNumber = int(rows[0][0]);
         self savePosition_initClient();
         self openCJ\savePosition::resetBackwardsCount();
-        self _loadSavesFromDatabase(runID, instanceNumber);
-        return true;
+        return self _loadSavesFromDatabase(runID, instanceNumber);
     }
     else
     {
@@ -29,7 +34,8 @@ historyLoad(runID)
 _loadSavesFromDatabase(runID, instanceNumber)
 {
     self endon("disconnect");
-    query1 = "SELECT timePlayed, saveCount, loadCount, explosiveLaunches FROM playerRuns WHERE runID = " + runID;
+    epoch=level.checkpointLayoutEpoch;
+    query1 = "SELECT timePlayed, saveCount, loadCount, explosiveLaunches FROM playerRuns WHERE archived=0 AND runID = " + runID;
     //printf("DEBUG: executing historyLoad query1:\n" + query1 + "\n");
     rowsRun = self openCJ\mySQL::mysqlAsyncQuery(query1);
 
@@ -40,7 +46,13 @@ _loadSavesFromDatabase(runID, instanceNumber)
     if (!isDefined(rowsRun) || !isDefined(rowsRun[0]) || !isDefined(rowsRun[0][0]))
     {
         printf("ERROR: rowsRuns undefined for runID: " + runID + "\n");
-        return;
+        return false;
+    }
+
+    if(epoch!=level.checkpointLayoutEpoch)
+    {
+        self iprintlnbold("Route changed while loading. Start a new run.");
+        return false;
     }
 
     // Update run
@@ -88,6 +100,7 @@ _loadSavesFromDatabase(runID, instanceNumber)
         self setPlayerAngles(spawnpoint.angles);
         self freezeControls(false);
     }
+    return true;
 }
 
 _getEntNum(targetName, numOfEnt)
