@@ -448,7 +448,7 @@ configureHud(hud)
     hud.vertAlign = "top";
     hud.fontScale = 1.4;
     hud.foreground = true;
-    hud.hideWhenInMenu = false;
+    hud.hideWhenInMenu = true;
     hud.alpha = 1;
 }
 

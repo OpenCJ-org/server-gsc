@@ -3,6 +3,10 @@
 main()
 {
     self.isFullyConnected = true;
+    // Client dvars survive reconnects. Clear the CPC menu only after begin,
+    // when reliable client commands can be delivered.
+    self setClientCvar("opencj_cpc_properties", "");
+    self setClientCvar("opencj_cpc_panel_height", 0);
     self thread openCJ\clientInit::onConnected();
     self openCJ\scoreboard::onPlayerConnected();
 

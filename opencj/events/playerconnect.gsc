@@ -2,7 +2,6 @@
 
 main() // Threaded
 {
-    self setClientCvar("opencj_cpc_properties", "");
     level.playerCount++;
     self.isFullyConnected = false;
     self.isFirstSpawn = true;
