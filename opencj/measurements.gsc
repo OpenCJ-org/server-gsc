@@ -2,6 +2,7 @@
 
 onInit()
 {
+    cmd = openCJ\commands_base::registerCommand("measure", "Shoot two points to measure X, Y and Z distances. Use !measure again to cancel.", ::onCommandMeasure, 0, 0, 0);
     cmd = openCJ\commands_base::registerCommand("height", "Set a height goal", ::onCommandMeasureHeight, 0, 0, 0);
     openCJ\commands_base::addAlias(cmd, "mb");
 
@@ -143,13 +144,15 @@ onOnGround(isOnGround)
 
 onWeaponFired() // Call from thread. Firing weapon is used to measure gaps
 {
-    if (!isDefined(self.isMeasuringGap))
+    if (!isDefined(self.isMeasuringGap) && !isDefined(self.measureHud))
     {
         return;
     }
 
     eyePos = self getEyePos();
     trace = bulletTrace(eyePos, (eyePos + vectorScale(anglesToForward(self getPlayerAngles()), 10000)), false, self);
+    if (isDefined(self.measureHud)) self acceptMeasureTrace(trace);
+    if (!isDefined(self.isMeasuringGap)) return;
     if (isDefined(trace) && isDefined(trace["position"]))
     {
         self notify("measured", trace["position"]);
@@ -205,4 +208,90 @@ _handleHeightDiff()
         self.heightGoalBounced = false;
     }
     self resetMaxHeight();
+}
+
+// Absolute world-axis distances, in game units; independent of !gap.
+onCommandMeasure(args)
+{
+    if (isDefined(self.measureHud))
+    {
+        self stopMeasure();
+        self sendLocalChatMessage("Measuring cancelled", false);
+        return;
+    }
+    if (self.sessionState != "playing")
+    {
+        self sendLocalChatMessage("Spawn before measuring", true);
+        return;
+    }
+    self.measureFirst = undefined;
+    self.measureHud = newClientHudElem(self);
+    self.measureHud.alignx = "center";
+    self.measureHud.aligny = "middle";
+    self.measureHud.horzalign = "center";
+    self.measureHud.vertalign = "middle";
+    self.measureHud.y = 80;
+    self.measureHud.fontscale = 1.6;
+    self.measureHud.foreground = true;
+    // Normal gameplay nearly fills the 31-element current HUD pool.
+    self.measureHud.archived = true;
+    self.measureHud.alpha = 1;
+    self.measureHud.sort = 1;
+    self.measureHud.hideWhenInMenu = true;
+    self.measureHud setText("Shoot at the first point");
+    self sendLocalChatMessage("Shoot at the first point", false);
+    self thread stopMeasureOn("disconnect");
+    self thread stopMeasureOn("death");
+    self thread stopMeasureOn("spawned");
+    self thread stopMeasureOn("spawned_spectator");
+}
+
+stopMeasureOn(event)
+{
+    self endon("measure_finished");
+    self waittill(event);
+    self stopMeasure();
+}
+
+stopMeasure()
+{
+    if (isDefined(self.measureHud)) self.measureHud destroy();
+    self.measureHud = undefined;
+    self.measureFirst = undefined;
+    self notify("measure_finished");
+}
+
+acceptMeasureTrace(trace)
+{
+    if (!isDefined(trace) || !isDefined(trace["position"]) || !isDefined(trace["fraction"]) || trace["fraction"] >= 1)
+    {
+        self sendLocalChatMessage("No surface hit. Aim at a surface and shoot again.", true);
+        return;
+    }
+    if (!isDefined(self.measureFirst))
+    {
+        self.measureFirst = trace["position"];
+        self.measureHud setText("Shoot at the second point");
+        self sendLocalChatMessage("Shoot at the second point", false);
+        return;
+    }
+    result = measureResult(self.measureFirst, trace["position"]);
+    self stopMeasure();
+    self sendLocalChatMessage(result, false);
+    self iprintlnbold(result);
+}
+
+measureResult(first, second)
+{
+    return "Distance (units): X: " + measureDecimal(abs(second[0] - first[0]))
+        + "  Y: " + measureDecimal(abs(second[1] - first[1]))
+        + "  Z: " + measureDecimal(abs(second[2] - first[2]));
+}
+
+measureDecimal(value)
+{
+    // The util formatter truncates. Round here and retain a trailing .0.
+    tenths = int(value * 10 + 0.5);
+    whole = int(tenths / 10);
+    return "" + whole + "." + (tenths - whole * 10);
 }
