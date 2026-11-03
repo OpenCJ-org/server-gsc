@@ -1,14 +1,15 @@
 #include openCJ\util;
 
 // All challenge definitions, rules, awards, ranks and menu data live here.
-// IDs are permanent. Published finishes link by map and case-insensitive route name.
+// IDs are permanent, including keys whose old difficulty names were corrected.
+// Published finishes link by map and case-insensitive route name.
 // Mode bits: any%=1, elevators=2, halfbeat=4, TAS=8. FPS is specified separately.
 definitions()
 {
     level.challenges=[];
     add("spectrum.beginner",1,"mp_spectrum","Beginner");
     add("cj_sky_bounce.main_route",1,"mp_cj_sky_bounce","Main route");
-    add("to_the_moon.easy",1,"mp_to_the_moon","Easy");
+    add("to_the_moon.easy",1,"mp_to_the_moon","Basic");
     add("palm.easy",1,"mp_palm","Easy");
     add("blue2.easy",1,"mp_blue2","Easy");
     add("spectrum.easy",1,"mp_spectrum","Easy");
@@ -16,11 +17,11 @@ definitions()
     add("mystic_v2.easy",1,"mp_mystic_v2","Easy");
     add("mystic_v3.easy",1,"mp_mystic_v3","Easy");
     add("galaxy.easy",1,"mp_galaxy","Easy");
-    add("to_the_moon.inter",2,"mp_to_the_moon","Inter");
-    add("palm.inter",2,"mp_palm","Inter");
-    add("blue2.inter",2,"mp_blue2","Inter");
-    add("mystic_v3.inter",2,"mp_mystic_v3","Inter");
-    add("galaxy.inter",2,"mp_galaxy","Inter");
+    add("to_the_moon.inter",2,"mp_to_the_moon","Intermediate");
+    add("palm.inter",2,"mp_palm","Intermediate");
+    add("blue2.inter",2,"mp_blue2","Intermediate");
+    add("mystic_v3.inter",2,"mp_mystic_v3","Intermediate");
+    add("galaxy.inter",2,"mp_galaxy","Intermediate");
     add("to_the_moon.advanced",3,"mp_to_the_moon","Advanced");
     add("blue2.hard",3,"mp_blue2","Hard");
     add("palm.hard",3,"mp_palm","Hard");
@@ -47,7 +48,7 @@ definitions()
     add("dark_v3.hard",7,"mp_dark_v3","Hard");
     add("sunset.hard",7,"mp_sunset","Hard");
     add("sunset_v2.advanced",8,"mp_sunset_v2","Advanced");
-    add("cyber.reality_corp_advanced",8,"mp_cyber","Reality Corp - Advanced");
+    add("cyber.reality_corp_advanced",8,"mp_cyber","Reality Corp");
     add("new_york.hard",8,"mp_new_york","Hard");
     add("palm_v3.advanced",8,"mp_palm_v3","Advanced");
     add("palm_v3.challenge",8,"mp_palm_v3","Challenge");
@@ -273,12 +274,20 @@ allowedModeIcons(fps,allowed)
     return icons;
 }
 
-// Exact names take priority. A generic Main route label may use the only
-// published route, but never infer a difficulty from a partially checkpointed map.
+// CPC names use underscores; UI labels use spaces. Expand only standard
+// abbreviations, never infer that Basic/Easy or Hard/Advanced are equivalent.
+routeKeySQL(value)
+{
+    key="LOWER(REPLACE(REPLACE("+value+",' ',''),'_',''))";
+    return "CASE "+key+" WHEN 'inter' THEN 'intermediate' WHEN 'inter+' THEN 'intermediate+' WHEN 'adv' THEN 'advanced' WHEN 'adv+' THEN 'advanced+' ELSE "+key+" END";
+}
+
+// Ambiguous normalized names do not link. Generic Main route labels may use the
+// sole published route, but difficulty labels never use that fallback.
 routeLinkSQL()
 {
-    published="SELECT cp.mapID,LOWER(cp.ender) AS routeKey,MIN(cp.ender) AS routeName FROM checkpoints cp JOIN checkpointAreas a ON a.cpID=cp.cpID AND a.mapID=cp.mapID WHERE cp.ender IS NOT NULL AND cp.ender<>'' GROUP BY cp.mapID,LOWER(cp.ender)";
-    return "UPDATE challenges c JOIN mapids m ON m.mapname=c.mapName LEFT JOIN ("+published+") p ON p.mapID=m.mapID AND p.routeKey=LOWER(COALESCE(c.routeName,c.routeLabel)) LEFT JOIN (SELECT mapID,MIN(routeName) AS routeName FROM ("+published+") routes GROUP BY mapID HAVING COUNT(*)=1) sole ON sole.mapID=m.mapID LEFT JOIN (SELECT mapName,COUNT(DISTINCT LOWER(routeLabel)) AS routeCount FROM challenges WHERE active=1 GROUP BY mapName) labels ON labels.mapName=c.mapName SET c.routeName=COALESCE(p.routeName,CASE WHEN labels.routeCount=1 AND (LOWER(c.routeLabel)='main route' OR LOWER(c.routeLabel) LIKE 'main route (%)') THEN sole.routeName ELSE NULL END) WHERE c.active=1";
+    published="SELECT cp.mapID,"+routeKeySQL("cp.ender")+" AS routeKey,MIN(cp.ender) AS routeName,COUNT(DISTINCT LOWER(cp.ender)) AS routeCount FROM checkpoints cp JOIN checkpointAreas a ON a.cpID=cp.cpID AND a.mapID=cp.mapID WHERE cp.retired=0 AND cp.ender IS NOT NULL AND cp.ender<>'' GROUP BY cp.mapID,routeKey";
+    return "UPDATE challenges c JOIN mapids m ON m.mapname=c.mapName LEFT JOIN ("+published+") p ON p.mapID=m.mapID AND p.routeCount=1 AND p.routeKey=("+routeKeySQL("COALESCE(c.routeName,c.routeLabel)")+ ") LEFT JOIN (SELECT mapID,MIN(routeName) AS routeName FROM ("+published+") routes GROUP BY mapID HAVING SUM(routeCount)=1) sole ON sole.mapID=m.mapID LEFT JOIN (SELECT mapName,COUNT(DISTINCT LOWER(routeLabel)) AS routeCount FROM challenges WHERE active=1 GROUP BY mapName) labels ON labels.mapName=c.mapName SET c.routeName=COALESCE(p.routeName,CASE WHEN labels.routeCount=1 AND (LOWER(c.routeLabel)='main route' OR LOWER(c.routeLabel) LIKE 'main route (%)') THEN sole.routeName ELSE NULL END) WHERE c.active=1";
 }
 onRoutesPublished()
 {
