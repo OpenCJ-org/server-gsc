@@ -32,7 +32,8 @@ detectLandingAt(origin)
         }
     }
     // A grounded player's center may hang over an edge. Find a walkable face
-    // intersecting the 30x30 feet at this height, retaining its original perimeter.
+    // within the same 15-unit circular edge contact and slope-height allowance
+    // used by gameplay. The native broad-phase box is not itself support.
     supported = platformBrushFace(origin, (0,0,1), true, true);
     if (isDefined(supported) && openCJ\checkpointArea::validate(supported) == "")
         return supported;
