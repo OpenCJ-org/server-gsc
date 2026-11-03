@@ -57,16 +57,11 @@ request(kind)
     self endon("demo_request");
     self endon("disconnect");
     if (!self canWatch()) return;
-    route=self.route;
+    route=self routeAtPosition();
     if(!isDefined(route))
     {
-        routes=getArrayKeys(level.routeEnders);
-        if(routes.size!=1)
-        {
-            self sendLocalChatMessage("Choose a route first, then use !demo.",true);
-            return;
-        }
-        route=routes[0];
+        self sendLocalChatMessage("Choose a route first, then use !demo.",true);
+        return;
     }
     fps=self openCJ\fps::getCurrentFPSMode();
     mask=int(self openCJ\anyPct::hasAnyPct())+2*int(self openCJ\elevate::hasUsedEle())+4*int(self openCJ\halfBeat::isHalfBeatAllowed())+8*int(self openCJ\tas::hasHardTAS());
@@ -144,14 +139,7 @@ playRun(id,full,kind)
     range=[];range[0]=0;range[1]=numberOfDemoFrames(id)-1;
     if(!full)
     {
-        cp=self openCJ\checkpoints::getCurrentCheckpoint();
-        cpID=0;
-        if(isDefined(cp))
-        {
-            if(isDefined(cp.bigBrother))cp=cp.bigBrother;
-            if(isDefined(cp.id))cpID=cp.id;
-        }
-        range=demoFindSegment(id,cpID,self.origin,int(meta[0][1])&1,int(kind!="speedrun"));
+        range=self segmentAtPosition(id,int(meta[0][1])&1,int(kind!="speedrun"));
         if(!isDefined(range))
         {
             self sendLocalChatMessage("No matching demo segment is available at this checkpoint.",true);
@@ -171,6 +159,60 @@ playRun(id,full,kind)
     self.demoBegin=range[0];self.demoEnd=range[1];
     self.demoCheckpointed=(int(meta[0][1])&1)==0;
     self startDemo(id);
+}
+
+// Infer from physical areas before consulting run state, which may still
+// describe a finished run or a different route after noclip.
+routeAtPosition()
+{
+    routes=[];touching=false;
+    groundEntity=self getGroundEntity();
+    for(i=0;i<level.checkpoints_checkpoints.size;i++)
+    {
+        cp=level.checkpoints_checkpoints[i];
+        if(!self openCJ\checkpoints::touchesArea(cp,true,groundEntity))continue;
+        touching=true;
+        if(isDefined(cp.bigBrother))cp=cp.bigBrother;
+        ends=openCJ\checkpoints::getEndCheckpoints(cp);
+        if(!isDefined(ends))continue;
+        for(j=0;j<ends.size;j++)
+            if(isDefined(ends[j].ender))routes[ends[j].ender]=true;
+    }
+    names=getArrayKeys(routes);
+    if(names.size==1)return names[0];
+    if(touching)
+    {
+        if(isDefined(self.route) && isDefined(routes[self.route]))return self.route;
+        return undefined;
+    }
+    if(isDefined(self.route))return self.route;
+    names=getArrayKeys(level.routeEnders);
+    if(names.size==1)return names[0];
+    return undefined;
+}
+
+// Looking up a lesson must not depend on, or change, the viewer's run progress.
+// Noclip and returning after a finish leave that progress at an unrelated CP.
+segmentAtPosition(id,any,skipFails)
+{
+    current=self openCJ\checkpoints::getCurrentCheckpoint();
+    groundEntity=self getGroundEntity();
+    for(i=-1;i<level.checkpoints_checkpoints.size;i++)
+    {
+        cp=current;
+        if(i>=0)cp=level.checkpoints_checkpoints[i];
+        if(!isDefined(cp) || !self openCJ\checkpoints::touchesArea(cp,true,groundEntity))continue;
+        if(isDefined(cp.bigBrother))cp=cp.bigBrother;
+        range=demoFindSegment(id,cp.id,self.origin,any,skipFails);
+        if(isDefined(range))return range;
+    }
+    cpID=0;
+    if(isDefined(current))
+    {
+        if(isDefined(current.bigBrother))current=current.bigBrother;
+        if(isDefined(current.id))cpID=current.id;
+    }
+    return demoFindSegment(id,cpID,self.origin,any,skipFails);
 }
 
 leaderboardKind(isWalkthrough)
