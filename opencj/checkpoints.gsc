@@ -217,6 +217,7 @@ onInit()
 
         level.checkpoints_checkpoints = checkpoints;
         openCJ\checkpointPublish::loadAreas();
+        linkContactAreas(checkpoints);
 
         // Now it's time to figure out the route that each checkpoint is part of.
         // Pathfinding algorithm. If a checkpoint ends up at 1 ender, then the route is clear. Otherwise we know the checkpoints' multiple routes.
@@ -948,7 +949,8 @@ whileAlive()
     // Once standing on the current area, do not also trigger that other route
     // on the following frame. Still test expected successors first.
     current = self.checkpoints_checkpoint;
-    onCurrent = isDefined(current) && isDefined(current.area) && openCJ\checkpointArea::touchesPlayer(current.area, self.origin, self isOnGround(), current.onGround);
+    groundEntity = self getGroundEntity();
+    onCurrent = self touchesCheckpointGroup(current, self isOnGround(), groundEntity);
     for (i = 0; i < playerChildCheckpoints.size + level.checkpoints_checkpoints.size; i++)
     {
         if (i < playerChildCheckpoints.size)
@@ -973,11 +975,7 @@ whileAlive()
         }
 
         // Check if player is within the radius of the checkpoint
-        inArea = false;
-        if (isDefined(cp.area))
-            inArea = openCJ\checkpointArea::touchesPlayer(cp.area, self.origin, self isOnGround(), cp.onGround);
-        else
-            inArea = (self getEyePos()[2] >= cp.origin[2]) && (distanceSquared(self.origin, cp.origin) < (cp.radius * cp.radius));
+        inArea = self touchesArea(cp, self isOnGround(), groundEntity);
         if (inArea)
         {
             // Checkpoint can be on ground or in air. onGround checkpoints can only be triggered by being on ground
@@ -1093,4 +1091,36 @@ contactReady(cp, grounded, now)
     contact.seen = now;
     self.checkpointContact = contact;
     return now - contact.started >= 150;
+}
+
+// Cache alternative groups once when loading the graph, not every player tick.
+linkContactAreas(checkpoints)
+{
+    for (i=0;i<checkpoints.size;i++) checkpoints[i].contactAreas=[];
+    for (i=0;i<checkpoints.size;i++)
+    {
+        cp=checkpoints[i];leader=cp;
+        if (isDefined(cp.bigBrother)) leader=cp.bigBrother;
+        leader.contactAreas[leader.contactAreas.size]=cp;
+    }
+}
+
+touchesArea(cp, grounded, groundEntity)
+{
+    if (!isDefined(cp)) return false;
+    if (isDefined(cp.area))
+        return openCJ\checkpointArea::touchesPlayer(cp.area,self.origin,grounded,cp.onGround);
+    if (!isDefined(cp.radius) || (cp.onGround && !grounded)) return false;
+    return self getEyePos()[2]>=cp.origin[2] && distanceSquared(self.origin,cp.origin)<cp.radius*cp.radius;
+}
+
+touchesCheckpointGroup(cp, grounded, groundEntity)
+{
+    if (!isDefined(cp)) return false;
+    leader=cp;
+    if (isDefined(cp.bigBrother)) leader=cp.bigBrother;
+    if (!isDefined(leader.contactAreas)) return self touchesArea(cp,grounded,groundEntity);
+    for (i=0;i<leader.contactAreas.size;i++)
+        if (self touchesArea(leader.contactAreas[i],grounded,groundEntity)) return true;
+    return false;
 }

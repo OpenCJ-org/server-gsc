@@ -173,6 +173,8 @@ detectedCheckpointWarning(points)
 {
     for (i = 0; i < self.cpc.rows.size; i++)
     {
+        // Editing/appending alternatives to this logical checkpoint is allowed.
+        if (i == self.cpc.selected) continue;
         cp = _decode(self.cpc.rows[i]);
         if (!isDefined(cp)) continue;
         match = openCJ\checkpointNetwork::overlap(points, cp.points);
@@ -181,9 +183,6 @@ detectedCheckpointWarning(points)
         if (match)
             return "Checkpoint #" + (i + 1) + " already exists here in " + self.cpc.route + ". Use !cp edit " + (i + 1) + " to edit it.";
     }
-    for (i = 0; i < self.cpc.draft.alternatives.size; i++)
-        if (openCJ\checkpointNetwork::overlap(points, self.cpc.draft.alternatives[i]))
-            return "An alternative area of the selected checkpoint already exists here.";
     if (isDefined(level.checkpoints_checkpoints))
         for (i = 0; i < level.checkpoints_checkpoints.size; i++)
         {

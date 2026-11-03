@@ -1,6 +1,6 @@
 #include openCJ\util;
 
-// Rectangular and mildly skewed brush tops. Orientation comes from collision normals, never view yaw.
+// Convex supported landings. Orientation comes from collision normals, never view yaw.
 getRectangularPlatformOrgs()
 {
     if (!self isOnGround())
@@ -16,9 +16,9 @@ getRectangularPlatformOrgs()
     return points;
 }
 
-// Prefer stationary collision faces, combining connected coplanar brushes only
-// when their union covers the entire landing. Never fill holes between brushes.
-// Traces remain the fallback for CoD2, patches and other non-brush geometry.
+// Combine connected coplanar brush, terrain and static-model collision faces
+// only where their union supports the landing. Preserve gaps and wall boundaries.
+// CoD2 retains its trace-based fallback.
 detectLandingAt(origin)
 {
     top = bulletTrace(origin + (0,0,2), origin - (0,0,24), false, undefined);
@@ -36,8 +36,11 @@ detectLandingAt(origin)
     supported = platformBrushFace(origin, (0,0,1), true, true);
     if (isDefined(supported) && openCJ\checkpointArea::validate(supported) == "")
         return supported;
-    // If a brush exists but cannot be safely clipped, preserve the current selection.
-    // Trace fallback is only for non-brush surfaces (and CoD2), never failed validation.
+    // CoD4's native path covers brushes, terrain and static-model collision.
+    // A rejected/over-budget result must not fall through to a sampled rectangle.
+    if (getCodVersion() == 4)
+        return undefined;
+    // Preserve CoD2's legacy trace detector until its native geometry is available.
     if (isDefined(platformBrushFace(origin, (0,0,1), true)))
         return undefined;
     if (top["fraction"] < 1 && abs(top["position"][2] - origin[2]) <= 0.5)
