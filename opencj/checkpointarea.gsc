@@ -43,7 +43,8 @@ validate(points)
         b = points[(i + 1) % points.size];
         if (abs(vectorDot(a - points[0], normal)) > 0.25)
             return "All corners must lie on the same plane";
-        if (distanceSquared(a, b) < 1)
+        // Match native detection: reject numerical duplicates, not sub-unit ledges.
+        if (distanceSquared(a, b) < 0.0001)
             return "Two corners are too close together";
         // Every other corner must lie strictly on the same side of every edge.
         // This also rejects crossed polygons and redundant collinear corners.
@@ -52,7 +53,7 @@ validate(points)
             if (j == i || j == (i + 1) % points.size)
                 continue;
             cross = _cross(a, b, points[j]);
-            if (abs(cross) < 0.01)
+            if (abs(cross) <= edgeTolerance(a, b))
                 return "Corners must form a convex area without straight-line duplicates";
             sign = 1;
             if (cross < 0)
@@ -81,7 +82,7 @@ contains(points, origin, grounded, requireGround)
     for (i = 0; i < points.size; i++)
     {
         cross = _cross(points[i], points[(i + 1) % points.size], origin);
-        if (abs(cross) < 0.01)
+        if (abs(cross) <= edgeTolerance(points[i], points[(i + 1) % points.size]))
             continue;
         sign = 1;
         if (cross < 0)
@@ -130,7 +131,11 @@ crossProduct(a, b)
 
 planeNormal(points)
 {
-    normal = vectorNormalize(crossProduct(points[1] - points[0], points[2] - points[0]));
+    // A tiny first bevel must not dominate the plane after coordinate rounding.
+    normal = (0,0,0);
+    for (i = 1; i < points.size - 1; i++)
+        normal += crossProduct(points[i] - points[0], points[i + 1] - points[0]);
+    normal = vectorNormalize(normal);
     if (normal[2] < 0)
         normal = (0,0,0) - normal;
     return normal;
@@ -155,7 +160,7 @@ encode(points)
     {
         if (i > 0)
             text += ";";
-        text += points[i][0] + "," + points[i][1] + "," + points[i][2];
+        text += floatToPreciseString(points[i][0]) + "," + floatToPreciseString(points[i][1]) + "," + floatToPreciseString(points[i][2]);
     }
     return text;
 }
@@ -179,4 +184,11 @@ decode(text)
         points[i] = (float(xyz[0]), float(xyz[1]), float(xyz[2]));
     }
     return points;
+}
+
+// Cross products scale with edge length. Use a fixed world-space tolerance
+// so tiny checkpoint edges do not acquire a larger containment allowance.
+edgeTolerance(a, b)
+{
+    return 0.0001 * distance((a[0], a[1], 0), (b[0], b[1], 0));
 }
