@@ -19,6 +19,7 @@ main()
         obituary(self, self, "", "MOD_SUICIDE");
     }
 
+    self openCJ\checkpointCreation::onSpawnSpectator();
     self notify("spawned_spectator");
 
     resetTimeout();

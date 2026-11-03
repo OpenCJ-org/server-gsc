@@ -68,8 +68,10 @@ main(atLastSavedPosition)
     self thread openCJ\events\whileAlive::main();
     self thread _dummy();
 
+    self openCJ\checkpointCreation::onSpawnPlayer();
+
     // Set player at last saved position if requested
-    if (isDefined(atLastSavedPosition) && atLastSavedPosition)
+    if (isDefined(atLastSavedPosition) && atLastSavedPosition && !self openCJ\checkpointCreation::isEditing())
     {
         self openCJ\events\eventHandler::onLoadPositionRequest(0);
     }

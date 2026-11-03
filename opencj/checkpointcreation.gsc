@@ -6,7 +6,7 @@ onInit()
 {
     if (getCodVersion() != 4)
         return;
-    cmd = openCJ\commands_base::registerCommand("checkpoint", "!cp <route> [#RRGGBB] (start or continue your draft) | list | reset <route> | split <routes> | merge <routes> | rename <old> <new> | detect | corner | confirm | alternative | area | undo | finish | double | ele | ground | allowsave | select <number> | new | discard | edit [number|last] | replace | delete [area] | test | save | finalize | stop", ::command, 1, 17, 0);
+    cmd = openCJ\commands_base::registerCommand("checkpoint", "!cp <route> [#RRGGBB] (start or continue your draft) | list | reset <route> | split <routes> | merge <routes> | rename <old> <new> | detect | corner | confirm | alternative | area | undo | finish | double | ele | ground | allowsave | select <number> | new | discard | edit [number|last] | replace | delete [area] | test | save | finalize | stop", ::command, 0, 17, 0);
     openCJ\commands_base::addAlias(cmd, "cp");
     openCJ\commands_base::addAlias(cmd, "cpc");
 }
@@ -40,6 +40,14 @@ command(args)
     if (!getCvarInt("opencj_checkpoint_editor"))
     {
         self iprintln("Enable opencj_checkpoint_editor on the development server first");
+        return;
+    }
+    if (args.size == 0)
+    {
+        if (self isEditing())
+            self stop();
+        else
+            self sendLocalChatMessage("Start or continue a draft with !cpc <route>; use !cpc list to see your routes.");
         return;
     }
     if (toLower(args[0]) == "list")
@@ -472,7 +480,8 @@ _start(route, hex)
         self rememberPosition(pos);
     }
     self openCJ\buttonPress::resetButtons();
-    self openCJ\playerRuns::stopRun(false);
+    if (self openCJ\playerRuns::hasRunID())
+        self openCJ\playerRuns::stopRun(false);
     self openCJ\huds\hudRunInfo::onRunStopped();
     self openCJ\huds\hudSpeedometer::_hideSpeedometer();
     self openCJ\huds\hudProgressBar::onRunStopped();
@@ -522,6 +531,38 @@ configureHud(hud)
     hud.alpha = 1;
 }
 
+// Spectating suspends the editor without closing its draft or selection.
+onSpawnSpectator()
+{
+    if (!self isEditing() || isDefined(self.cpc.suspended)) return;
+    self.cpc.suspended = true;
+    self.cpc.restoreOrigin = undefined;
+    self.cpc.restoreAngles = undefined;
+    self openCJ\buttonPress::resetButtons();
+    keys = getArrayKeys(self.cpc.huds);
+    for (i = 0; i < keys.size; i++) self.cpc.huds[keys[i]].alpha = 0;
+    self setClientCvar("opencj_cpc_properties", "");
+    self setClientCvar("opencj_cpc_panel_height", 0);
+    self _save();
+}
+
+onSpawnPlayer()
+{
+    if (!self isEditing()) return;
+    self.cpc.suspended = undefined;
+    // Normal spawning must not replay a pending draft-restoration teleport.
+    self.cpc.restoreOrigin = undefined;
+    self.cpc.restoreAngles = undefined;
+    keys = getArrayKeys(self.cpc.huds);
+    for (i = 0; i < keys.size; i++) self.cpc.huds[keys[i]].alpha = 1;
+    self.cpc.propertiesText = undefined;
+    self.cpc.panelHeight = undefined;
+    self openCJ\huds\hudRunInfo::onRunStopped();
+    self openCJ\huds\hudStatistics::onRunStopped();
+    self openCJ\huds\hudSpeedometer::_hideSpeedometer();
+    self openCJ\showRecords::onRunStopped();
+}
+
 _loop()
 {
     self endon("disconnect");
@@ -531,8 +572,10 @@ _loop()
     {
         if (self.sessionState != "playing")
         {
-            self stop();
-            return;
+            self onSpawnSpectator();
+            nextDraw = 0;
+            wait 0.05;
+            continue;
         }
         // Starting/loading a run must not resume scoring while editing.
         if (self openCJ\playerRuns::hasRunID())
@@ -1007,8 +1050,10 @@ _close()
     self notify("cpc_stopped");
     self setClientCvar("developer", 0);
     self setClientCvar("opencj_cpc_properties", "");
-    for (i = 0; i < self.cpc.huds.size; i++)
-        if (isDefined(self.cpc.huds[i])) self.cpc.huds[i] destroy();
+    // Properties use a client menu, leaving a hole in the HUD array.
+    keys = getArrayKeys(self.cpc.huds);
+    for (i = 0; i < keys.size; i++)
+        if (isDefined(self.cpc.huds[keys[i]])) self.cpc.huds[keys[i]] destroy();
     self.cpcTravelPositions = self.cpc.positions;
     self.cpc = undefined;
     self openCJ\huds\hudProgressBar::onRunStopped();

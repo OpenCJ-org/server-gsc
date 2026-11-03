@@ -132,6 +132,11 @@ onPlayerKilled(inflictor, attacker, damage, meansOfDeath, weapon, vDir, hitLoc, 
 
 _showRunStatus(player)
 {
+    if (player openCJ\checkpointCreation::isEditing())
+    {
+        self _hideRunStatus();
+        return;
+    }
     // Run status
     if (player.sessionState == "playing")
     {
@@ -163,6 +168,11 @@ _hideRunStatus()
 
 _showRunIcons(player)
 {
+    if (player openCJ\checkpointCreation::isEditing())
+    {
+        self _hideRunIcons();
+        return;
+    }
     // FPS
     // TODO: CoD2 specific FPS don't have a shader (yet)..
     FPSMode = player openCJ\fps::getCurrentFPSMode();
