@@ -56,7 +56,7 @@ rowsFromActive(checkpoints,route)
             index=indexes[cp.bigBrother.id];
             if(!isDefined(index) || groups[index].alternatives.size>=7)return undefined;
             group=groups[index];
-            if(group.finish!=isDefined(cp.ender) || group.double!=cp.allowDoubleRPG || group.onGround!=cp.onGround || group.allowSave!=cp.allowSave || group.allowEle!=cp.isEleAllowed)return undefined;
+            if(!openCJ\checkpointHeight::same(group,cp) || group.finish!=isDefined(cp.ender) || group.double!=cp.allowDoubleRPG || group.onGround!=cp.onGround || group.allowSave!=cp.allowSave || group.allowEle!=cp.isEleAllowed)return undefined;
             group.alternatives[group.alternatives.size]=cp.area;
         }
         else
@@ -64,6 +64,7 @@ rowsFromActive(checkpoints,route)
             if(groups.size>=256 || isDefined(indexes[cp.id]))return undefined;
             group=openCJ\checkpointCreation::_empty();group.points=cp.area;
             group.platformRef=cp.platformRef;
+            group.heightAbove=openCJ\checkpointHeight::above(cp);
             group.finish=isDefined(cp.ender);group.double=cp.allowDoubleRPG;
             group.onGround=cp.onGround;group.allowSave=cp.allowSave;group.allowEle=cp.isEleAllowed;
             indexes[cp.id]=groups.size;groups[groups.size]=group;

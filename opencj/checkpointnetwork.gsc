@@ -527,6 +527,7 @@ selectAndTeleport(index)
 
 sameCheckpoint(a,b)
 {
+    if(!openCJ\checkpointHeight::same(a,b))return false;
     if(openCJ\checkpointMoving::isMoving(a)!=openCJ\checkpointMoving::isMoving(b))return false;
     if(openCJ\checkpointMoving::isMoving(a))return a.platformRef==b.platformRef && a.allowEle==b.allowEle && a.allowSave==b.allowSave && a.onGround==b.onGround && a.finish==b.finish && a.double==b.double;
     if(a.allowEle!=b.allowEle||a.allowSave!=b.allowSave||a.onGround!=b.onGround||a.finish!=b.finish||a.double!=b.double||a.points.size!=b.points.size||a.alternatives.size!=b.alternatives.size)return false;
@@ -717,5 +718,5 @@ areaOverlap(a,b,points)
     movingA = openCJ\checkpointMoving::isMoving(a);
     movingB = openCJ\checkpointMoving::isMoving(b);
     if (movingA || movingB) return movingA && movingB && a.platformRef == b.platformRef;
-    return overlap(a.points,points);
+    return openCJ\checkpointHeight::overlap(a,a.points,b,points);
 }

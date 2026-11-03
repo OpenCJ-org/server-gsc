@@ -169,8 +169,8 @@ _writeSequentialRoute()
             return self _fail("Failed to save checkpoint area");
         platformRef = "NULL";
         if (openCJ\checkpointMoving::isMoving(cp)) platformRef = openCJ\util::dbStr(cp.platformRef);
-        if (!isDefined(openCJ\mySQL::mysqlSyncQuery("UPDATE checkpointAreas SET platformRef=" + platformRef + " WHERE cpID=" + ids[i])))
-            return self _fail("Cannot store moving platform reference; install migration 013");
+        if (!isDefined(openCJ\mySQL::mysqlSyncQuery("UPDATE checkpointAreas SET heightAbove="+floatToPreciseString(cp.heightAbove)+",platformRef=" + platformRef + " WHERE cpID=" + ids[i])))
+            return self _fail("Cannot store checkpoint height/platform; install migrations 013 and 014");
         if ((existing.size == 0 || isDefined(migration)) && entries[i].leader != i)
         {
             if (!isDefined(openCJ\mySQL::mysqlSyncQuery("INSERT INTO checkpointBrothers (cpID,bigBrotherID) VALUES (" + ids[i] + "," + ids[entries[i].leader] + ")")))
@@ -264,9 +264,9 @@ loadAreas()
         }
     }
     columns = openCJ\mySQL::mysqlSyncQuery("SHOW COLUMNS FROM checkpointAreas LIKE 'sectionName'");
-    query = "SELECT cpID,vertices,allowDoubleRPG,routeName,NULL,platformRef FROM checkpointAreas WHERE mapID=" + openCJ\mapID::getMapID();
+    query = "SELECT cpID,vertices,allowDoubleRPG,routeName,NULL,platformRef,heightAbove FROM checkpointAreas WHERE mapID=" + openCJ\mapID::getMapID();
     if (isDefined(columns) && columns.size)
-        query = "SELECT a.cpID,a.vertices,a.allowDoubleRPG,a.routeName,CONCAT('#',LPAD(HEX(s.colorRGB),6,'0')),a.platformRef FROM checkpointAreas a LEFT JOIN checkpointSectionColors s ON s.mapID=a.mapID AND s.sectionName=a.sectionName WHERE a.mapID=" + openCJ\mapID::getMapID();
+        query = "SELECT a.cpID,a.vertices,a.allowDoubleRPG,a.routeName,CONCAT('#',LPAD(HEX(s.colorRGB),6,'0')),a.platformRef,a.heightAbove FROM checkpointAreas a LEFT JOIN checkpointSectionColors s ON s.mapID=a.mapID AND s.sectionName=a.sectionName WHERE a.mapID=" + openCJ\mapID::getMapID();
     rows = openCJ\mySQL::mysqlSyncQuery(query);
     if (!isDefined(rows))
         return;
@@ -279,6 +279,7 @@ loadAreas()
         if (!isDefined(rows[i][5]) && openCJ\checkpointArea::validate(points) != "")
             continue;
         cp.area = points;
+        cp.heightAbove=float(rows[i][6]);
         if (isDefined(rows[i][5])) cp.platformRef = rows[i][5];
         cp.allowDoubleRPG = int(rows[i][2]);
         cp.routeInfo = level.checkpointRoutes[rows[i][3]];
@@ -294,7 +295,7 @@ loadAreas()
 unchangedPublished(entries, existing)
 {
     if(entries.size!=existing.size)return false;
-    rows=openCJ\mySQL::mysqlSyncQuery("SELECT a.vertices,a.allowDoubleRPG,c.onGround,c.ender,c.allowSave,c.elevate,a.platformRef FROM checkpointAreas a JOIN checkpoints c ON c.cpID=a.cpID WHERE a.mapID="+openCJ\mapID::getMapID()+" AND a.routeName="+openCJ\util::dbStr(self.cpc.route)+" ORDER BY a.ordinal");
+    rows=openCJ\mySQL::mysqlSyncQuery("SELECT a.vertices,a.allowDoubleRPG,c.onGround,c.ender,c.allowSave,c.elevate,a.platformRef,a.heightAbove FROM checkpointAreas a JOIN checkpoints c ON c.cpID=a.cpID WHERE a.mapID="+openCJ\mapID::getMapID()+" AND a.routeName="+openCJ\util::dbStr(self.cpc.route)+" ORDER BY a.ordinal");
     if(!isDefined(rows)||rows.size!=entries.size)return false;
     for(i=0;i<entries.size;i++)
     {
@@ -303,6 +304,7 @@ unchangedPublished(entries, existing)
         if(int(rows[i][4])!=int(cp.allowSave)||int(rows[i][5])!=int(cp.allowEle))return false;
         if(isDefined(rows[i][6]) != openCJ\checkpointMoving::isMoving(cp))return false;
         if(isDefined(rows[i][6]) && rows[i][6]!=cp.platformRef)return false;
+        if(float(rows[i][7])!=cp.heightAbove)return false;
         if(cp.finish!=isDefined(rows[i][3]))return false;
         if(cp.finish&&rows[i][3]!=self.cpc.route)return false;
         for(j=0;j<points.size;j++)if(distanceSquared(points[j],entries[i].points[j])>0.0001)return false;

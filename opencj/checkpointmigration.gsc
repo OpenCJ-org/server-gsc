@@ -11,7 +11,7 @@ plan(oldRows,newRows)
     for(i=first;i<first+removed;i++)
     {
         cp=openCJ\checkpointCreation::_decode(oldRows[i]);if(cp.finish)return undefined;
-        if(!added && (cp.double || cp.allowEle || !cp.allowSave || !cp.onGround))return undefined;
+        if(!added && (cp.heightAbove>0 || cp.double || cp.allowEle || !cp.allowSave || !cp.onGround))return undefined;
     }
     for(i=first;i<first+added;i++)
     {
@@ -20,9 +20,9 @@ plan(oldRows,newRows)
         if(removed==1 && added==1)
         {
             prior=openCJ\checkpointCreation::_decode(oldRows[first]);
-            if(cp.double!=prior.double || cp.allowEle!=prior.allowEle || cp.allowSave!=prior.allowSave || cp.onGround!=prior.onGround)return undefined;
+            if(!openCJ\checkpointHeight::same(cp,prior) || cp.double!=prior.double || cp.allowEle!=prior.allowEle || cp.allowSave!=prior.allowSave || cp.onGround!=prior.onGround)return undefined;
         }
-        else if(cp.double || cp.allowEle || !cp.allowSave || !cp.onGround)return undefined;
+        else if(cp.heightAbove>0 || cp.double || cp.allowEle || !cp.allowSave || !cp.onGround)return undefined;
     }
     p=spawnStruct();p.mapping=[];
     for(i=0;i<newRows.size;i++)
@@ -39,7 +39,7 @@ prepare(entries,existing)
 {
     if(isDefined(level.demoPersisting) && level.demoPersisting>0)return self fail("A demo is still saving; retry finalizing shortly");
     map=openCJ\mapID::getMapID();route=self.cpc.route;
-    rows=openCJ\mySQL::mysqlSyncQuery("SELECT a.cpID,b.bigBrotherID,c.ender,a.vertices,a.allowDoubleRPG,c.onGround,c.allowSave,c.elevate,a.platformRef FROM checkpointAreas a JOIN checkpoints c ON c.cpID=a.cpID LEFT JOIN checkpointBrothers b ON b.cpID=a.cpID WHERE a.mapID="+map+" AND a.routeName="+openCJ\util::dbStr(route)+" ORDER BY a.ordinal");
+    rows=openCJ\mySQL::mysqlSyncQuery("SELECT a.cpID,b.bigBrotherID,c.ender,a.vertices,a.allowDoubleRPG,c.onGround,c.allowSave,c.elevate,a.platformRef,a.heightAbove FROM checkpointAreas a JOIN checkpoints c ON c.cpID=a.cpID LEFT JOIN checkpointBrothers b ON b.cpID=a.cpID WHERE a.mapID="+map+" AND a.routeName="+openCJ\util::dbStr(route)+" ORDER BY a.ordinal");
     if(!isDefined(rows)||!rows.size)return self fail("Cannot read route for migration");
     old=[];groups=[];ids="(";
     for(i=0;i<rows.size;i++)
@@ -47,6 +47,7 @@ prepare(entries,existing)
         if(i)ids+=",";ids+=rows[i][0];
         cp=openCJ\checkpointCreation::_empty();cp.points=openCJ\checkpointArea::decode(rows[i][3]);
         if(isDefined(rows[i][8]))cp.platformRef=rows[i][8];
+        cp.heightAbove=float(rows[i][9]);
         cp.finish=isDefined(rows[i][2]);cp.double=int(rows[i][4]);cp.onGround=int(rows[i][5]);cp.allowSave=int(rows[i][6]);cp.allowEle=int(rows[i][7]);
         if(!isDefined(rows[i][1]))
         {
@@ -57,7 +58,7 @@ prepare(entries,existing)
             g=groups.size-1;
             if(g<0 || int(rows[i][1])!=int(rows[groups[g][0]][0]))return self fail("Complex alternative grouping; draft retained");
             prior=openCJ\checkpointCreation::_decode(old[g]);prior.alternatives[prior.alternatives.size]=cp.points;
-            if(prior.double!=cp.double || prior.allowEle!=cp.allowEle || prior.allowSave!=cp.allowSave || prior.onGround!=cp.onGround || prior.finish!=cp.finish)return self fail("Alternative requirements differ; draft retained");
+            if(!openCJ\checkpointHeight::same(cp,prior) || prior.double!=cp.double || prior.allowEle!=cp.allowEle || prior.allowSave!=cp.allowSave || prior.onGround!=cp.onGround || prior.finish!=cp.finish)return self fail("Alternative requirements differ; draft retained");
             old[g]=openCJ\checkpointCreation::_encode(prior);groups[g][groups[g].size]=i;
         }
     }

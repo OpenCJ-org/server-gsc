@@ -6,7 +6,7 @@ onInit()
 {
     if (getCodVersion() != 4)
         return;
-    cmd = openCJ\commands_base::registerCommand("checkpoint", "!cp <route> [#RRGGBB] (start or continue your draft) | list | reset <route> | split <routes> | merge <routes> | rename <old> <new> | detect | corner | confirm | alternative | area | undo | finish | double | ele | ground | allowsave | select <number> | new | discard | edit [number|last] | replace | delete [area] | test | save | finalize | stop", ::command, 0, 17, 0);
+    cmd = openCJ\commands_base::registerCommand("checkpoint", "!cp <route> [#RRGGBB] (start or continue your draft) | list | reset <route> | split <routes> | merge <routes> | rename <old> <new> | detect | corner | confirm | alternative | area | undo | finish | double | ele | ground | allowsave | height [units] | select <number> | new | discard | edit [number|last] | replace | delete [area] | test | save | finalize | stop", ::command, 0, 17, 0);
     openCJ\commands_base::addAlias(cmd, "cp");
     openCJ\commands_base::addAlias(cmd, "cpc");
 }
@@ -67,7 +67,7 @@ command(args)
     }
     // Non-command names open the player's existing draft or create a new one.
     args[0] = toLower(args[0]);
-    commands = "|list|reset|rename|split|merge|edit|replace|deletearea|select|stop|save|finalize|publish|test|finish|double|ele|ground|allowsave|undo|discard|alternative|area|detect|corner|confirm|new|previous|next|delete|";
+    commands = "|list|reset|rename|split|merge|edit|replace|deletearea|select|stop|save|finalize|publish|test|finish|double|ele|ground|allowsave|height|undo|discard|alternative|area|detect|corner|confirm|new|previous|next|delete|";
     if ((args.size == 1 || args.size == 2) && !isSubStr(commands, "|" + args[0] + "|"))
     {
         route = args[0];
@@ -171,6 +171,11 @@ command(args)
         }
         self _action("deletearea");
         return;
+    }
+    if(args[0]=="height" && args.size>1)
+    {
+        if(args.size!=2 || !isValidFloat(args[1])){self sendLocalChatMessage("Use !cpc height to toggle editing, or !cpc height <units>");return;}
+        self.cpc.heightRequestValue=float(args[1]);self _action("heightset");return;
     }
     self _action(args[0]);
 }
@@ -280,6 +285,7 @@ _empty()
     cp.onGround = true;
     cp.allowSave = true;
     cp.allowEle = false;
+    cp.heightAbove = 0;
     return cp;
 }
 
@@ -288,6 +294,11 @@ _encode(cp)
     text = int(cp.finish) + ":" + int(cp.double) + ":p" + openCJ\checkpointArea::encode(cp.points);
     for (i = 0; i < cp.alternatives.size; i++)
         text += "|p" + openCJ\checkpointArea::encode(cp.alternatives[i]);
+    if (cp.heightAbove>0)
+    {
+        key="-";if(openCJ\checkpointMoving::isMoving(cp))key=cp.platformRef;
+        return text+":"+int(cp.onGround)+":"+int(cp.allowSave)+":"+int(cp.allowEle)+":"+key+":"+floatToPreciseString(cp.heightAbove);
+    }
     if (openCJ\checkpointMoving::isMoving(cp)) text += ":" + int(cp.onGround) + ":" + int(cp.allowSave) + ":" + int(cp.allowEle) + ":" + cp.platformRef;
     else if (cp.allowEle) text += ":" + int(cp.onGround) + ":" + int(cp.allowSave) + ":1";
     else if (!cp.allowSave) text += ":" + int(cp.onGround) + ":0";
@@ -298,7 +309,7 @@ _encode(cp)
 _decode(row)
 {
     values = strTok(row, ":");
-    if ((values.size != 3 && values.size != 4 && values.size != 5 && values.size != 6 && values.size != 7) || (values[0] != "0" && values[0] != "1") || (values[1] != "0" && values[1] != "1"))
+    if ((values.size != 3 && values.size != 4 && values.size != 5 && values.size != 6 && values.size != 7 && values.size != 8) || (values[0] != "0" && values[0] != "1") || (values[1] != "0" && values[1] != "1"))
         return undefined;
     if (values[2][0] != "p")
         return undefined;
@@ -320,7 +331,13 @@ _decode(row)
         if (values[5] != "0" && values[5] != "1") return undefined;
         cp.allowEle = int(values[5]);
     }
-    if (values.size == 7)
+    if (values.size == 8)
+    {
+        if(!isValidFloat(values[7]))return undefined;
+        cp.heightAbove=float(values[7]);
+        if(!openCJ\checkpointHeight::valid(cp.heightAbove))return undefined;
+    }
+    if (values.size == 7 || (values.size == 8 && values[6]!="-"))
     {
         if (values[6].size < 2 || values[6].size > 101 || (values[6][0] != "b" && values[6][0] != "n")) return undefined;
         cp.platformRef = values[6];
@@ -352,11 +369,11 @@ contains(cp, origin, grounded)
         if (!isDefined(self) || !isPlayer(self)) return false;
         return self openCJ\checkpointMoving::touches(cp, grounded, self getGroundEntity());
     }
-    if (openCJ\checkpointArea::touchesPlayer(cp.points, origin, grounded, cp.onGround))
+    if (openCJ\checkpointArea::touchesPlayer(cp.points, origin, grounded, cp.onGround, cp.heightAbove))
         return true;
     for (i = 0; i < cp.alternatives.size; i++)
     {
-        if (openCJ\checkpointArea::touchesPlayer(cp.alternatives[i], origin, grounded, cp.onGround))
+        if (openCJ\checkpointArea::touchesPlayer(cp.alternatives[i], origin, grounded, cp.onGround, cp.heightAbove))
             return true;
     }
     return false;
@@ -491,13 +508,14 @@ _start(route, hex)
         "bind KP_ENTER say !cp confirm; bind KP_PLUS say !cp corner; bind KP_MINUS say !cp undo; " +
         "bind KP_UPARROW say !cp ele; bind KP_END say !cp double; bind KP_PGUP say !cp finish; bind KP_DOWNARROW say !cp ground; bind KP_PGDN say !cp allowsave; " +
         "bind KP_LEFTARROW say !cp previous; bind KP_RIGHTARROW say !cp next; " +
-        "bind KP_DEL say !cp discard; bind KP_HOME say !cp new; bind KP_SLASH say !cp alternative; bind KP_STAR say !cp area");
+        "bind KP_DEL say !cp discard; bind KP_HOME say !cp height; bind KP_SLASH say !cp alternative; bind KP_STAR say !cp area");
     self thread _loop();
 }
 
 restoreOrigin(draft)
 {
-    points = openCJ\checkpointMoving::points(draft.draft);
+    cp=draft.draft;
+    points = openCJ\checkpointMoving::points(cp);
     if (openCJ\checkpointArea::validate(points) != "" && draft.draft.alternatives.size > 0)
         points = draft.draft.alternatives[draft.draft.alternatives.size - 1];
     if (openCJ\checkpointArea::validate(points) != "" && draft.rows.size > 0)
@@ -511,7 +529,9 @@ restoreOrigin(draft)
     if (openCJ\checkpointArea::validate(points) != "")
         return undefined;
     // _center adds 12 for labels; leave two units above the capsule support height.
-    return _center(points) + (0, 0, openCJ\checkpointArea::supportOffset(points) - 10);
+    extra=openCJ\checkpointHeight::above(cp);
+    if(extra>0)extra+=4; // Resume above a curved surface, not inside its base plane.
+    return _center(points) + (0, 0, openCJ\checkpointArea::supportOffset(points) - 10 + extra);
 }
 
 configureHud(hud)
@@ -647,10 +667,15 @@ _action(action)
         return;
     }
     // When the panel shows the last checkpoint, property keys edit that checkpoint.
-    if ((action == "finish" || action == "double" || action == "ele" || action == "ground" || action == "allowsave") &&
+    if ((action == "finish" || action == "double" || action == "ele" || action == "ground" || action == "allowsave" || action == "height" || action == "heightset") &&
         self.cpc.selected == self.cpc.rows.size && self.cpc.rows.size > 0 &&
         self.cpc.draft.points.size == 0 && self.cpc.draft.alternatives.size == 0)
         self _action("previous");
+    if(isDefined(self.cpc.heightTarget))
+    {
+        if(action=="corner")action="heightup";
+        else if(action=="undo")action="heightdown";
+    }
     if (action == "undo")
     {
         self.cpc.alternativeBlocked = undefined;
@@ -698,6 +723,10 @@ _action(action)
     self _remember();
     switch (action)
     {
+        case "height":
+        case "heightup":
+        case "heightdown":
+        case "heightset": self openCJ\checkpointHeight::edit(action);break;
         case "alternative":
             self _addAlternative();
             break;
@@ -776,6 +805,18 @@ _action(action)
         case "confirm":
             // Repair click-order crossings in drafts saved before automatic ordering.
             self.cpc.draft.points = openCJ\checkpointArea::orderCorners(self.cpc.draft.points);
+            candidate=_decode(_encode(self.cpc.draft));
+            if(openCJ\checkpointHeight::flatten(candidate))
+            {
+                collision=self openCJ\checkpointHeight::conflict(candidate);
+                if(collision!=""){self.cpc.status="Cannot flatten: overlaps "+collision;return;}
+                self.cpc.draft=candidate;
+            }
+            if(self.cpc.draft.heightAbove>0)
+            {
+                collision=self openCJ\checkpointHeight::conflict(self.cpc.draft);
+                if(collision!=""){self.cpc.status="Cannot confirm: overlaps "+collision;return;}
+            }
             self openCJ\checkpointNetwork::checkOverlap();
             if (isDefined(self.cpc.overlap))
             {
@@ -800,6 +841,7 @@ _action(action)
                 break;
             self.cpc.selected = self.cpc.rows.size;
             self.cpc.draft = _empty();
+            self.cpc.heightTarget=undefined;
             break;
         case "ele": self.cpc.draft.allowEle = !self.cpc.draft.allowEle; break;
         case "allowsave": self.cpc.draft.allowSave = !self.cpc.draft.allowSave; break;
@@ -809,6 +851,7 @@ _action(action)
         case "new":
             self.cpc.selected = self.cpc.rows.size;
             self.cpc.draft = _empty();
+            self.cpc.heightTarget=undefined;
             break;
         case "previous":
         case "next":
@@ -1192,6 +1235,10 @@ _draw()
     text += "\nAllow save: " + saving + " [Num 3]";
     elevator = "No"; if (props.allowEle) elevator = "Yes";
     text += "\nAllow ele: " + elevator + " [Num 8]";
+    if(isDefined(self.cpc.heightTarget))
+    {
+        text="Extra height: +"+openCJ\checkpointHeight::above(props)+" units\nStep: 4 units\nBottom: fixed\nOn ground: "+ground;
+    }
     if (!isDefined(self.cpc.propertiesText) || self.cpc.propertiesText != text)
     {
         self setClientCvar("opencj_cpc_properties", text);
@@ -1230,6 +1277,8 @@ _draw()
         if (self.cpc.selected < self.cpc.rows.size) text += "\n^3Replace:^7 !cp replace";
         if (cp.alternatives.size > 0) text += "\n^5Cycle area:^7 Num *\n^1Remove area:^7 !cp delete area";
     }
+    if(isDefined(self.cpc.heightTarget))text="^2Raise top:^7 Num +\n^3Lower top:^7 Num -\n^5Done editing height:^7 Num 7\n^2Apply:^7 Num Enter";
+    else if(!empty)text+="\n^5Height:^7 Num 7";
     self.cpc.huds[1] _setPanelText(text);
     // Fit the current action list; do not reserve empty rows in shorter states.
     lines = 1;
@@ -1296,10 +1345,10 @@ _previewArea(points, label, color)
 
 _outlineGroup(cp, color)
 {
-    self _outline(openCJ\checkpointMoving::points(cp), color);
+    self _outline(openCJ\checkpointMoving::points(cp), color, openCJ\checkpointHeight::above(cp));
     for (i = 0; i < cp.alternatives.size; i++)
     {
-        self _outline(cp.alternatives[i], "1 0.2 1 1");
+        self _outline(cp.alternatives[i], "1 0.2 1 1", openCJ\checkpointHeight::above(cp));
         if (cp.points.size > 0)
             self _line(_center(cp.points), _center(cp.alternatives[i]), "1 0.2 1 1");
     }
@@ -1355,11 +1404,18 @@ _drawCommand(command)
     self.cpc.drawCommands++;
 }
 
-_outline(points, color)
+_outline(points, color, above)
 {
-    height = 6;
+    if(!isDefined(above))above=0;
+    height = 6+above;
     if (openCJ\checkpointArea::validate(points) == "")
         height += openCJ\checkpointArea::supportOffset(points);
+    if(points.size>=3 && (above>0 || isDefined(self.cpc.heightTarget)))
+    {
+        center=_center(points)-(0,0,12);
+        self _drawCommand("M t "+_vec(center+(0,0,4+openCJ\checkpointArea::supportOffset(points)+above))+";0 1 1 1;0.6;400;Upper +"+above);
+        self _drawCommand("M t "+_vec(center-(0,0,2))+";1 0.7 0 1;0.6;400;Base");
+    }
     for (i = 0; i < points.size; i++)
     {
         a = points[i] - (0, 0, 2);

@@ -1063,7 +1063,7 @@ canSaveHere()
         }
         else if (isDefined(cp.area))
         {
-            if (openCJ\checkpointArea::touchesPlayer(cp.area, self.origin, self isOnGround(), false))
+            if (openCJ\checkpointArea::touchesPlayer(cp.area, self.origin, self isOnGround(), false, openCJ\checkpointHeight::above(cp)))
                 return false;
         }
         else if (isDefined(cp.radius) && distanceSquared(self.origin, cp.origin) <= cp.radius * cp.radius)
@@ -1116,7 +1116,7 @@ touchesArea(cp, grounded, groundEntity)
     if (openCJ\checkpointMoving::isMoving(cp))
         return self openCJ\checkpointMoving::touches(cp,grounded,groundEntity);
     if (isDefined(cp.area))
-        return openCJ\checkpointArea::touchesPlayer(cp.area,self.origin,grounded,cp.onGround);
+        return openCJ\checkpointArea::touchesPlayer(cp.area,self.origin,grounded,cp.onGround,openCJ\checkpointHeight::above(cp));
     if (!isDefined(cp.radius) || (cp.onGround && !grounded)) return false;
     return self getEyePos()[2]>=cp.origin[2] && distanceSquared(self.origin,cp.origin)<cp.radius*cp.radius;
 }
