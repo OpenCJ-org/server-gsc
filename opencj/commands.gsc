@@ -281,6 +281,7 @@ _onCmdEntTele(args)
 
             if (entArray.size > idx)
             {
+                self openCJ\mapBoost::cancel();
                 self setOrigin(entArray[idx].origin);
                 self openCJ\cheating::setCheating(true);
                 self sendLocalChatMessage("Teleported you to entity: " + args[0] + "[" + idx + "]");
@@ -301,6 +302,7 @@ _onCmdSetOrigin(args)
 {
     if (self.sessionState == "playing")
     {
+        self openCJ\mapBoost::cancel();
         self setOrigin((int(args[0]), int(args[1]), int(args[2])));
     }
 }
@@ -348,6 +350,7 @@ _teleportToPlayer(args, teleToSave)
                     
                     self sendLocalChatMessage("Teleported you to target player's save");
 
+                    self openCJ\mapBoost::cancel();
                     self setOrigin(playerSave.origin);
                     self setPlayerAngles(playerSave.angles);
                 }
@@ -360,6 +363,7 @@ _teleportToPlayer(args, teleToSave)
             
             if (shouldTeleToPos)
             {
+                self openCJ\mapBoost::cancel();
                 self setOrigin(player getOrigin());
                 self setPlayerAngles(player getPlayerAngles());
             }

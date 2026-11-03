@@ -223,20 +223,8 @@ endofmap2()
     }
 }
 
-// Retain the original 12x launch-pad speed and two-second cooldown,
-// without letting one player block the pad for everyone else.
+// Preserve the original boost physics; OpenCJ owns lifecycle cancellation.
 moonBoost()
 {
-    self endon("disconnect");
-    if (isDefined(self.moonBoostActive))
-    return;
-    self.moonBoostActive = true;
-    while (isAlive(self) && self.sessionstate == "playing" && self isOnGround())
-    {
-        self SetMoveSpeedScale(12);
-        wait 0.05;
-    }
-    self SetMoveSpeedScale(1);
-    wait 2;
-    self.moonBoostActive = undefined;
+    self openCJ\mapBoost::start(12);
 }

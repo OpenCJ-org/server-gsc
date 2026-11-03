@@ -394,6 +394,7 @@ _addAlternative()
 
 _start(route, hex)
 {
+    self openCJ\mapBoost::cancel();
     route = self openCJ\checkpointNetwork::resolve(route);
     if (!isDefined(route))
     {
@@ -1390,6 +1391,7 @@ processTravelRequests()
         if (isDefined(self.cpc.restoreAngles)) pos.angles = self.cpc.restoreAngles;
         self.cpc.restoreAngles = undefined;
         self.cpc.restoreOrigin = undefined;
+        self openCJ\mapBoost::cancel();
         self setoriginandangles(pos.origin, pos.angles);
         self setVelocity((0, 0, 0));
         self rememberPosition(pos);
@@ -1447,6 +1449,7 @@ loadPosition(backwardsAmount)
         return false;
     }
     self.cpc.travelIndex = index;
+    self openCJ\mapBoost::cancel();
     self setoriginandangles(pos.origin, pos.angles);
     self setVelocity((0, 0, 0));
     self openCJ\savePosition::printLoadSuccess();

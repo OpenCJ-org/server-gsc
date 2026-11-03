@@ -2,6 +2,7 @@
 
 main(backwardsCount)
 {
+    self openCJ\mapBoost::cancel();
     self openCJ\shop::stopInspect();
     if (isDefined(self.cpc))
         return self openCJ\checkpointCreation::loadPosition(backwardsCount);
@@ -58,6 +59,7 @@ main(backwardsCount)
     self openCJ\anyPct::setAnyPct(openCJ\savePosition::getUsedAnyPct(save));
 
     // Set origin and angles
+    self openCJ\mapBoost::cancel();
     self setoriginandangles(save.origin, save.angles);
 
     self openCJ\statistics::setExplosiveJumps(save.explosiveJumps);

@@ -2,6 +2,7 @@
 
 main()
 {
+    self openCJ\mapBoost::cancel();
     self openCJ\shop::stopInspect();
     if (self.sessionState == "spectator")
     {
@@ -31,6 +32,7 @@ main()
     self.pers["team"] = "spectator";
 
     specSpawnpoint = self openCJ\spawnpoints::getSpectatorSpawnpoint();
+    self openCJ\mapBoost::cancel();
     self setOrigin(specSpawnpoint.origin);
     self setPlayerAngles(specSpawnpoint.angles);
 

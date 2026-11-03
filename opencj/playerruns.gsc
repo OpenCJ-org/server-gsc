@@ -258,6 +258,7 @@ archiveRun(runID)
 
 restoreRun(runID) // Call this function as a thread
 {
+    self openCJ\mapBoost::cancel();
     if (isDefined(self.cpc))
     {
         self sendLocalChatMessage("Exit checkpoint editing with !cp stop before restoring a run.", true);

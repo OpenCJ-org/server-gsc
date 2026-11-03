@@ -222,6 +222,7 @@ releaseCache(id)
 
 startDemo(demoID)
 {
+    self openCJ\mapBoost::cancel();
     self openCJ\shop::stopInspect();
     if (getCodVersion() == 4 && !(self demoBeginPresentation()))
     {
@@ -555,6 +556,7 @@ stopDemo(loadClipSave)
     self unlink();
     // Disable playback prediction/freeze before the normal teleport runs Pmove.
     self demoEndPresentation();
+    self openCJ\mapBoost::cancel();
     self setoriginandangles(state.origin,state.angles);
     self setVelocity(state.velocity);
     self setStance(state.stance);

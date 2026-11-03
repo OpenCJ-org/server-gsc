@@ -2,6 +2,7 @@
 
 main(atLastSavedPosition)
 {
+    self openCJ\mapBoost::cancel();
     if(!self openCJ\login::isLoggedIn())
     {
         return;
@@ -41,6 +42,7 @@ main(atLastSavedPosition)
     self.pers["team"] = "allies";
     spawnpoint = self openCJ\spawnpoints::getPlayerSpawnpoint();
     self unlink(); // Player may be attached to something
+    self openCJ\mapBoost::cancel();
     self spawn(spawnpoint.origin, spawnpoint.angles);
 
     self openCJ\savePosition::onSpawnPlayer();

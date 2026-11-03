@@ -21,6 +21,7 @@ onPlayerKilled(inflictor, attacker, damage, meansOfDeath, weapon, vDir, hitLoc, 
 
 onSuicideRequest()
 {
+    self openCJ\mapBoost::cancel();
     self.eventQueue["suicide"] = true;
 }
 
@@ -37,6 +38,7 @@ onSavePositionRequest()
 
 onLoadPositionRequest(backwardsAmount)
 {
+    self openCJ\mapBoost::cancel();
     if (self openCJ\demos::isPlayingDemo())
     {
         self.eventQueue = [];

@@ -117,6 +117,7 @@ disableNoclip()
 
 enableNoclip()
 {
+    self openCJ\mapBoost::cancel();
     if(isDefined(self.noclip_linkto))
     {
         self.noclip_linkto delete();

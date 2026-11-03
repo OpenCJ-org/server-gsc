@@ -2,6 +2,7 @@
 
 main() // Threaded
 {
+    self openCJ\mapBoost::cancel();
     self openCJ\scoreboard::onPlayerDisconnected();
     self openCJ\shop::stopInspect();
     level.playerCount--;

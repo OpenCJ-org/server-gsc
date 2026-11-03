@@ -2,6 +2,7 @@
 
 main(inflictor, attacker, damage, meansOfDeath, weapon, vDir, hitLoc, psOffsetTime, deathAnimDuration)
 {
+    self openCJ\mapBoost::cancel();
     self openCJ\shop::stopInspect();
     if(self openCJ\demos::isPlayingDemo())
     {

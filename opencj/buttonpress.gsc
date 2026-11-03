@@ -131,6 +131,7 @@ processFragTeleport()
     // Mark before moving: no save/checkpoint can observe an unflagged teleport.
     self openCJ\cheating::setCheating(true);
     self openCJ\noclip::disableNoclip();
+    self openCJ\mapBoost::cancel();
     self setOriginAndAngles(destination, self getPlayerAngles());
 }
 

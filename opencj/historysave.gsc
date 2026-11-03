@@ -7,6 +7,7 @@ onInit()
 
 historyLoad(runID)
 {
+    self openCJ\mapBoost::cancel();
     if (isDefined(self.cpc))return false;
     self endon("cpc_started");
     self endon("disconnect");
@@ -96,6 +97,7 @@ _loadSavesFromDatabase(runID, instanceNumber)
         self freezeControls(true);
         self setVelocity((0, 0, 0));
         wait .05;
+        self openCJ\mapBoost::cancel();
         self setOrigin(spawnpoint.origin);
         self setPlayerAngles(spawnpoint.angles);
         self freezeControls(false);
