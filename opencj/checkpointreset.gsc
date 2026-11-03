@@ -49,7 +49,7 @@ rowsFromActive(checkpoints,route)
     for(i=0;i<checkpoints.size;i++)
     {
         cp=checkpoints[i];
-        if(!isDefined(cp) || !isDefined(cp.area) || openCJ\checkpointArea::validate(cp.area)!="")return undefined;
+        if(!isDefined(cp) || !isDefined(cp.area) || (!openCJ\checkpointMoving::isMoving(cp) && openCJ\checkpointArea::validate(cp.area)!=""))return undefined;
         if(isDefined(cp.ender) && cp.ender!=route)return undefined;
         if(isDefined(cp.bigBrother))
         {
@@ -63,6 +63,7 @@ rowsFromActive(checkpoints,route)
         {
             if(groups.size>=256 || isDefined(indexes[cp.id]))return undefined;
             group=openCJ\checkpointCreation::_empty();group.points=cp.area;
+            group.platformRef=cp.platformRef;
             group.finish=isDefined(cp.ender);group.double=cp.allowDoubleRPG;
             group.onGround=cp.onGround;group.allowSave=cp.allowSave;group.allowEle=cp.isEleAllowed;
             indexes[cp.id]=groups.size;groups[groups.size]=group;

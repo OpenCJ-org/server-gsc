@@ -226,7 +226,7 @@ merge(args)
     n = self load();if (!isDefined(n))return self fail("Split the shared opening into routes first.");
     self checkOverlap(true);
     if (isDefined(self.cpc.overlapSection))return self mergeExisting(args,n);
-    if (self.cpc.selected != self.cpc.rows.size || openCJ\checkpointArea::validate(self.cpc.draft.points) != "")
+    if (self.cpc.selected != self.cpc.rows.size || openCJ\checkpointMoving::valid(self.cpc.draft) != "")
         return self fail("Detect the first common landing without confirming it, then !cp merge easy hard.");
     included = false;
     for (i = 1; i < args.size; i++)
@@ -348,7 +348,7 @@ overlap(a,b)
 checkOverlap(quiet)
 {
     self.cpc.overlap=undefined;self.cpc.overlapSection=undefined;self.cpc.overlapIndex=undefined;
-    if (openCJ\checkpointArea::validate(self.cpc.draft.points)!="")return;
+    if (openCJ\checkpointMoving::valid(self.cpc.draft)!="")return;
     n=self load();if(!isDefined(n))return;
     sections=[];names=getArrayKeys(n.paths);
     for(i=0;i<names.size;i++)for(j=0;j<n.paths[names[i]].sections.size;j++)sections[n.paths[names[i]].sections[j]]=true;
@@ -361,7 +361,7 @@ checkOverlap(quiet)
         {
             cp=openCJ\checkpointCreation::_decode(part.rows[j]);areas=[];areas[0]=cp.points;
             for(k=0;k<cp.alternatives.size;k++)areas[areas.size]=cp.alternatives[k];
-            for(k=0;k<areas.size;k++)if(overlap(self.cpc.draft.points,areas[k]))
+            for(k=0;k<areas.size;k++)if(areaOverlap(self.cpc.draft,cp,areas[k]))
             {
                 self.cpc.overlap=cp;self.cpc.overlapSection=keys[i];self.cpc.overlapIndex=j;
                 self.cpc.status="Overlaps "+label(members(n,keys[i]))+" section "+keys[i]+" #"+(j+1);
@@ -388,7 +388,7 @@ drawConnections(cp)
             prior=openCJ\checkpointCreation::_decode(part.rows[part.rows.size-1]);
             color=openCJ\checkpointCreation::_vec(openCJ\checkpointCreation::routeRGB(part.routeHex))+" 1";
             self openCJ\checkpointCreation::_outlineGroup(prior,color);
-            self openCJ\checkpointCreation::_line(openCJ\checkpointCreation::_center(prior.points),openCJ\checkpointCreation::_center(cp.points),color);
+            self openCJ\checkpointCreation::_line(openCJ\checkpointCreation::_center(openCJ\checkpointMoving::points(prior)),openCJ\checkpointCreation::_center(openCJ\checkpointMoving::points(cp)),color);
             break;
         }
     }
@@ -527,6 +527,8 @@ selectAndTeleport(index)
 
 sameCheckpoint(a,b)
 {
+    if(openCJ\checkpointMoving::isMoving(a)!=openCJ\checkpointMoving::isMoving(b))return false;
+    if(openCJ\checkpointMoving::isMoving(a))return a.platformRef==b.platformRef && a.allowEle==b.allowEle && a.allowSave==b.allowSave && a.onGround==b.onGround && a.finish==b.finish && a.double==b.double;
     if(a.allowEle!=b.allowEle||a.allowSave!=b.allowSave||a.onGround!=b.onGround||a.finish!=b.finish||a.double!=b.double||a.points.size!=b.points.size||a.alternatives.size!=b.alternatives.size)return false;
     for(i=0;i<a.points.size;i++)if(distanceSquared(a.points[i],b.points[i])>0.0001)return false;
     for(i=0;i<a.alternatives.size;i++)
@@ -664,7 +666,7 @@ selectDetectedShared()
     {
         cp=openCJ\checkpointCreation::_decode(self.cpc.rows[i]);areas=[];areas[0]=cp.points;
         for(j=0;j<cp.alternatives.size;j++)areas[areas.size]=cp.alternatives[j];
-        for(j=0;j<areas.size;j++)if(overlap(self.cpc.draft.points,areas[j]))
+        for(j=0;j<areas.size;j++)if(areaOverlap(self.cpc.draft,cp,areas[j]))
         {
             self.cpc.selected=i;self.cpc.draft=cp;
             self.cpc.status="Shared landing "+(i+1)+" selected";
@@ -690,7 +692,7 @@ trackSharedLanding(origin, grounded)
     for (i = 0; i < self.cpc.rows.size; i++)
     {
         cp = openCJ\checkpointCreation::_decode(self.cpc.rows[i]);
-        if (openCJ\checkpointCreation::contains(cp,origin,true))
+        if (self openCJ\checkpointCreation::contains(cp,origin,true))
         {
             found = i;
             break;
@@ -707,4 +709,13 @@ trackSharedLanding(origin, grounded)
     self.cpc.overlapSection = undefined;
     self.cpc.status = "";
     self openCJ\checkpointCreation::_save();
+}
+
+// Moving objects may cross stationary floors without sharing a checkpoint.
+areaOverlap(a,b,points)
+{
+    movingA = openCJ\checkpointMoving::isMoving(a);
+    movingB = openCJ\checkpointMoving::isMoving(b);
+    if (movingA || movingB) return movingA && movingB && a.platformRef == b.platformRef;
+    return overlap(a.points,points);
 }

@@ -1056,7 +1056,12 @@ canSaveHere()
         cp = level.checkpoints_checkpoints[i];
         if (!isDefined(cp.allowSave) || cp.allowSave)
             continue;
-        if (isDefined(cp.area))
+        if (openCJ\checkpointMoving::isMoving(cp))
+        {
+            ent = openCJ\checkpointMoving::resolve(cp.platformRef);
+            if (isDefined(ent) && ((isDefined(self getGroundEntity()) && self getGroundEntity() == ent) || self isTouching(ent))) return false;
+        }
+        else if (isDefined(cp.area))
         {
             if (openCJ\checkpointArea::touchesPlayer(cp.area, self.origin, self isOnGround(), false))
                 return false;
@@ -1108,6 +1113,8 @@ linkContactAreas(checkpoints)
 touchesArea(cp, grounded, groundEntity)
 {
     if (!isDefined(cp)) return false;
+    if (openCJ\checkpointMoving::isMoving(cp))
+        return self openCJ\checkpointMoving::touches(cp,grounded,groundEntity);
     if (isDefined(cp.area))
         return openCJ\checkpointArea::touchesPlayer(cp.area,self.origin,grounded,cp.onGround);
     if (!isDefined(cp.radius) || (cp.onGround && !grounded)) return false;

@@ -121,7 +121,7 @@ command(args)
             self sendLocalChatMessage("Exit checkpoint testing with !cp test before editing.");
             return;
         }
-        idx = checkpointAt(self.cpc.rows, self.origin, self isOnGround());
+        idx = self checkpointAt(self.cpc.rows, self.origin, self isOnGround());
         if (idx < 0)
         {
             message = "No checkpoint in the current draft at your position.";
@@ -177,9 +177,9 @@ detectedCheckpointWarning(points)
         if (i == self.cpc.selected) continue;
         cp = _decode(self.cpc.rows[i]);
         if (!isDefined(cp)) continue;
-        match = openCJ\checkpointNetwork::overlap(points, cp.points);
+        match = openCJ\checkpointNetwork::areaOverlap(self.cpc.draft, cp, cp.points);
         for (j = 0; !match && j < cp.alternatives.size; j++)
-            match = openCJ\checkpointNetwork::overlap(points, cp.alternatives[j]);
+            match = openCJ\checkpointNetwork::areaOverlap(self.cpc.draft, cp, cp.alternatives[j]);
         if (match)
             return "Checkpoint #" + (i + 1) + " already exists here in " + self.cpc.route + ". Use !cp edit " + (i + 1) + " to edit it.";
     }
@@ -187,7 +187,7 @@ detectedCheckpointWarning(points)
         for (i = 0; i < level.checkpoints_checkpoints.size; i++)
         {
             cp = level.checkpoints_checkpoints[i];
-            if (!isDefined(cp.area) || !openCJ\checkpointNetwork::overlap(points, cp.area)) continue;
+            if (!isDefined(cp.area) || !openCJ\checkpointNetwork::areaOverlap(self.cpc.draft, cp, cp.area)) continue;
             route = "";
             if (isDefined(cp.routeInfo)) route = " (" + cp.routeInfo.name + ")";
             return "Published checkpoint #" + cp.id + route + " already exists here.";
@@ -202,7 +202,7 @@ checkpointAt(rows, origin, grounded)
     for (i = 0; i < rows.size; i++)
     {
         cp = _decode(rows[i]);
-        if (!isDefined(cp) || !contains(cp, origin, grounded))
+        if (!isDefined(cp) || !self contains(cp, origin, grounded))
             continue;
         if (found >= 0)
             return -2;
@@ -280,7 +280,8 @@ _encode(cp)
     text = int(cp.finish) + ":" + int(cp.double) + ":p" + openCJ\checkpointArea::encode(cp.points);
     for (i = 0; i < cp.alternatives.size; i++)
         text += "|p" + openCJ\checkpointArea::encode(cp.alternatives[i]);
-    if (cp.allowEle) text += ":" + int(cp.onGround) + ":" + int(cp.allowSave) + ":1";
+    if (openCJ\checkpointMoving::isMoving(cp)) text += ":" + int(cp.onGround) + ":" + int(cp.allowSave) + ":" + int(cp.allowEle) + ":" + cp.platformRef;
+    else if (cp.allowEle) text += ":" + int(cp.onGround) + ":" + int(cp.allowSave) + ":1";
     else if (!cp.allowSave) text += ":" + int(cp.onGround) + ":0";
     else if (!cp.onGround) text += ":0";
     return text;
@@ -289,7 +290,7 @@ _encode(cp)
 _decode(row)
 {
     values = strTok(row, ":");
-    if ((values.size != 3 && values.size != 4 && values.size != 5 && values.size != 6) || (values[0] != "0" && values[0] != "1") || (values[1] != "0" && values[1] != "1"))
+    if ((values.size != 3 && values.size != 4 && values.size != 5 && values.size != 6 && values.size != 7) || (values[0] != "0" && values[0] != "1") || (values[1] != "0" && values[1] != "1"))
         return undefined;
     if (values[2][0] != "p")
         return undefined;
@@ -306,14 +307,20 @@ _decode(row)
         if (values[4] != "0" && values[4] != "1") return undefined;
         cp.allowSave = int(values[4]);
     }
-    if (values.size == 6)
+    if (values.size >= 6)
     {
         if (values[5] != "0" && values[5] != "1") return undefined;
         cp.allowEle = int(values[5]);
     }
+    if (values.size == 7)
+    {
+        if (values[6].size < 2 || values[6].size > 101 || (values[6][0] != "b" && values[6][0] != "n")) return undefined;
+        cp.platformRef = values[6];
+    }
     areas = strTok(values[2], "|");
     if (areas.size > 8)
         return undefined;
+    if (openCJ\checkpointMoving::isMoving(cp) && areas.size != 1) return undefined;
     cp.points = openCJ\checkpointArea::decode(getSubStr(areas[0], 1));
     if (!isDefined(cp.points))
         return undefined;
@@ -332,6 +339,11 @@ _decode(row)
 // The active area and its alternatives share requirements and one progress step.
 contains(cp, origin, grounded)
 {
+    if (openCJ\checkpointMoving::isMoving(cp))
+    {
+        if (!isDefined(self) || !isPlayer(self)) return false;
+        return self openCJ\checkpointMoving::touches(cp, grounded, self getGroundEntity());
+    }
     if (openCJ\checkpointArea::touchesPlayer(cp.points, origin, grounded, cp.onGround))
         return true;
     for (i = 0; i < cp.alternatives.size; i++)
@@ -350,6 +362,11 @@ _addAlternative()
     {
         selected--;
         cp = _decode(self.cpc.rows[selected]);
+    }
+    if (openCJ\checkpointMoving::isMoving(cp))
+    {
+        self.cpc.status = "This checkpoint already covers the whole moving platform";
+        return;
     }
     // Validate before reopening a confirmed area. A rejected add must never
     // turn the following Detect into an edit of the previous platform.
@@ -470,7 +487,7 @@ _start(route, hex)
 
 restoreOrigin(draft)
 {
-    points = draft.draft.points;
+    points = openCJ\checkpointMoving::points(draft.draft);
     if (openCJ\checkpointArea::validate(points) != "" && draft.draft.alternatives.size > 0)
         points = draft.draft.alternatives[draft.draft.alternatives.size - 1];
     if (openCJ\checkpointArea::validate(points) != "" && draft.rows.size > 0)
@@ -479,7 +496,7 @@ restoreOrigin(draft)
         if (index >= draft.rows.size)
             index = draft.rows.size - 1;
         cp = _decode(draft.rows[index]);
-        points = cp.points;
+        points = openCJ\checkpointMoving::points(cp);
     }
     if (openCJ\checkpointArea::validate(points) != "")
         return undefined;
@@ -653,9 +670,34 @@ _action(action)
             }
             break;
         case "detect":
+            ground = self getGroundEntity();
+            if (self isOnGround() && isDefined(ground))
+            {
+                key = openCJ\checkpointMoving::reference(ground);
+                if (!isDefined(key))
+                {
+                    self.cpc.status = "Cannot identify this platform persistently; selection unchanged";
+                    break;
+                }
+                if (self.cpc.draft.alternatives.size)
+                {
+                    self.cpc.status = "Create a separate checkpoint for a whole moving platform";
+                    break;
+                }
+                self.cpc.draft.platformRef = key;
+                self.cpc.draft.points = openCJ\checkpointMoving::points(self.cpc.draft);
+                self.cpc.status = "Moving platform selected: the whole platform counts";
+                self.cpc.overlap = undefined;
+                self openCJ\checkpointNetwork::selectDetectedShared();
+                self openCJ\checkpointNetwork::checkOverlap();
+                warning = self detectedCheckpointWarning(self.cpc.draft.points);
+                if (warning != "") self sendLocalChatMessage(warning, true);
+                break;
+            }
             points = self openCJ\checkpointPlatform::getRectangularPlatformOrgs();
             if (isDefined(points))
             {
+                self.cpc.draft.platformRef = undefined;
                 self.cpc.draft.points = points;
                 self.cpc.status = "Platform detected";
                 self openCJ\checkpointNetwork::selectDetectedShared();
@@ -675,6 +717,7 @@ _action(action)
                 self.cpc.status = "Detection failed; selection unchanged";
             break;
         case "corner":
+            if (openCJ\checkpointMoving::isMoving(self.cpc.draft)) break;
             if (self.cpc.draft.points.size >= 8)
                 break;
             eye = self getEyePos();
@@ -695,7 +738,7 @@ _action(action)
                 self.cpc.status = "Overlapping section: merge the routes here; split where they separate";
                 return;
             }
-            error = openCJ\checkpointArea::validate(self.cpc.draft.points);
+            error = openCJ\checkpointMoving::valid(self.cpc.draft);
             if (error != "")
             {
                 self.cpc.status = error;
@@ -737,6 +780,7 @@ _action(action)
         case "replace":
             // Keep the original confirmed row until Apply succeeds. Its index,
             // requirements, incoming link and outgoing link remain unchanged.
+            self.cpc.draft.platformRef = undefined;
             self.cpc.draft.points = [];
             self.cpc.draft.alternatives = [];
             self.cpc.overlap = undefined;
@@ -921,7 +965,7 @@ _readFile(file, route)
             return undefined;
         if (i < count)
         {
-            if (openCJ\checkpointArea::validate(cp.points) != "")
+            if (!openCJ\checkpointMoving::isMoving(cp) && openCJ\checkpointArea::validate(cp.points) != "")
                 return undefined;
             result.rows[i] = row;
         }
@@ -1010,7 +1054,7 @@ _testStep()
         for (i = n; i < self.cpc.rows.size; i++)
         {
             finish = _decode(self.cpc.rows[i]);
-            if (finish.finish && contains(finish, self.origin, self isOnGround()))
+            if (finish.finish && self contains(finish, self.origin, self isOnGround()))
             {
                 self.cpc.testNext = self.cpc.rows.size;
                 self.cpc.status = "TEST: FINISH " + (i + 1);
@@ -1020,7 +1064,7 @@ _testStep()
         }
         return;
     }
-    if (contains(cp, self.origin, self isOnGround()))
+    if (self contains(cp, self.origin, self isOnGround()))
     {
         self.cpc.testNext++;
         self.cpc.status = "TEST: passed " + (n + 1) + " / " + self.cpc.rows.size;
@@ -1033,7 +1077,7 @@ _testStep()
         for (i = n + 1; i < self.cpc.rows.size; i++)
         {
             later = _decode(self.cpc.rows[i]);
-            if (contains(later, self.origin, self isOnGround()))
+            if (self contains(later, self.origin, self isOnGround()))
             {
                 self.cpc.status = "TEST: out of order - expected " + (n + 1) + ", entered " + (i + 1);
                 break;
@@ -1067,7 +1111,7 @@ _draw()
         cp = _decode(self.cpc.rows[self.cpc.testNext]);
         number = self.cpc.testNext + 1;
     }
-    error = openCJ\checkpointArea::validate(cp.points);
+    error = openCJ\checkpointMoving::valid(cp);
     displayColor = self.cpc.routeColor;
     displayRoute = self.cpc.route;
     if (isDefined(self.cpc.displayRoutes))displayRoute = self.cpc.displayRoutes;
@@ -1088,6 +1132,7 @@ _draw()
     }
     else if (self.cpc.selected < self.cpc.rows.size)
         heading = "Selected checkpoint";
+    if (openCJ\checkpointMoving::isMoving(props)) heading = "Moving platform";
     self.cpc.huds[0] _setPanelText(heading);
     doubleRPG = "Off"; finish = "No"; ground = "Yes";
     if (props.double) doubleRPG = "On";
@@ -1166,13 +1211,13 @@ _draw()
         label = "#" + (self.cpc.selected + 2);
         if (next.finish)
             label += " FINISH";
-        self _previewArea(next.points, label, "0 1 1 1");
+        self _previewArea(openCJ\checkpointMoving::points(next), label, "0 1 1 1");
         for (j = 0; j < next.alternatives.size; j++)
         {
             self _previewArea(next.alternatives[j], label, "1 0.2 1 1");
             self _line(_center(next.points), _center(next.alternatives[j]), "1 0.2 1 1");
         }
-        self _line(_center(cp.points), _center(next.points), "1 0.8 0 1");
+        self _line(_center(openCJ\checkpointMoving::points(cp)), _center(openCJ\checkpointMoving::points(next)), "1 0.8 0 1");
     }
     self openCJ\checkpointNetwork::drawConnections(cp);
     if (isDefined(self.cpc.overlap))self _outlineGroup(self.cpc.overlap, "1 0.2 0 1");
@@ -1190,7 +1235,7 @@ _draw()
         prior = _decode(self.cpc.rows[previous]);
         self _outlineGroup(prior, "0.4 0.4 0.4 1");
         if (cp.points.size > 0)
-            self _line(_center(prior.points), _center(cp.points), "1 0.8 0 1");
+            self _line(_center(openCJ\checkpointMoving::points(prior)), _center(openCJ\checkpointMoving::points(cp)), "1 0.8 0 1");
     }
 }
 
@@ -1205,7 +1250,7 @@ _previewArea(points, label, color)
 
 _outlineGroup(cp, color)
 {
-    self _outline(cp.points, color);
+    self _outline(openCJ\checkpointMoving::points(cp), color);
     for (i = 0; i < cp.alternatives.size; i++)
     {
         self _outline(cp.alternatives[i], "1 0.2 1 1");
@@ -1219,6 +1264,7 @@ _center(points)
     center = (0, 0, 0);
     for (i = 0; i < points.size; i++)
         center += points[i];
+    if (!points.size) return (0,0,0);
     return vectorScale(center, 1.0 / points.size) + (0, 0, 12);
 }
 
