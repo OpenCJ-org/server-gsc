@@ -147,19 +147,10 @@ onRPGFired(rpg, name)
     }
     if(self openCJ\settings::getSetting("rpgsustain"))
     {
-        self thread _rpgSustain(name);
+        // Refill in the firing callback so the next input never sees an empty RPG.
+        // Keep reserve ammo too: zero stock can trigger the client's empty-weapon switch.
+        self setWeaponAmmoClip(name, 1);
     }
-}
-_rpgSustain(name)
-{
-    self endon("disconnect");
-    self endon("spawned");
-    self endon("spawned_spectator");
-    self endon("shop_inspect_started");
-    self SetWeaponAmmoStock(name, 0);
-    wait 0.9;
-    self SetWeaponAmmoClip(name, 1);
-    self giveMaxAmmo(name);
 }
 
 onGrenadeThrow(nade, name)
