@@ -1,6 +1,10 @@
 // Pure matching only: one contiguous edit between unchanged endpoints.
 plan(oldRows,newRows)
 {
+    // Drafts may predate precise float serialization. Compare canonical values,
+    // not decimal spellings such as 2483.01 versus 2483.01001 (the same float).
+    oldRows=canonicalRows(oldRows);newRows=canonicalRows(newRows);
+    if(!isDefined(oldRows) || !isDefined(newRows))return undefined;
     if(oldRows.size<2 || newRows.size<2 || oldRows[0]!=newRows[0] || oldRows[oldRows.size-1]!=newRows[newRows.size-1])return undefined;
     first=0;
     while(first<oldRows.size && first<newRows.size && oldRows[first]==newRows[first])first++;
@@ -35,6 +39,31 @@ plan(oldRows,newRows)
     return p;
 }
 
+canonicalRows(rows)
+{
+    normalized=[];
+    for(i=0;i<rows.size;i++)
+    {
+        cp=openCJ\checkpointCreation::_decode(rows[i]);
+        if(!isDefined(cp))return undefined;
+        normalized[i]=openCJ\checkpointCreation::_encode(cp);
+    }
+    return normalized;
+}
+
+// With no historical references, arbitrary edits need no run migration. Reuse
+// IDs by position so the route's start/color identity remains stable.
+unusedPlan(oldRows,newRows)
+{
+    p=spawnStruct();p.mapping=[];
+    for(i=0;i<newRows.size;i++)
+    {
+        p.mapping[i]=-1;
+        if(i<oldRows.size)p.mapping[i]=i;
+    }
+    return p;
+}
+
 prepare(entries,existing)
 {
     if(isDefined(level.demoPersisting) && level.demoPersisting>0)return self fail("A demo is still saving; retry finalizing shortly");
@@ -64,7 +93,13 @@ prepare(entries,existing)
     }
     ids+=")";
     p=plan(old,self.cpc.rows);
-    if(!isDefined(p))return self fail("Migration too complex: keep start/finish and requirements; change one checkpoint or insert/delete up to 3 together");
+    if(!isDefined(p))
+    {
+        history=openCJ\mySQL::mysqlSyncQuery("SELECT EXISTS(SELECT 1 FROM playerRuns WHERE finishcpID IN "+ids+")+EXISTS(SELECT 1 FROM checkpointStatistics WHERE cpID IN "+ids+")+EXISTS(SELECT 1 FROM playerSaves WHERE checkpointID IN "+ids+")+EXISTS(SELECT 1 FROM demoRuns WHERE mapID="+map+" AND routeName="+openCJ\util::dbStr(route)+")");
+        if(!isDefined(history) || history.size!=1)return self fail("Cannot check route history; draft retained");
+        if(int(history[0][0])!=0)return self fail("Route has run history: keep start/finish and requirements; change one checkpoint or insert/delete up to 3 together");
+        p=unusedPlan(old,self.cpc.rows);
+    }
     outside=openCJ\mySQL::mysqlSyncQuery("SELECT cpID FROM checkpointConnections WHERE (cpID IN "+ids+" AND childcpID NOT IN "+ids+") OR (childcpID IN "+ids+" AND cpID NOT IN "+ids+") UNION SELECT cpID FROM checkpointBrothers WHERE bigBrotherID IN "+ids+" AND cpID NOT IN "+ids+" LIMIT 1");
     if(!isDefined(outside)||outside.size)return self fail("Shared route connections require manual migration; draft retained");
     players=getEntArray("player","classname");
