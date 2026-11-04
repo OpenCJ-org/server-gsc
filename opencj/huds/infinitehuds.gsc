@@ -41,12 +41,20 @@ setInfiniteHudText(text, player, reliable)
     {
         reliable = false;
     }
+    // Reliable command buffers hold 1024 bytes including the terminator.
+    // Reserve the configstring command prefix before building the full string.
+    prefix = "d " + self.configstringIndex + " ";
+    textLimit = 1023 - prefix.size;
+    if (text.size > textLimit)
+    {
+        text = getSubStr(text, 0, textLimit);
+    }
     if(!player.isFirstSpawn && (text == self.lastText)) // If player hadn't spawned yet, then the existing value may have been set 'too early'
     {
         return;
     }
     self.lastText = text;
-    player SV_GameSendServerCommand("d " + self.configstringIndex + " " + text, reliable);
+    player SV_GameSendServerCommand(prefix + text, reliable);
 }
 
 findLocalizedString(num)

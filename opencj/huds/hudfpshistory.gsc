@@ -167,9 +167,30 @@ _clearFPSHistory()
     }
 }
 
+// Bound the operands before concatenating: long jumps must never build an
+// oversized temporary string. The marker is part of the 512-character budget.
+appendFPSHistory(history, text)
+{
+    limit = 512;
+    marker = "...";
+    if (history.size + text.size <= limit)
+    {
+        return history + text;
+    }
+
+    remaining = limit - marker.size;
+    if (text.size >= remaining)
+    {
+        return marker + getSubStr(text, text.size - remaining);
+    }
+
+    remaining -= text.size;
+    return marker + getSubStr(history, history.size - remaining) + text;
+}
+
 _addFPSHistory(text)
 {
-    self _setFPSHistory(self.fpsHistoryText + text);
+    self _setFPSHistory(appendFPSHistory(self.fpsHistoryText, text));
 }
 
 _setFPSHistory(text)
@@ -179,6 +200,7 @@ _setFPSHistory(text)
         return;
     }
 
+    text = appendFPSHistory("", text);
     if (self.fpsHistoryText == text)
     {
         return; // Already set
@@ -205,6 +227,7 @@ _setFPSHistory(text)
 
 _setDemoFPSHistory(text)
 {
+    text = appendFPSHistory("", text);
     if (self.fpsHistoryText == text)
     {
         return; // Already set
@@ -277,5 +300,5 @@ addDemoFPSHistory(text)
     {
         return;
     }
-    self _setDemoFPSHistory(self.fpsHistoryText + text);
+    self _setDemoFPSHistory(appendFPSHistory(self.fpsHistoryText, text));
 }
