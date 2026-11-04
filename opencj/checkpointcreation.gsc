@@ -1311,7 +1311,7 @@ _draw()
         heading = "Last checkpoint";
     }
     else if (self.cpc.selected < self.cpc.rows.size)
-        heading = "Selected checkpoint";
+        heading = "Checkpoint #" + number;
     if(inserting)heading="Insert checkpoint "+number;
     if (openCJ\checkpointMoving::isMoving(props)) heading = "Moving platform";
     self.cpc.huds[0] _setPanelText(heading);
@@ -1370,7 +1370,7 @@ _draw()
     else
     {
         text = "^2Confirm:^7 Num Enter";
-        if (self.cpc.selected < self.cpc.rows.size) text = "^3Apply:^7 Num Enter";
+        if (self.cpc.selected < self.cpc.rows.size) text = "^3Apply changes:^7 Num Enter";
         text += "\n^2Detect again:^7 Num 0\n" + discardLabel;
         if (self.cpc.selected < self.cpc.rows.size) text += "\n^3Replace:^7 !cp replace";
         if (cp.alternatives.size > 0) text += "\n^5Cycle area:^7 Num *\n^1Remove area:^7 !cp delete area";
@@ -1393,52 +1393,55 @@ _draw()
         self sendLocalChatMessage(self.cpc.status);
     self.cpc.lastPanelStatus = self.cpc.status;
     color = _vec(displayColor) + " 1";
+    if(inserting || self.cpc.selected==self.cpc.rows.size)color="0 1 0 1";
     if (error != "")
         color = "1 0.3 0.1 1";
     if (self.cpc.testing && self.cpc.testNext >= self.cpc.rows.size)
         return;
-    self _outlineGroup(cp, color);
-    if (followingShared && self.cpc.selected + 1 < self.cpc.rows.size)
+    // Resolve the whole neighborhood before drawing: sending line batches can
+    // yield, allowing another editor command to change the current selection.
+    next=undefined;prior=undefined;
+    nextIndex=nextPreviewIndex(self.cpc);
+    if (!self.cpc.testing && nextIndex < self.cpc.rows.size)
+        next=_decode(self.cpc.rows[nextIndex]);
+    noSelection=!self.cpc.testing && !inserting && empty && self.cpc.selected==self.cpc.rows.size;
+    previous=number-2;
+    if(noSelection && summary)previous=-1;
+    while(previous>=0 && previous<self.cpc.rows.size)
     {
-        next = _decode(self.cpc.rows[self.cpc.selected + 1]);
-        label = "#" + (self.cpc.selected + 2);
-        if (next.finish)
-            label += " FINISH";
-        self _previewArea(openCJ\checkpointMoving::points(next), label, "0 1 1 1");
-        for (j = 0; j < next.alternatives.size; j++)
-        {
-            self _previewArea(next.alternatives[j], label, "1 0.2 1 1");
-            self _line(_center(next.points), _center(next.alternatives[j]), "1 0.2 1 1");
-        }
-        self _line(_center(openCJ\checkpointMoving::points(cp)), _center(openCJ\checkpointMoving::points(next)), "1 0.8 0 1");
+        prior=_decode(self.cpc.rows[previous]);
+        if(!prior.finish)break;
+        prior=undefined;previous--;
+    }
+    self _outlineGroup(cp,color);
+    if(isDefined(next))
+    {
+        label="Next #"+(nextIndex+1+int(inserting));
+        if(next.finish)label+=" FINISH";
+        self _previewGroup(next,label,"0.2 0.6 1 1");
+        if(cp.points.size>0)
+            self _line(_center(openCJ\checkpointMoving::points(cp)),_center(openCJ\checkpointMoving::points(next)),"0.2 0.6 1 1");
+    }
+    if(isDefined(prior))
+    {
+        if(noSelection)self _outlineGroup(prior,"0.55 0.55 0.55 1");
+        else self _previewGroup(prior,"Previous #"+(previous+1),"0.55 0.55 0.55 1");
+        if(cp.points.size>0)
+            self _line(_center(openCJ\checkpointMoving::points(prior)),_center(openCJ\checkpointMoving::points(cp)),"1 0.8 0 1");
+        else if(inserting && isDefined(next))
+            self _line(_center(openCJ\checkpointMoving::points(prior)),_center(openCJ\checkpointMoving::points(next)),"0.2 0.6 1 1");
     }
     self openCJ\checkpointNetwork::drawConnections(cp);
-    if (isDefined(self.cpc.overlap))self _outlineGroup(self.cpc.overlap, "1 0.2 0 1");
-    // Only the previous checkpoint is drawn too; don't flood reliable commands for the entire map.
-    previous = number - 2;
-    while (previous >= 0 && previous < self.cpc.rows.size)
-    {
-        prior = _decode(self.cpc.rows[previous]);
-        if (!prior.finish)
-            break;
-        previous--;
-    }
-    if (!followingShared && previous >= 0 && previous < self.cpc.rows.size)
-    {
-        prior = _decode(self.cpc.rows[previous]);
-        self _outlineGroup(prior, "0.4 0.4 0.4 1");
-        if (cp.points.size > 0)
-            self _line(_center(openCJ\checkpointMoving::points(prior)), _center(openCJ\checkpointMoving::points(cp)), "1 0.8 0 1");
-    }
+    if(isDefined(self.cpc.overlap))self _outlineGroup(self.cpc.overlap,"1 0.2 0 1");
 }
 
-// Preview just the landing boundary and checkpoint number, keeping the larger
-// preview cheap and distinct from the selected area's editable corners.
-_previewArea(points, label, color)
+// Both neighbors use the same full-volume representation as the selection.
+_previewGroup(cp,label,color)
 {
-    for (i = 0; i < points.size; i++)
-        self _line(points[i] + (0, 0, 2), points[(i + 1) % points.size] + (0, 0, 2), color);
-    self _drawCommand("M t " + _vec(_center(points)) + ";" + color + ";0.8;400;" + label);
+    self _outlineGroup(cp,color);
+    self _drawCommand("M t "+_vec(_center(openCJ\checkpointMoving::points(cp)))+";"+color+";0.8;400;"+label);
+    for(i=0;i<cp.alternatives.size;i++)
+        self _drawCommand("M t "+_vec(_center(cp.alternatives[i]))+";"+color+";0.8;400;"+label);
 }
 
 _outlineGroup(cp, color)
