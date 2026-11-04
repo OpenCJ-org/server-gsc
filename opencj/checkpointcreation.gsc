@@ -6,7 +6,7 @@ onInit()
 {
     if (getCodVersion() != 4)
         return;
-    cmd = openCJ\commands_base::registerCommand("checkpoint", "!cp <route> [#RRGGBB] (start or continue your draft) | list | reset <route> | split <routes> | merge <routes> | rename <old> <new> | detect | corner | confirm | alternative | area | undo | finish | double | ele | ground | allowsave | height [units] | select <number> | new | discard | edit [number|last] | replace | delete [area] | test | save | finalize | stop", ::command, 0, 17, 0);
+    cmd = openCJ\commands_base::registerCommand("checkpoint", "!cp <route> [#RRGGBB] (start or continue your draft) | list | reset <route> | split <routes> | merge <routes> | rename <old> <new> | detect | corner | confirm | alternative | area | undo | finish | double | ele | ground | allowsave | height [units] | select <number> | new | discard | edit [number|last] | insert | replace | delete [area] | test | save | finalize | stop", ::command, 0, 17, 0);
     openCJ\commands_base::addAlias(cmd, "cp");
     openCJ\commands_base::addAlias(cmd, "cpc");
 }
@@ -67,7 +67,7 @@ command(args)
     }
     // Non-command names open the player's existing draft or create a new one.
     args[0] = toLower(args[0]);
-    commands = "|list|reset|rename|split|merge|edit|replace|deletearea|select|stop|save|finalize|publish|test|finish|double|ele|ground|allowsave|height|undo|discard|alternative|area|detect|corner|confirm|new|previous|next|delete|";
+    commands = "|list|reset|rename|split|merge|edit|insert|replace|deletearea|select|stop|save|finalize|publish|test|finish|double|ele|ground|allowsave|height|undo|discard|alternative|area|detect|corner|confirm|new|previous|next|delete|";
     if ((args.size == 1 || args.size == 2) && !isSubStr(commands, "|" + args[0] + "|"))
     {
         route = args[0];
@@ -108,6 +108,11 @@ command(args)
     if (args[0] == "rename" && args.size == 3)
     {
         self openCJ\checkpointNetwork::rename(toLower(args[1]),toLower(args[2]));
+        return;
+    }
+    if (isDefined(self.cpc.insertAfter) && (args[0]=="split" || args[0]=="merge" || args[0]=="edit" || args[0]=="select"))
+    {
+        self sendLocalChatMessage("Confirm or discard the insertion first.");
         return;
     }
     if (args[0] == "split")
@@ -448,6 +453,7 @@ _start(route, hex)
         self.cpc.rows = latest.rows;
         self.cpc.draft = latest.draft;
         self.cpc.selected = latest.selected;
+        self.cpc.insertAfter = latest.insertAfter;
         self.cpc.revision = latest.revision;
         self sendLocalChatMessage("Restored " + route + " draft (" + latest.rows.size + " confirmed checkpoints)");
         self.cpc.savedPosition = latest.savedPosition;
@@ -624,6 +630,7 @@ _remember()
         snapshot.rows[i] = self.cpc.rows[i];
     snapshot.draft = _encode(self.cpc.draft);
     snapshot.selected = self.cpc.selected;
+    snapshot.insertAfter = self.cpc.insertAfter;
     if (self.cpc.history.size == 32)
     {
         for (i = 1; i < 32; i++)
@@ -635,6 +642,16 @@ _remember()
 
 _action(action)
 {
+    if(isDefined(self.cpc.insertAfter) && (action=="new" || action=="previous" || action=="next" || action=="delete" || action=="alternative" || action=="finalize" || action=="publish" || action=="test"))
+    {
+        self.cpc.status="Confirm or discard the insertion first";
+        return;
+    }
+    if(action=="insert")
+    {
+        self beginInsertion();
+        return;
+    }
     if (action == "stop")
     {
         self stop();
@@ -668,7 +685,7 @@ _action(action)
     }
     // When the panel shows the last checkpoint, property keys edit that checkpoint.
     if ((action == "finish" || action == "double" || action == "ele" || action == "ground" || action == "allowsave" || action == "height" || action == "heightset") &&
-        self.cpc.selected == self.cpc.rows.size && self.cpc.rows.size > 0 &&
+        !isDefined(self.cpc.insertAfter) && self.cpc.selected == self.cpc.rows.size && self.cpc.rows.size > 0 &&
         self.cpc.draft.points.size == 0 && self.cpc.draft.alternatives.size == 0)
         self _action("previous");
     if(isDefined(self.cpc.heightTarget))
@@ -687,6 +704,8 @@ _action(action)
         self.cpc.rows = snapshot.rows;
         self.cpc.draft = _decode(snapshot.draft);
         self.cpc.selected = snapshot.selected;
+        self.cpc.insertAfter = snapshot.insertAfter;
+        self.cpc.heightTarget = undefined;
         self.cpc.history[n] = undefined;
         self.cpc.status = "Undone";
         self _save();
@@ -835,6 +854,11 @@ _action(action)
                 return;
             }
             followingShared = self openCJ\checkpointNetwork::followingShared();
+            if(isDefined(self.cpc.insertAfter))
+            {
+                self confirmInsertion();
+                break;
+            }
             self.cpc.rows[self.cpc.selected] = _encode(self.cpc.draft);
             self.cpc.status = "";
             if (followingShared)
@@ -898,6 +922,50 @@ _action(action)
     self _save();
 }
 
+// Keep pending insertion geometry outside rows until Confirm succeeds.
+beginInsertion()
+{
+    if(self.cpc.testing || isDefined(self.cpc.insertAfter) || self.cpc.selected>=self.cpc.rows.size)
+    {self.cpc.status="Select the preceding checkpoint with !cpc edit first";return false;}
+    if(openCJ\checkpointNetwork::pendingEdit(self.cpc))
+    {self.cpc.status="Apply or undo changes to the selected checkpoint first";return false;}
+    if(self.cpc.rows.size>=256)
+    {self.cpc.status="Maximum 256 checkpoints per route";return false;}
+    if(isDefined(self.cpc.sharedCount) && self.cpc.selected+1<self.cpc.sharedCount)
+    {self.cpc.status="Edit the shared opening draft to insert there";return false;}
+    if(self.cpc.draft.finish)
+    {self.cpc.status="Select a checkpoint before the finish to insert after it";return false;}
+    self _remember();
+    self.cpc.insertAfter=self.cpc.selected;
+    self.cpc.selected=self.cpc.rows.size;
+    self.cpc.draft=_empty();
+    self.cpc.heightTarget=undefined;
+    self.cpc.overlap=undefined;
+    self.cpc.alternativeBlocked=undefined;
+    self.cpc.status="Insert after checkpoint "+(self.cpc.insertAfter+1)+": detect the missing landing, then confirm";
+    self _save();
+    return true;
+}
+
+confirmInsertion()
+{
+    index=self.cpc.insertAfter+1;
+    for(i=self.cpc.rows.size;i>index;i--)self.cpc.rows[i]=self.cpc.rows[i-1];
+    self.cpc.rows[index]=_encode(self.cpc.draft);
+    self.cpc.selected=self.cpc.rows.size;
+    self.cpc.draft=_empty();
+    self.cpc.insertAfter=undefined;
+    self.cpc.heightTarget=undefined;
+    self.cpc.status="Inserted checkpoint "+(index+1)+"; following checkpoints shifted forward";
+}
+
+// Physical order in the draft also determines the incoming/outgoing links.
+nextPreviewIndex(draft)
+{
+    if(isDefined(draft.insertAfter))return draft.insertAfter+1;
+    return draft.selected+1;
+}
+
 // Geometry-only edit: callers retain the selected row and confirm explicitly.
 removeSelectedArea(cp)
 {
@@ -916,6 +984,18 @@ removeSelectedArea(cp)
 // checkpoint, or the last confirmed checkpoint when in the empty append slot.
 _discard()
 {
+    if(isDefined(self.cpc.insertAfter))
+    {
+        self _remember();
+        self.cpc.selected=self.cpc.insertAfter;
+        self.cpc.insertAfter=undefined;
+        self.cpc.draft=_decode(self.cpc.rows[self.cpc.selected]);
+        self.cpc.heightTarget=undefined;
+        self.cpc.overlap=undefined;
+        self.cpc.status="Insertion discarded; existing checkpoints unchanged";
+        self _save();
+        return;
+    }
     if (self.cpc.selected < self.cpc.rows.size)
     {
         // Reuse Delete so selection, sequential links, shared protection and
@@ -973,6 +1053,7 @@ _save()
     }
     if (!FS_WriteLine(file, _encode(self.cpc.draft)))
         ok = false;
+    if (isDefined(self.cpc.insertAfter) && !FS_WriteLine(file,"INSERT "+self.cpc.insertAfter))ok=false;
     if (isDefined(self.cpc.savedPosition))
     {
         travel = [];
@@ -1060,6 +1141,13 @@ _readFile(file, route)
             result.draft = cp;
     }
     end = FS_ReadLine(file);
+    if(isDefined(end) && getSubStr(end,0,7)=="INSERT ")
+    {
+        value=getSubStr(end,7);
+        if(!isValidInt(value) || int(value)<0 || int(value)>=count || result.selected!=count)return undefined;
+        result.insertAfter=int(value);
+        end=FS_ReadLine(file);
+    }
     if (isDefined(end) && getSubStr(end, 0, 7) == "TRAVEL ")
     {
         travel = openCJ\checkpointArea::decode(getSubStr(end, 7));
@@ -1178,6 +1266,7 @@ _testStep()
 // An empty next slot after a confirmed finish is a route summary, not a new area.
 readyToFinalize(draft)
 {
+    if (isDefined(draft.insertAfter))return false;
     if (draft.selected != draft.rows.size || draft.rows.size == 0 || draft.draft.points.size > 0 || draft.draft.alternatives.size > 0)
         return false;
     last = _decode(draft.rows[draft.rows.size - 1]);
@@ -1188,6 +1277,8 @@ _draw()
 {
     cp = self.cpc.draft;
     number = self.cpc.selected + 1;
+    inserting=isDefined(self.cpc.insertAfter);
+    if(inserting)number=self.cpc.insertAfter+2;
     followingShared = !self.cpc.testing && self openCJ\checkpointNetwork::followingShared();
     summary = !self.cpc.testing && !followingShared && readyToFinalize(self.cpc);
     if (summary)
@@ -1214,13 +1305,14 @@ _draw()
     props = cp;
     heading = "Selected checkpoint";
     empty = self.cpc.draft.points.size == 0 && self.cpc.draft.alternatives.size == 0;
-    if (!self.cpc.testing && !followingShared && empty && self.cpc.selected == self.cpc.rows.size && self.cpc.rows.size > 0)
+    if (!inserting && !self.cpc.testing && !followingShared && empty && self.cpc.selected == self.cpc.rows.size && self.cpc.rows.size > 0)
     {
         props = _decode(self.cpc.rows[self.cpc.rows.size - 1]);
         heading = "Last checkpoint";
     }
     else if (self.cpc.selected < self.cpc.rows.size)
         heading = "Selected checkpoint";
+    if(inserting)heading="Insert checkpoint "+number;
     if (openCJ\checkpointMoving::isMoving(props)) heading = "Moving platform";
     self.cpc.huds[0] _setPanelText(heading);
     doubleRPG = "Off"; finish = "No"; ground = "Yes";
@@ -1247,10 +1339,16 @@ _draw()
     discardLabel = "^1Discard new:^7 Num Del";
     if (self.cpc.selected < self.cpc.rows.size)
         discardLabel = "^1Delete selected:^7 Num Del";
-    else if (empty || summary)
+    else if (!inserting && (empty || summary))
         discardLabel = "^1Delete last:^7 Num Del";
     if (self.cpc.testing)
         text = "Follow the outline\nExit test: !cp test";
+    else if(inserting)
+    {
+        text="After checkpoint "+(self.cpc.insertAfter+1)+"\n^2Detect:^7 Num 0";
+        if(!empty)text+="\n^2Confirm insert:^7 Num Enter";
+        text+="\n"+discardLabel;
+    }
     else if (followingShared)
     {
         text = "Follow shared landings\n^2Detect:^7 Num 0\n^5Split:^7 !cp split <routes>";

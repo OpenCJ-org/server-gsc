@@ -2,6 +2,11 @@
 // No waits inside the transaction: every statement uses the same sync connection.
 publish()
 {
+    if(isDefined(self.cpc.insertAfter))
+    {
+        self.cpc.status="Confirm or discard the insertion before finalizing";
+        return false;
+    }
     if (isDefined(self.cpc.network))return self openCJ\checkpointNetwork::publish();
     if (self.cpc.rows.size == 0)
     {

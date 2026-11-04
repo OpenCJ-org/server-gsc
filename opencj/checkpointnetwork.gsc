@@ -585,6 +585,7 @@ splitExisting(args,n)
 
 pendingEdit(part)
 {
+    if(isDefined(part.insertAfter))return true;
     if(part.selected>=part.rows.size)return part.draft.points.size>0 || part.draft.alternatives.size>0;
     // An empty replacement of an existing checkpoint is still an unapplied edit.
     return !sameCheckpoint(part.draft,openCJ\checkpointCreation::_decode(part.rows[part.selected]));
@@ -662,6 +663,7 @@ followingShared()
 
 selectDetectedShared()
 {
+    if(isDefined(self.cpc.insertAfter))return false;
     n=self load();if(!isDefined(n)||members(n,self.cpc.route).size<2)return false;
     for(i=0;i<self.cpc.rows.size;i++)
     {
