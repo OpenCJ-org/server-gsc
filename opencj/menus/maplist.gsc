@@ -14,9 +14,10 @@ onPlayerConnected()
     self.mapList = [];
     self.mapList["selected"] = -1;
 
+    maps = openCJ\maps::voteMaps(self.adminLevel);
     self.mapList["curPage"] = 1;
-    self.mapList["maxPage"] = max(1, ceil(level.maps.size / level.mapListMaxEntriesPerPage)); // Isn't a level variable because level.maps.size might not be ready in time for onInit()
-    self.mapList["maxEntries"] = level.maps.size;
+    self.mapList["maxPage"] = max(1, ceil(maps.size / level.mapListMaxEntriesPerPage)); // Isn't a level variable because maps.size might not be ready in time for onInit()
+    self.mapList["maxEntries"] = maps.size;
 
     self thread _updateMapList(false);
 
@@ -99,7 +100,7 @@ _handleSelectionChange(newIdx)
     if (isValidInt(newIdx))
     {
         newIdx = int(newIdx);
-        if (newIdx < self.mapList["maxEntries"])
+        if (newIdx >= 0 && newIdx < self.displayedMaps.size)
         {
             self.mapList["selected"] = int(newIdx);
             self _updateMapList(false);
@@ -116,7 +117,7 @@ _handleVote(typeStr)
     }
     else if (typeStr == "map")
     {
-        if (!isDefined(self.mapList["selected"]) || (self.mapList["selected"] == -1))
+        if (!isDefined(self.mapList["selected"]) || self.mapList["selected"] < 0 || self.mapList["selected"] >= self.displayedMaps.size)
         {
             return;
         }
@@ -170,6 +171,7 @@ _calcMaxPage(nrEntriesThisPage, maxEntries)
 
 _updateMapList(searchChanged)
 {
+    maps = openCJ\maps::voteMaps(self.adminLevel);
     // Reset current page if anything related to search was done
     if (isDefined(searchChanged) && searchChanged)
     {
@@ -189,9 +191,9 @@ _updateMapList(searchChanged)
         self.searchMatchedIndices = [];
         nrMatchedMaps = 0;
         skipped = 0;
-        for (i = 0; i < level.maps.size; i++)
+        for (i = 0; i < maps.size; i++)
         {
-            if (isSubStr(toLower(level.maps[i]["name"]), searchText))
+            if (isSubStr(toLower(maps[i]["name"]), searchText))
             {
                 // Only add results for current page
                 if (skipped >= offset)
@@ -215,9 +217,14 @@ _updateMapList(searchChanged)
     }
     else
     {
-        totalEntries = level.maps.size;
+        totalEntries = maps.size;
     }
     self.mapList["maxEntries"] = totalEntries;
+    if (offset >= totalEntries && self.mapList["curPage"] > 1)
+    {
+        self _updateMapList(true);
+        return;
+    }
 
     // Calculate number of entries on current page
     nrEntriesThisPage = min(totalEntries - offset, level.mapListMaxEntriesPerPage);
@@ -241,13 +248,13 @@ _updateMapList(searchChanged)
             if (isDefined(self.searchMatchedIndices))
             {
                 // Maps are dictated by search
-                map = level.maps[self.searchMatchedIndices[i]];
+                map = maps[self.searchMatchedIndices[i]];
                 self setClientCvar(dvarName, map["name"]);
             }
             else
             {
                 // No search filter for maps
-                map = level.maps[i + offset];
+                map = maps[i + offset];
                 self setClientCvar(dvarName, map["name"]);
             }
 
@@ -261,7 +268,7 @@ _updateMapList(searchChanged)
     self.searchMatchedIndices = undefined;
 
     // Update dvars for the selected map
-    if (self.mapList["selected"] != -1)
+    if (self.mapList["selected"] >= 0 && self.mapList["selected"] < self.displayedMaps.size)
     {
         selectedMap = self.displayedMaps[self.mapList["selected"]];
         self _updateSelectionDvars(selectedMap);

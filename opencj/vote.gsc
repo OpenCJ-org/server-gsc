@@ -2,6 +2,8 @@
 
 onInit()
 {
+    // Use OpenCJ votes exclusively; stock callvote bypasses the alpha policy.
+    setCvar("g_allowVote", 0);
     cmd = openCJ\commands_base::registerCommand("vote", "Vote for something. Usage: !vote <extend|map mp_mapname|yes|no>", ::vote, 1, 2, 0);
     openCJ\commands_base::addAlias(cmd, "v");
 
@@ -90,10 +92,10 @@ vote(args) //args[0] = map, extend, yes/no
 
         if((args[0] == "map") && isDefined(args[1]))
         {
-            mapName = args[1];
+            mapName = toLower(args[1]);
             if (getCvar("mapname") != mapName)
             {
-                self thread _doVoteMap(args[1]); // TODO: check if map exists on disk?
+                self thread _doVoteMap(mapName);
             }
             else
             {
@@ -194,24 +196,6 @@ _setMapVoteImage(image)
     }
 }
 
-// Temporary function while not all maps are implemented
-_isMapAvailable(mapName)
-{
-    if (!isDefined(level.maps))
-    {
-        return false;
-    }
-    for (i = 0; i < level.maps.size; i++)
-    {
-        if (mapName == level.maps[i]["name"])
-        {
-            return true;
-        }
-    }
-
-    return false;
-}
-
 _doVoteMap(mapName)
 {
     self endon("disconnect");
@@ -223,18 +207,11 @@ _doVoteMap(mapName)
         return;
     }
 
-    // TODO: this is a temporary check for alpha available maps
-    if (!_isMapAvailable(mapName))
+    map = self _findMapByName(mapName, true);
+    if (!isDefined(map)) return;
+    if (map == getCvar("mapname"))
     {
-        self iprintln("Sorry, this map is not yet available");
-        return;
-    }
-
-
-    // Map needs to be found in db for vote to go through
-    map = _findMapByName(mapName, true);
-    if(!isDefined(map))
-    {
+        self sendLocalChatMessage("You can't vote for the current map", true);
         return;
     }
 
@@ -311,50 +288,21 @@ _setupVote(mapName, text, playerEnt)
 
 _findMapByName(string, recurse)
 {
-    self endon("disconnect");
-    if(!recurse)
-    {
-        rows = self openCJ\mySQL::mysqlAsyncQuery("SELECT mapname FROM mapids WHERE mapname LIKE '%" + openCJ\mySQL::escapeString(string) + "%'");
-    }
+    string = toLower(string);
+    // Exact names also cover maps installed since the catalogue was loaded.
+    if (openCJ\maps::canVoteMap(string, self.adminLevel)) return string;
+    maps = openCJ\maps::voteMaps(self.adminLevel);
+    matches = [];
+    if (string != "")
+        for (i = 0; i < maps.size; i++)
+            if (isSubStr(maps[i]["name"], string)) matches[matches.size] = maps[i]["name"];
+    if (matches.size == 1) return matches[0];
+    if (matches.size > 5)
+        self sendLocalChatMessage("Too many available maps match (" + matches.size + ")", true);
+    else if (matches.size > 1)
+        self sendLocalChatMessage("Available matches: " + arrayConcat(matches, ", "), true);
     else
-    {
-        rows = self openCJ\mySQL::mysqlAsyncQuery("SELECT mapname FROM mapids WHERE mapname = '" + openCJ\mySQL::escapeString(string) + "'");
-    }
-    if(isDefined(rows) && (rows.size > 0))
-    {
-        if(rows.size == 1)
-        {
-            return rows[0][0];
-        }
-        else if (rows.size > 5)
-        {
-            self sendLocalChatMessage("Too many matches found (" + rows.size + ")", true);
-        }
-        else
-        {
-            self sendLocalChatMessage("Multiple matches found:", true);
-            chatStr = "";
-            for(i = 0; i < rows.size; i++)
-            {
-                if (i > 0)
-                {
-                    chatStr += ", ";
-                }
-                chatStr += rows[i][0];
-            }
-
-            self sendLocalChatMessage(chatStr, true);
-        }
-    }
-    else if(recurse)
-    {
-        return self _findMapByName(string, false);
-    }
-    else
-    {
-        self sendLocalChatMessage("Map not found", true);
-    }
-    
+        self sendLocalChatMessage("Map not installed or unavailable for alpha voting", true);
     return undefined;
 }
 

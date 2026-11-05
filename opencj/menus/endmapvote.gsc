@@ -21,15 +21,17 @@ onInit()
 fillRandomMaps() // Called when level.maps is filled
 {
     nrMapsFilled = 0;
+    level.endVote["maps"] = [];
+    maps = openCJ\maps::voteMaps(0);
     currentMapName = getCvar("mapname");
-    for (i = 0; i < level.maps.size; i++)
+    for (i = 0; i < maps.size; i++)
     {
         if (nrMapsFilled >= level.endVote["nrMaps"])
         {
             break;
         }
 
-        map = level.maps[i];
+        map = maps[i];
         if (map["name"] != currentMapName)
         {
             level.endVote["maps"][nrMapsFilled] = map["name"];
