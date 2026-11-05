@@ -30,6 +30,22 @@ addAlias(cmd, alias) // If we want specific help functions per alias, just chang
     level.commands[alias] = aliasCmd;
 }
 
+// Permission levels: editor 20, moderator 40, admin 60, uber-admin 100.
+checkpointEditorLevel()
+{
+    return 20;
+}
+
+maxAdminLevel()
+{
+    return 100;
+}
+
+isUberAdminLevel(value)
+{
+    return isDefined(value) && value >= maxAdminLevel();
+}
+
 setAdminLevel(value)
 {
     self.adminLevel = value;

@@ -6,7 +6,7 @@ onInit()
 {
     if (getCodVersion() != 4)
         return;
-    cmd = openCJ\commands_base::registerCommand("checkpoint", "!cp <route> [#RRGGBB] (start or continue your draft) | list | reset <route> | split <routes> | merge <routes> | rename <old> <new> | detect | corner | confirm | alternative | area | undo | finish | double | ele | ground | allowsave | height [units] | select <number> | new | discard | edit [number|last] | postsert | presert | insert (help) | replace | delete [area] | test | save | finalize | stop", ::command, 0, 17, 0);
+    cmd = openCJ\commands_base::registerCommand("checkpoint", "!cp <route> [#RRGGBB] (start or continue your draft) | list | reset <route> | split <routes> | merge <routes> | rename <old> <new> | detect | corner | confirm | alternative | area | undo | finish | double | ele | ground | allowsave | height [units] | select <number> | new | discard | edit [number|last] | postsert | presert | insert (help) | replace | delete [area] | test | save | finalize | stop", ::command, 0, 17, openCJ\commands_base::checkpointEditorLevel());
     openCJ\commands_base::addAlias(cmd, "cp");
     openCJ\commands_base::addAlias(cmd, "cpc");
 }
@@ -16,16 +16,11 @@ isEditing()
     return isDefined(self.cpc);
 }
 
-// Explicit editor access does not grant general administrator permissions.
+// Editor permissions are role-based; account IDs do not grant access.
 hasEditorAccess()
 {
-    if (!self openCJ\login::isLoggedIn())return false;
-    id = self openCJ\login::getPlayerID();
-    if (self.adminLevel >= 40 || id == getCvarInt("opencj_checkpoint_editor_playerid"))return true;
-    ids = strTok(getCvar("opencj_checkpoint_editor_playerids"), " ,");
-    for (i = 0; i < ids.size; i++)
-        if (isValidInt(ids[i]) && int(ids[i]) == id)return true;
-    return false;
+    return self openCJ\login::isLoggedIn() && isDefined(self.adminLevel) &&
+        self.adminLevel >= openCJ\commands_base::checkpointEditorLevel();
 }
 
 command(args)
@@ -34,7 +29,7 @@ command(args)
         return;
     if (!self hasEditorAccess())
     {
-        self iprintln("Checkpoint editing requires admin level 40 or explicit editor access");
+        self iprintln("Checkpoint editing requires admin level 20");
         return;
     }
     if (!getCvarInt("opencj_checkpoint_editor"))
